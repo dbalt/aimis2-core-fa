@@ -625,11 +625,34 @@ class Hierarchy:
                 message="No root node found (at least one metric should have parent: null)",
             ))
         elif len(root_nodes) > 1:
-            root_codes = [r.code for r in root_nodes]
-            errors.append(ValidationError(
-                type=ValidationErrorType.MULTIPLE_ROOTS,
-                message=f"Multiple root nodes found: {root_codes} (should have exactly one)",
-            ))
+            # Allow multiple roots if they form a ratio structure
+            # (ratio root + its numerator and denominator as separate roots)
+            ratio_roots = [r for r in root_nodes if r.type == MetricType.RATIO]
+            if len(ratio_roots) == 1:
+                # Check if all other roots are numerator or denominator of the ratio
+                ratio_root = ratio_roots[0]
+                allowed_roots = {ratio_root.id}
+                if ratio_root.numerator is not None:
+                    allowed_roots.add(ratio_root.numerator)
+                if ratio_root.denominator is not None:
+                    allowed_roots.add(ratio_root.denominator)
+
+                # Check if all roots are in the allowed set
+                if all(r.id in allowed_roots for r in root_nodes):
+                    # Valid ratio hierarchy with separate numerator/denominator subtrees
+                    pass
+                else:
+                    root_codes = [r.code for r in root_nodes]
+                    errors.append(ValidationError(
+                        type=ValidationErrorType.MULTIPLE_ROOTS,
+                        message=f"Multiple root nodes found: {root_codes} (should have exactly one, or form a ratio hierarchy)",
+                    ))
+            else:
+                root_codes = [r.code for r in root_nodes]
+                errors.append(ValidationError(
+                    type=ValidationErrorType.MULTIPLE_ROOTS,
+                    message=f"Multiple root nodes found: {root_codes} (should have exactly one, or form a ratio hierarchy)",
+                ))
 
         # Check for cyclic references
         cycles = self._find_cycles()
@@ -642,6 +665,7 @@ class Hierarchy:
             ))
 
         # Check for disconnected subtrees (metrics not reachable from root)
+        # For ratio hierarchies, check against all valid roots (ratio, numerator, denominator)
         if len(root_nodes) == 1:
             root_id = root_nodes[0].id
             reachable_ids = {m.id for m in self.get_descendants(root_id)} | {root_id}
@@ -653,6 +677,33 @@ class Hierarchy:
                         message=f"Disconnected subtree found: metric {metric.code!r} (id={metric_id}) is not reachable from root",
                         metric_id=metric_id,
                     ))
+        elif len(root_nodes) > 1:
+            # Check for ratio hierarchy with multiple roots
+            ratio_roots = [r for r in root_nodes if r.type == MetricType.RATIO]
+            if len(ratio_roots) == 1:
+                ratio_root = ratio_roots[0]
+                # All metrics should be reachable from ratio, numerator, or denominator
+                valid_root_ids = {ratio_root.id}
+                if ratio_root.numerator is not None:
+                    valid_root_ids.add(ratio_root.numerator)
+                if ratio_root.denominator is not None:
+                    valid_root_ids.add(ratio_root.denominator)
+
+                # Build reachable set from all valid roots
+                reachable_ids: set[int] = set()
+                for root_id in valid_root_ids:
+                    if self.get_metric(root_id) is not None:
+                        reachable_ids.update({m.id for m in self.get_descendants(root_id)} | {root_id})
+
+                # Check for disconnected metrics
+                for metric_id in self.metric_ids:
+                    if metric_id not in reachable_ids:
+                        metric = self.get_metric(metric_id)
+                        errors.append(ValidationError(
+                            type=ValidationErrorType.DISCONNECTED_SUBTREE,
+                            message=f"Disconnected subtree found: metric {metric.code!r} (id={metric_id}) is not reachable from any valid root",
+                            metric_id=metric_id,
+                        ))
 
         # Validate each metric
         for metric in self.metrics.values():
