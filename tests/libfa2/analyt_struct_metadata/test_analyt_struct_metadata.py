@@ -721,7 +721,7 @@ class TestFullExample:
         Create the full example metadata from the documentation.
 
         This creates a complete metadata matching the example in
-        fa_analytical_structure_metadata.md.
+        factor_analysis__analytical_drill_metadata.md.
         """
         metadata = AnalyticalStructureMetadata()
 

@@ -1,4 +1,4 @@
-Изучи @agent_stuff/docs/fa_descr.md и @agent_stuff/docs/fa_hierarchy_metadata.md
+Изучи @agent_stuff/docs/factor_analysis__general_description.md и @agent_stuff/docs/factor_analysis__hieararchy_drill_metadata.md
 
 Задачи:
 

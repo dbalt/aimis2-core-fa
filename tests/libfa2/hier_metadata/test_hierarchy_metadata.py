@@ -917,7 +917,7 @@ class TestFullExample:
         Create the full example hierarchy from the documentation.
 
         This creates a complete hierarchy matching the example in
-        fa_hierarchy_metadata.md.
+        factor_analysis__hieararchy_drill_metadata.md.
         """
         nodes = [
             # LEVEL 0: Root

@@ -54,4 +54,4 @@ group by
 
 Код нужно поместить в модуль libfa2.data_access (в @src/libfa2/data_access/)
 
-По итогам нужно сформировать мини саммари о проделанной работе и положить в @man/data_access_glm_rep.md
+По итогам нужно сформировать мини саммари о проделанной работе и положить в @agent_stuff/reports/data_access_module_impl_report.md

@@ -6,7 +6,7 @@
 
 Клиенты для доступа к другим микросервисам описаны в проекте aimis-sdk, который находится в /Users/baltakov-df/source/repos/aimis-sdk (этот путь доступен как еще один path для импорта модулей)
 
-Общее описание бизнес требований в @agent_stuff/docs/fa_descr.md
+Общее описание бизнес требований в @agent_stuff/docs/factor_analysis__general_description.md
 
 Для запуска юнит тестов и отладки можно использовать venv по пути /Users/baltakov-df/venv/foo
 

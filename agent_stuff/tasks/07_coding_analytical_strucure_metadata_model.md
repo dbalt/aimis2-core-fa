@@ -1,4 +1,4 @@
-Изучи @agent_stuff/docs/fa_descr.md и @agent_stuff/docs/fa_analytical_structure_metadata.md
+Изучи @agent_stuff/docs/factor_analysis__general_description.md и @agent_stuff/docs/factor_analysis__analytical_drill_metadata.md
 
 Задачи:
 
@@ -16,4 +16,4 @@
 
 Строковые константы должны быть в виде Enum Class-ов с полями уровня класса
 
-По результатам работы нужно сформировать отчет и сохранить его в @man/analyt_struct_glm_report.md
+По результатам работы нужно сформировать отчет и сохранить его в @agent_stuff/reports/analytical_drill_metadata_module_impl_report.md
