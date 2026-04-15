@@ -1,9 +1,8 @@
 """
-Hierarchy module for managing the metric tree structure.
+Hierarchy module for managing metric tree structure.
 
-This module defines the Hierarchy class which manages a tree structure
-of MetricNode instances and provides methods for navigation, validation,
-and serialization.
+This module defines the Hierarchy class which manages a tree of
+metric nodes for factor analysis hierarchy.
 """
 
 from __future__ import annotations
@@ -13,15 +12,16 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from libfa2.hier_metadata.enums import (
-    DriverType,
     MetricType,
+    MultiplierType,
     ValidationErrorType,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
 
     from libfa2.hier_metadata.metric_node import MetricNode
+    from libfa2.hier_metadata.query import Query
 
 
 @dataclass
@@ -32,7 +32,7 @@ class ValidationError:
     Attributes:
         type: The type of validation error.
         message: Human-readable description of the error.
-        node_id: ID of the node where the error occurred, if applicable.
+        metric_id: ID of the metric where the error occurred, if applicable.
         details: Additional context about the error.
     """
 
@@ -42,16 +42,19 @@ class ValidationError:
     message: str
     """Human-readable description of the error."""
 
-    node_id: int | None = None
-    """ID of the node where the error occurred, if applicable."""
+    metric_id: int | None = None
+    """ID of the metric where the error occurred, if applicable."""
 
     details: dict[str, Any] | None = None
     """Additional context about the error."""
 
     def __repr__(self) -> str:
         """Return a string representation of the ValidationError."""
-        node_info = f", node_id={self.node_id}" if self.node_id else ""
-        return f"ValidationError(type={self.type}, message={self.message!r}{node_info})"
+        metric_info = f", metric_id={self.metric_id}" if self.metric_id else ""
+        return (
+            f"ValidationError(type={self.type}, message={self.message!r}"
+            f"{metric_info})"
+        )
 
 
 @dataclass
@@ -84,61 +87,41 @@ class ValidationReport:
 @dataclass
 class Hierarchy:
     """
-    Manages a tree structure of MetricNode instances.
+    Manages a tree of metric nodes for factor analysis hierarchy.
 
     The Hierarchy class provides methods for:
-    - Building a tree from a flat list of nodes
-    - Navigating the tree (finding children, parents, ancestors, descendants)
+    - Adding and removing metrics
     - Serializing to/from JSON
     - Validating the structure
+    - Finding metrics by ID or code
+    - Navigating the hierarchy (finding children, parents, paths)
 
     Attributes:
-        nodes: Dictionary mapping node IDs to MetricNode instances.
+        metrics: Dictionary mapping metric IDs to MetricNode instances.
     """
 
-    nodes: dict[int, MetricNode] = field(default_factory=dict)
-    """Dictionary mapping node IDs to MetricNode instances."""
+    metrics: dict[int, MetricNode] = field(default_factory=dict)
+    """Dictionary mapping metric IDs to MetricNode instances."""
 
     @property
-    def root(self) -> MetricNode | None:
+    def metric_ids(self) -> set[int]:
         """
-        Get the root node of the hierarchy.
+        Get the set of all metric IDs in the hierarchy.
 
         Returns:
-            The root MetricNode if found, None otherwise.
+            Set of all metric IDs.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> hierarchy.add_node(MetricNode(id=1, code="ROOT", name="Root"))
-            >>> hierarchy.root is not None
-            True
-            >>> hierarchy.root.id
-            1
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.metric_ids
+            {1}
         """
-        for node in self.nodes.values():
-            if node.parent is None:
-                return node
-        return None
+        return set(self.metrics.keys())
 
     @property
-    def node_ids(self) -> set[int]:
-        """
-        Get the set of all node IDs in the hierarchy.
-
-        Returns:
-            Set of all node IDs.
-
-        Examples:
-            >>> hierarchy = Hierarchy()
-            >>> hierarchy.add_node(MetricNode(id=1, code="A", name="A"))
-            >>> hierarchy.add_node(MetricNode(id=2, code="B", name="B"))
-            >>> hierarchy.node_ids
-            {1, 2}
-        """
-        return set(self.nodes.keys())
-
-    @property
-    def codes(self) -> set[str]:
+    def metric_codes(self) -> set[str]:
         """
         Get the set of all metric codes in the hierarchy.
 
@@ -146,432 +129,364 @@ class Hierarchy:
             Set of all metric codes.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> hierarchy.add_node(MetricNode(id=1, code="A", name="A"))
-            >>> hierarchy.add_node(MetricNode(id=2, code="B", name="B"))
-            >>> hierarchy.codes
-            {'A', 'B'}
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.metric_codes
+            {'A'}
         """
-        return {node.code for node in self.nodes.values()}
+        return {m.code for m in self.metrics.values()}
 
-    def add_node(self, node: MetricNode) -> None:
+    @property
+    def roots(self) -> list[MetricNode]:
         """
-        Add a node to the hierarchy.
+        Get all root nodes (nodes with no parent).
 
-        Args:
-            node: The MetricNode to add.
-
-        Raises:
-            ValueError: If a node with the same ID already exists.
+        Returns:
+            List of root MetricNode instances.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> node = MetricNode(id=1, code="A", name="A")
-            >>> hierarchy.add_node(node)
-            >>> 1 in hierarchy.nodes
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> len(h.roots)
+            1
+        """
+        return [m for m in self.metrics.values() if m.is_root]
+
+    @property
+    def leaves(self) -> list[MetricNode]:
+        """
+        Get all leaf nodes (nodes with no children).
+
+        Returns:
+            List of leaf MetricNode instances.
+
+        Examples:
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> len(h.leaves)
+            1
+        """
+        return [m for m in self.metrics.values() if len(self.get_children(m.id)) == 0]
+
+    def add_metric(self, metric: MetricNode) -> None:
+        """
+        Add a metric to the hierarchy.
+
+        Args:
+            metric: The MetricNode to add.
+
+        Raises:
+            ValueError: If a metric with the same ID or code already exists.
+
+        Examples:
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> 1 in h.metrics
             True
         """
-        if node.id in self.nodes:
-            raise ValueError(f"Node with id={node.id} already exists")
-        self.nodes[node.id] = node
+        if metric.id in self.metrics:
+            raise ValueError(f"Metric with id={metric.id} already exists")
+        if metric.code in self.metric_codes:
+            raise ValueError(f"Metric with code={metric.code!r} already exists")
+        self.metrics[metric.id] = metric
 
-    def add_nodes(self, nodes: Iterable[MetricNode]) -> None:
+    def add_metrics(self, metrics: Iterable[MetricNode]) -> None:
         """
-        Add multiple nodes to the hierarchy.
+        Add multiple metrics to the hierarchy.
 
         Args:
-            nodes: Iterable of MetricNode instances to add.
+            metrics: Iterable of MetricNode instances to add.
 
         Raises:
-            ValueError: If any node with the same ID already exists.
+            ValueError: If any metric with the same ID or code already exists.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> nodes = [
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> metrics = [
             ...     MetricNode(id=1, code="A", name="A"),
             ...     MetricNode(id=2, code="B", name="B")
             ... ]
-            >>> hierarchy.add_nodes(nodes)
-            >>> len(hierarchy)
+            >>> h.add_metrics(metrics)
+            >>> len(h.metrics)
             2
         """
-        for node in nodes:
-            if node.id in self.nodes:
-                raise ValueError(f"Node with id={node.id} already exists")
-        for node in nodes:
-            self.nodes[node.id] = node
+        # Check for duplicates first
+        for metric in metrics:
+            if metric.id in self.metrics:
+                raise ValueError(f"Metric with id={metric.id} already exists")
+            if metric.code in self.metric_codes:
+                raise ValueError(f"Metric with code={metric.code!r} already exists")
 
-    def remove_node(self, node_id: int) -> None:
+        # Then add all
+        for metric in metrics:
+            self.metrics[metric.id] = metric
+
+    def remove_metric(self, metric_id: int) -> None:
         """
-        Remove a node from the hierarchy.
+        Remove a metric from the hierarchy.
 
         Args:
-            node_id: ID of the node to remove.
+            metric_id: ID of the metric to remove.
 
         Raises:
-            KeyError: If no node with the given ID exists.
+            KeyError: If no metric with the given ID exists.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> node = MetricNode(id=1, code="A", name="A")
-            >>> hierarchy.add_node(node)
-            >>> hierarchy.remove_node(1)
-            >>> 1 in hierarchy.nodes
-            False
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.remove_metric(1)
+            >>> 1 not in h.metrics
+            True
         """
-        if node_id not in self.nodes:
-            raise KeyError(f"Node with id={node_id} not found")
-        del self.nodes[node_id]
+        if metric_id not in self.metrics:
+            raise KeyError(f"Metric with id={metric_id} not found")
+        del self.metrics[metric_id]
 
-    def get_node(self, node_id: int) -> MetricNode | None:
+    def get_metric(self, metric_id: int) -> MetricNode | None:
         """
-        Get a node by its ID.
+        Get a metric by its ID.
 
         Args:
-            node_id: ID of the node to retrieve.
+            metric_id: ID of the metric to retrieve.
 
         Returns:
             The MetricNode if found, None otherwise.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> node = MetricNode(id=1, code="A", name="A")
-            >>> hierarchy.add_node(node)
-            >>> hierarchy.get_node(1).id
-            1
-            >>> hierarchy.get_node(999) is None
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.get_metric(1).code
+            'A'
+            >>> h.get_metric(999) is None
             True
         """
-        return self.nodes.get(node_id)
+        return self.metrics.get(metric_id)
 
-    def get_node_by_code(self, code: str) -> MetricNode | None:
+    def get_metric_by_code(self, code: str) -> MetricNode | None:
         """
-        Get a node by its code.
+        Get a metric by its code.
 
         Args:
-            code: Code of the node to retrieve.
+            code: Code of the metric to retrieve.
 
         Returns:
             The MetricNode if found, None otherwise.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> node = MetricNode(id=1, code="INT_INC", name="Interest Income")
-            >>> hierarchy.add_node(node)
-            >>> hierarchy.get_node_by_code("INT_INC").id
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.get_metric_by_code("A").id
             1
-            >>> hierarchy.get_node_by_code("NOT_FOUND") is None
+            >>> h.get_metric_by_code("not_found") is None
             True
         """
-        for node in self.nodes.values():
-            if node.code == code:
-                return node
+        for metric in self.metrics.values():
+            if metric.code == code:
+                return metric
         return None
 
-    def get_children(self, node_id: int) -> list[MetricNode]:
+    def get_children(self, metric_id: int) -> list[MetricNode]:
         """
-        Get all children of a node.
+        Get all direct children of a metric.
 
         Args:
-            node_id: ID of the parent node.
+            metric_id: ID of the parent metric.
 
         Returns:
-            List of child nodes. Empty list if node has no children.
+            List of child MetricNode instances. Empty list if no children.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> parent = MetricNode(id=1, code="PARENT", name="Parent")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> hierarchy.add_node(parent)
-            >>> hierarchy.add_node(child)
-            >>> [c.id for c in hierarchy.get_children(1)]
-            [2]
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> h.add_metric(MetricNode(id=3, code="C", name="C", parent=1))
+            >>> len(h.get_children(1))
+            2
         """
-        return [node for node in self.nodes.values() if node.parent == node_id]
+        return [m for m in self.metrics.values() if m.parent == metric_id]
 
-    def get_parent(self, node_id: int) -> MetricNode | None:
+    def get_parent(self, metric_id: int) -> MetricNode | None:
         """
-        Get the parent of a node.
+        Get the parent of a metric.
 
         Args:
-            node_id: ID of the child node.
+            metric_id: ID of the child metric.
 
         Returns:
             The parent MetricNode if found, None otherwise.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> parent = MetricNode(id=1, code="PARENT", name="Parent")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> hierarchy.add_node(parent)
-            >>> hierarchy.add_node(child)
-            >>> hierarchy.get_parent(2).id
-            1
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> h.get_parent(2).code
+            'A'
+            >>> h.get_parent(1) is None
+            True
         """
-        node = self.get_node(node_id)
-        if node is None or node.parent is None:
+        metric = self.get_metric(metric_id)
+        if metric is None or metric.parent is None:
             return None
-        return self.get_node(node.parent)
+        return self.get_metric(metric.parent)
 
-    def get_ancestors(self, node_id: int) -> list[MetricNode]:
+    def get_ancestors(self, metric_id: int) -> list[MetricNode]:
         """
-        Get all ancestors of a node, from parent up to root.
+        Get all ancestors of a metric (from immediate parent to root).
 
         Args:
-            node_id: ID of the starting node.
+            metric_id: ID of the metric.
 
         Returns:
-            List of ancestor nodes. Empty list if node has no parent.
+            List of ancestor MetricNode instances, ordered from parent to root.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root = MetricNode(id=1, code="ROOT", name="Root")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> grandchild = MetricNode(id=3, code="GC", name="Grandchild", parent=2)
-            >>> hierarchy.add_node(root)
-            >>> hierarchy.add_node(child)
-            >>> hierarchy.add_node(grandchild)
-            >>> [n.id for n in hierarchy.get_ancestors(3)]
-            [2, 1]
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
+            >>> [m.code for m in h.get_ancestors(3)]
+            ['B', 'A']
         """
         ancestors: list[MetricNode] = []
-        current = self.get_parent(node_id)
+        current = self.get_parent(metric_id)
         while current is not None:
             ancestors.append(current)
             current = self.get_parent(current.id)
         return ancestors
 
-    def get_descendants(self, node_id: int) -> list[MetricNode]:
+    def get_descendants(self, metric_id: int) -> list[MetricNode]:
         """
-        Get all descendants of a node (all levels deep).
+        Get all descendants of a metric (all children, grandchildren, etc.).
 
         Args:
-            node_id: ID of the starting node.
+            metric_id: ID of the metric.
 
         Returns:
-            List of all descendant nodes. Empty list if node has no children.
+            List of descendant MetricNode instances (unordered).
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root = MetricNode(id=1, code="ROOT", name="Root")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> grandchild = MetricNode(id=3, code="GC", name="Grandchild", parent=2)
-            >>> hierarchy.add_node(root)
-            >>> hierarchy.add_node(child)
-            >>> hierarchy.add_node(grandchild)
-            >>> [n.id for n in hierarchy.get_descendants(1)]
-            [2, 3]
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
+            >>> {m.code for m in h.get_descendants(1)}
+            {'B', 'C'}
         """
         descendants: list[MetricNode] = []
-        children = self.get_children(node_id)
+        children = self.get_children(metric_id)
         for child in children:
             descendants.append(child)
             descendants.extend(self.get_descendants(child.id))
         return descendants
 
-    def is_leaf(self, node_id: int) -> bool:
+    def get_path_to_root(self, metric_id: int) -> list[MetricNode]:
         """
-        Check if a node is a leaf (has no children).
+        Get the path from a metric to the root.
 
         Args:
-            node_id: ID of the node to check.
+            metric_id: ID of the metric.
 
         Returns:
-            True if the node has no children, False otherwise.
+            List of MetricNode instances from the metric to the root.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> parent = MetricNode(id=1, code="PARENT", name="Parent")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> hierarchy.add_node(parent)
-            >>> hierarchy.add_node(child)
-            >>> hierarchy.is_leaf(1)
-            False
-            >>> hierarchy.is_leaf(2)
-            True
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> [m.code for m in h.get_path_to_root(2)]
+            ['B', 'A']
         """
-        return len(self.get_children(node_id)) == 0
-
-    def is_root(self, node_id: int) -> bool:
-        """
-        Check if a node is the root (has no parent).
-
-        Args:
-            node_id: ID of the node to check.
-
-        Returns:
-            True if the node has no parent, False otherwise.
-
-        Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root = MetricNode(id=1, code="ROOT", name="Root")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> hierarchy.add_node(root)
-            >>> hierarchy.add_node(child)
-            >>> hierarchy.is_root(1)
-            True
-            >>> hierarchy.is_root(2)
-            False
-        """
-        node = self.get_node(node_id)
-        return node is not None and node.parent is None
-
-    def find_roots(self) -> list[MetricNode]:
-        """
-        Find all root nodes (nodes with no parent).
-
-        Returns:
-            List of root nodes.
-
-        Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root1 = MetricNode(id=1, code="ROOT1", name="Root1")
-            >>> root2 = MetricNode(id=2, code="ROOT2", name="Root2")
-            >>> hierarchy.add_node(root1)
-            >>> hierarchy.add_node(root2)
-            >>> [n.id for n in hierarchy.find_roots()]
-            [1, 2]
-        """
-        return [node for node in self.nodes.values() if node.parent is None]
-
-    def find_leaves(self) -> list[MetricNode]:
-        """
-        Find all leaf nodes (nodes with no children).
-
-        Returns:
-            List of leaf nodes.
-
-        Examples:
-            >>> hierarchy = Hierarchy()
-            >>> parent = MetricNode(id=1, code="PARENT", name="Parent")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> hierarchy.add_node(parent)
-            >>> hierarchy.add_node(child)
-            >>> [n.id for n in hierarchy.find_leaves()]
-            [2]
-        """
-        return [self.get_node(node_id) for node_id in self.node_ids if self.is_leaf(node_id) and self.get_node(node_id) is not None]
-
-    def traverse(
-        self,
-        start_node_id: int | None = None,
-        order: str = "preorder",
-        visit_func: Callable[[MetricNode], None] | None = None,
-    ) -> list[MetricNode]:
-        """
-        Traverse the hierarchy tree.
-
-        Args:
-            start_node_id: ID of the starting node. If None, starts from root.
-            order: Traversal order: 'preorder', 'postorder', or 'bfs'.
-            visit_func: Optional function to call for each visited node.
-
-        Returns:
-            List of nodes in traversal order.
-
-        Raises:
-            ValueError: If order is not 'preorder', 'postorder', or 'bfs'.
-
-        Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root = MetricNode(id=1, code="ROOT", name="Root")
-            >>> child1 = MetricNode(id=2, code="C1", name="Child1", parent=1)
-            >>> child2 = MetricNode(id=3, code="C2", name="Child2", parent=1)
-            >>> hierarchy.add_node(root)
-            >>> hierarchy.add_node(child1)
-            >>> hierarchy.add_node(child2)
-            >>> [n.id for n in hierarchy.traverse(order="preorder")]
-            [1, 2, 3]
-        """
-        if order not in ("preorder", "postorder", "bfs"):
-            raise ValueError(f"Invalid order: {order}")
-
-        if start_node_id is None:
-            roots = self.find_roots()
-            result: list[MetricNode] = []
-            for root in roots:
-                result.extend(self.traverse(root.id, order, visit_func))
-            return result
-
-        start_node = self.get_node(start_node_id)
-        if start_node is None:
+        metric = self.get_metric(metric_id)
+        if metric is None:
             return []
+        return [metric] + self.get_ancestors(metric_id)
 
-        nodes: list[MetricNode] = []
-
-        if order == "preorder":
-            def _preorder(node: MetricNode) -> None:
-                nodes.append(node)
-                if visit_func is not None:
-                    visit_func(node)
-                for child in self.get_children(node.id):
-                    _preorder(child)
-            _preorder(start_node)
-
-        elif order == "postorder":
-            def _postorder(node: MetricNode) -> None:
-                for child in self.get_children(node.id):
-                    _postorder(child)
-                nodes.append(node)
-                if visit_func is not None:
-                    visit_func(node)
-            _postorder(start_node)
-
-        elif order == "bfs":
-            from collections import deque
-            queue = deque([start_node])
-            while queue:
-                node = queue.popleft()
-                nodes.append(node)
-                if visit_func is not None:
-                    visit_func(node)
-                queue.extend(self.get_children(node.id))
-
-        return nodes
-
-    def build_tree_dict(self, node_id: int | None = None) -> dict[str, Any] | None:
+    def get_depth(self, metric_id: int) -> int:
         """
-        Build a nested dictionary representation of the tree.
+        Get the depth of a metric in the hierarchy.
 
         Args:
-            node_id: ID of the starting node. If None, starts from root.
+            metric_id: ID of the metric.
 
         Returns:
-            Nested dictionary representation of the tree.
+            Depth of the metric (0 for root, 1 for root's children, etc.).
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root = MetricNode(id=1, code="ROOT", name="Root")
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> hierarchy.add_node(root)
-            >>> hierarchy.add_node(child)
-            >>> tree = hierarchy.build_tree_dict()
-            >>> tree["id"]
-            1
-            >>> tree["children"][0]["id"]
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
+            >>> h.get_depth(1)
+            0
+            >>> h.get_depth(3)
             2
         """
-        if node_id is None:
-            roots = self.find_roots()
-            if not roots:
-                return None
-            if len(roots) == 1:
-                return self.build_tree_dict(roots[0].id)
-            # Multiple roots - return as a forest
-            return {
-                "forest": [self.build_tree_dict(r.id) for r in roots]
-            }
+        return len(self.get_ancestors(metric_id))
 
-        node = self.get_node(node_id)
-        if node is None:
-            return None
+    def get_max_depth(self) -> int:
+        """
+        Get the maximum depth of the hierarchy.
 
-        result = node.to_dict()
-        children = self.get_children(node_id)
-        if children:
-            result["children"] = [self.build_tree_dict(c.id) for c in children]
+        Returns:
+            Maximum depth of any metric in the hierarchy.
 
-        return result
+        Examples:
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> h.get_max_depth()
+            1
+        """
+        max_depth = 0
+        for metric_id in self.metric_ids:
+            depth = self.get_depth(metric_id)
+            if depth > max_depth:
+                max_depth = depth
+        return max_depth
+
+    def is_ancestor_of(self, ancestor_id: int, descendant_id: int) -> bool:
+        """
+        Check if one metric is an ancestor of another.
+
+        Args:
+            ancestor_id: ID of the potential ancestor.
+            descendant_id: ID of the potential descendant.
+
+        Returns:
+            True if ancestor_id is an ancestor of descendant_id, False otherwise.
+
+        Examples:
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
+            >>> h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
+            >>> h.is_ancestor_of(1, 3)
+            True
+            >>> h.is_ancestor_of(3, 1)
+            False
+        """
+        if ancestor_id == descendant_id:
+            return False
+        ancestors = {a.id for a in self.get_ancestors(descendant_id)}
+        return ancestor_id in ancestors
 
     def to_json(self, indent: int | None = 2) -> str:
         """
@@ -584,20 +499,22 @@ class Hierarchy:
             JSON string representation of the hierarchy.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root = MetricNode(id=1, code="ROOT", name="Root")
-            >>> hierarchy.add_node(root)
-            >>> json_str = hierarchy.to_json()
-            >>> '"id": 1' in json_str
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> json_str = h.to_json()
+            >>> '"metrics"' in json_str
             True
         """
-        nodes_list = [node.to_dict() for node in self.nodes.values()]
-        return json.dumps(nodes_list, indent=indent, ensure_ascii=False)
+        result = {
+            "metrics": [metric.to_dict() for metric in self.metrics.values()],
+        }
+        return json.dumps(result, indent=indent, ensure_ascii=False)
 
     @classmethod
     def from_json(cls, json_str: str) -> Hierarchy:
         """
-        Deserialize a hierarchy from a JSON string.
+        Deserialize hierarchy from a JSON string.
 
         Args:
             json_str: JSON string containing the hierarchy data.
@@ -610,225 +527,260 @@ class Hierarchy:
             ValueError: If the data is invalid.
 
         Examples:
-            >>> json_str = '[{"id": 1, "code": "ROOT", "name": "Root"}]'
-            >>> hierarchy = Hierarchy.from_json(json_str)
-            >>> hierarchy.get_node(1).code
-            'ROOT'
+            >>> json_str = '{"metrics": []}'
+            >>> h = Hierarchy.from_json(json_str)
+            >>> len(h.metrics)
+            0
         """
         from libfa2.hier_metadata.metric_node import MetricNode
 
         data = json.loads(json_str)
 
-        if isinstance(data, dict):
-            # Handle forest format
-            if "forest" in data:
-                nodes_list: list[dict[str, object]] = []
-                for tree in data["forest"]:
-                    nodes_list.extend(cls._extract_nodes_from_tree(tree))
-            else:
-                raise ValueError("Invalid JSON format")
-        else:
-            nodes_list = data
+        if not isinstance(data, dict):
+            raise ValueError("Invalid JSON format: expected object")
 
         hierarchy = cls()
-        for node_data in nodes_list:
-            if not isinstance(node_data, dict):
-                raise ValueError("Each node must be a dictionary")
-            node = MetricNode.from_dict(node_data)
-            hierarchy.add_node(node)
 
-        return hierarchy
+        # Load metrics
+        metrics_data = data.get("metrics", [])
+        if metrics_data:
+            if not isinstance(metrics_data, list):
+                raise ValueError("'metrics' must be a list")
+            for metric_data in metrics_data:
+                if not isinstance(metric_data, dict):
+                    raise ValueError("Each metric must be a dictionary")
+                metric = MetricNode.from_dict(metric_data)
+                hierarchy.add_metric(metric)
 
-    @staticmethod
-    def _extract_nodes_from_tree(tree: dict[str, object]) -> list[dict[str, object]]:
-        """Extract all nodes from a nested tree structure."""
-        nodes: list[dict[str, object]] = [tree]
-        if "children" in tree and isinstance(tree["children"], list):
-            for child in tree["children"]:
-                if isinstance(child, dict):
-                    nodes.extend(Hierarchy._extract_nodes_from_tree(child))
-        return nodes
-
-    @classmethod
-    def from_nodes(cls, nodes: Iterable[MetricNode]) -> Hierarchy:
-        """
-        Create a Hierarchy instance from an iterable of MetricNode instances.
-
-        Args:
-            nodes: Iterable of MetricNode instances.
-
-        Returns:
-            A new Hierarchy instance containing all nodes.
-
-        Examples:
-            >>> nodes = [
-            ...     MetricNode(id=1, code="ROOT", name="Root"),
-            ...     MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            ... ]
-            >>> hierarchy = Hierarchy.from_nodes(nodes)
-            >>> hierarchy.get_node(1).code
-            'ROOT'
-        """
-        hierarchy = cls()
-        for node in nodes:
-            hierarchy.add_node(node)
         return hierarchy
 
     def validate(self) -> ValidationReport:
         """
-        Validate the hierarchy structure.
+        Validate the hierarchy metadata.
 
         Checks for:
-        - Duplicate IDs
-        - Duplicate codes
-        - Missing root
-        - Multiple roots
-        - Invalid parent references
-        - Cycles
-        - Missing type for non-leaf nodes
-        - Missing query for multi-type nodes
-        - Missing/invalid driver_type for multi children
-        - Rate drivers with query
+        - Empty metrics
+        - Multiple roots or no root
+        - Duplicate metric IDs and codes
+        - Missing parent references
+        - Missing numerator/denominator references for ratio metrics
+        - Invalid metric and multiplier types
+        - Multiplier type on non-multi children
+        - Missing query for multi metrics
+        - Missing numerator/denominator for ratio metrics
+        - Ratio metrics not at root or with children
+        - Cyclic references
+        - Disconnected subtrees
+        - Incomplete multi children (missing rate or base)
 
         Returns:
             ValidationReport with results.
 
         Examples:
-            >>> hierarchy = Hierarchy()
-            >>> root = MetricNode(id=1, code="ROOT", name="Root", type=MetricType.SUM)
-            >>> hierarchy.add_node(root)
-            >>> report = hierarchy.validate()
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
+            >>> report = h.validate()
             >>> report.is_valid
             True
         """
         errors: list[ValidationError] = []
 
-        # Check for duplicate IDs
+        # Check for empty metrics
+        if len(self.metrics) == 0:
+            errors.append(ValidationError(
+                type=ValidationErrorType.EMPTY_METRICS,
+                message="Metrics list is empty",
+            ))
+            return ValidationReport(is_valid=False, errors=errors)
+
+        # Check for duplicate metric IDs (shouldn't happen due to add_metric check)
         id_counts: dict[int, int] = {}
-        for node_id in self.node_ids:
-            id_counts[node_id] = id_counts.get(node_id, 0) + 1
-        for node_id, count in id_counts.items():
+        for metric_id in self.metric_ids:
+            id_counts[metric_id] = id_counts.get(metric_id, 0) + 1
+        for metric_id, count in id_counts.items():
             if count > 1:
                 errors.append(ValidationError(
-                    type=ValidationErrorType.DUPLICATE_ID,
-                    message=f"Duplicate ID found: {node_id} ({count} occurrences)",
-                    node_id=node_id,
+                    type=ValidationErrorType.DUPLICATE_METRIC_ID,
+                    message=f"Duplicate metric ID found: {metric_id} ({count} occurrences)",
+                    metric_id=metric_id,
                 ))
 
-        # Check for duplicate codes
+        # Check for duplicate metric codes (shouldn't happen due to add_metric check)
         code_counts: dict[str, int] = {}
-        for node in self.nodes.values():
-            code_counts[node.code] = code_counts.get(node.code, 0) + 1
+        for code in self.metric_codes:
+            code_counts[code] = code_counts.get(code, 0) + 1
         for code, count in code_counts.items():
             if count > 1:
                 errors.append(ValidationError(
-                    type=ValidationErrorType.DUPLICATE_CODE,
-                    message=f"Duplicate code found: {code} ({count} occurrences)",
+                    type=ValidationErrorType.DUPLICATE_METRIC_CODE,
+                    message=f"Duplicate metric code found: {code!r} ({count} occurrences)",
                 ))
 
-        # Check for root(s)
-        roots = self.find_roots()
-        if not roots:
+        # Check for multiple roots
+        root_nodes = self.roots
+        if len(root_nodes) == 0:
             errors.append(ValidationError(
-                type=ValidationErrorType.MISSING_ROOT,
-                message="No root node found (no node with parent=None)",
+                type=ValidationErrorType.NO_ROOT,
+                message="No root node found (at least one metric should have parent: null)",
             ))
-        elif len(roots) > 1:
-            root_ids = [r.id for r in roots]
+        elif len(root_nodes) > 1:
+            root_codes = [r.code for r in root_nodes]
             errors.append(ValidationError(
                 type=ValidationErrorType.MULTIPLE_ROOTS,
-                message=f"Multiple root nodes found: {root_ids}",
-                details={"root_ids": root_ids},
+                message=f"Multiple root nodes found: {root_codes} (should have exactly one)",
             ))
 
-        # Check for invalid parent references
-        for node in self.nodes.values():
-            if node.parent is not None:
-                if node.parent not in self.node_ids:
+        # Check for cyclic references
+        cycles = self._find_cycles()
+        for cycle in cycles:
+            cycle_path = " -> ".join(m.code for m in cycle)
+            errors.append(ValidationError(
+                type=ValidationErrorType.CYCLIC_REFERENCE,
+                message=f"Cyclic reference detected: {cycle_path}",
+                details={"cycle_ids": [m.id for m in cycle]},
+            ))
+
+        # Check for disconnected subtrees (metrics not reachable from root)
+        if len(root_nodes) == 1:
+            root_id = root_nodes[0].id
+            reachable_ids = {m.id for m in self.get_descendants(root_id)} | {root_id}
+            for metric_id in self.metric_ids:
+                if metric_id not in reachable_ids:
+                    metric = self.get_metric(metric_id)
                     errors.append(ValidationError(
-                        type=ValidationErrorType.INVALID_PARENT_REFERENCE,
-                        message=f"Invalid parent reference: node {node.id} references parent {node.parent} which does not exist",
-                        node_id=node.id,
-                        details={"parent_id": node.parent},
+                        type=ValidationErrorType.DISCONNECTED_SUBTREE,
+                        message=f"Disconnected subtree found: metric {metric.code!r} (id={metric_id}) is not reachable from root",
+                        metric_id=metric_id,
                     ))
 
-        # Check for cycles using DFS
-        visited: set[int] = set()
-        rec_stack: set[int] = set()
-
-        def _has_cycle(node_id: int) -> bool:
-            """Check if there's a cycle starting from the given node."""
-            visited.add(node_id)
-            rec_stack.add(node_id)
-
-            for child in self.get_children(node_id):
-                if child.id not in visited:
-                    if _has_cycle(child.id):
-                        return True
-                elif child.id in rec_stack:
-                    return True
-
-            rec_stack.remove(node_id)
-            return False
-
-        for node_id in self.node_ids:
-            if node_id not in visited:
-                if _has_cycle(node_id):
+        # Validate each metric
+        for metric in self.metrics.values():
+            # Validate parent reference
+            if metric.parent is not None:
+                parent = self.get_metric(metric.parent)
+                if parent is None:
                     errors.append(ValidationError(
-                        type=ValidationErrorType.CYCLE_DETECTED,
-                        message=f"Cycle detected in hierarchy starting from node {node_id}",
-                        node_id=node_id,
+                        type=ValidationErrorType.MISSING_PARENT_REFERENCE,
+                        message=f"Metric {metric.code!r} (id={metric.id}) references non-existent parent id={metric.parent}",
+                        metric_id=metric.id,
+                        details={"parent_id": metric.parent},
                     ))
-                    break
+                else:
+                    # Validate multiplier type for children of 'multi' nodes
+                    if metric.multiplier_type is not None:
+                        if parent.type != MetricType.MULTI:
+                            errors.append(ValidationError(
+                                type=ValidationErrorType.INVALID_MULTIPLIER_FOR_NON_MULTI,
+                                message=f"Metric {metric.code!r} (id={metric.id}) has multiplier_type but its parent {parent.code!r} (id={parent.id}) is not type 'multi'",
+                                metric_id=metric.id,
+                                details={"parent_id": parent.id, "parent_type": parent.type.value if parent.type else None},
+                            ))
 
-        # Check for missing type in non-leaf nodes
-        for node_id in self.node_ids:
-            if not self.is_leaf(node_id):
-                node = self.get_node(node_id)
-                if node and node.type is None:
+            # Validate ratio metrics
+            if metric.type == MetricType.RATIO:
+                # Ratio must be at root
+                if not metric.is_root:
                     errors.append(ValidationError(
-                        type=ValidationErrorType.MISSING_TYPE_FOR_NON_LEAF,
-                        message=f"Non-leaf node {node_id} is missing type field",
-                        node_id=node_id,
+                        type=ValidationErrorType.RATIO_NOT_AT_ROOT,
+                        message=f"Metric {metric.code!r} (id={metric.id}) has type 'ratio' but is not at root (parent={metric.parent})",
+                        metric_id=metric.id,
                     ))
 
-        # Check for missing query in multi-type nodes
-        for node in self.nodes.values():
-            if node.type == MetricType.MULTI and node.query is None:
+                # Ratio should not have children
+                children = self.get_children(metric.id)
+                if len(children) > 0:
+                    errors.append(ValidationError(
+                        type=ValidationErrorType.RATIO_HAS_CHILDREN,
+                        message=f"Metric {metric.code!r} (id={metric.id}) has type 'ratio' but has {len(children)} children (ratio should be leaf)",
+                        metric_id=metric.id,
+                        details={"child_count": len(children)},
+                    ))
+
+                # Validate numerator reference
+                if metric.numerator is not None:
+                    if self.get_metric(metric.numerator) is None:
+                        errors.append(ValidationError(
+                            type=ValidationErrorType.MISSING_NUMERATOR_REFERENCE,
+                            message=f"Metric {metric.code!r} (id={metric.id}) references non-existent numerator id={metric.numerator}",
+                            metric_id=metric.id,
+                            details={"numerator_id": metric.numerator},
+                        ))
+
+                # Validate denominator reference
+                if metric.denominator is not None:
+                    if self.get_metric(metric.denominator) is None:
+                        errors.append(ValidationError(
+                            type=ValidationErrorType.MISSING_DENOMINATOR_REFERENCE,
+                            message=f"Metric {metric.code!r} (id={metric.id}) references non-existent denominator id={metric.denominator}",
+                            metric_id=metric.id,
+                            details={"denominator_id": metric.denominator},
+                        ))
+
+            # Validate multi metrics have query
+            if metric.type == MetricType.MULTI and metric.query is None:
                 errors.append(ValidationError(
                     type=ValidationErrorType.MISSING_QUERY_FOR_MULTI,
-                    message=f"Multi-type node {node.id} is missing required query field",
-                    node_id=node.id,
+                    message=f"Metric {metric.code!r} (id={metric.id}) has type 'multi' but is missing query (required for reverse calculation of rate)",
+                    metric_id=metric.id,
                 ))
 
-        # Check driver_type constraints for multi-type node children
-        for node in self.nodes.values():
-            if node.type == MetricType.MULTI:
-                children = self.get_children(node.id)
-                for child in children:
-                    if child.driver_type is None:
+            # Validate multi children have both rate and base
+            if metric.type == MetricType.MULTI:
+                children = self.get_children(metric.id)
+                if len(children) > 0:
+                    has_rate = any(c.multiplier_type == MultiplierType.RATE for c in children)
+                    has_base = any(c.multiplier_type == MultiplierType.BASE for c in children)
+                    if not has_rate:
                         errors.append(ValidationError(
-                            type=ValidationErrorType.MISSING_DRIVER_TYPE,
-                            message=f"Child {child.id} of multi-type node {node.id} is missing driverType",
-                            node_id=child.id,
-                            details={"parent_id": node.id},
+                            type=ValidationErrorType.INCOMPLETE_MULTI_CHILDREN,
+                            message=f"Metric {metric.code!r} (id={metric.id}) has type 'multi' but no child with multiplier_type 'rate'",
+                            metric_id=metric.id,
                         ))
-                    elif child.driver_type not in (DriverType.RATE, DriverType.BASE):
+                    if not has_base:
                         errors.append(ValidationError(
-                            type=ValidationErrorType.INVALID_DRIVER_TYPE,
-                            message=f"Invalid driver type '{child.driver_type}' for node {child.id}",
-                            node_id=child.id,
-                        ))
-
-                    # Check rate driver doesn't have query
-                    if child.driver_type == DriverType.RATE and child.query is not None:
-                        errors.append(ValidationError(
-                            type=ValidationErrorType.INVALID_RATE_DRIVER_WITH_QUERY,
-                            message=f"Rate driver node {child.id} should not have a query field",
-                            node_id=child.id,
+                            type=ValidationErrorType.INCOMPLETE_MULTI_CHILDREN,
+                            message=f"Metric {metric.code!r} (id={metric.id}) has type 'multi' but no child with multiplier_type 'base'",
+                            metric_id=metric.id,
                         ))
 
         return ValidationReport(is_valid=len(errors) == 0, errors=errors)
+
+    def _find_cycles(self) -> list[list[MetricNode]]:
+        """
+        Find cyclic references in the hierarchy using DFS.
+
+        Returns:
+            List of cycles, where each cycle is a list of MetricNode instances.
+        """
+        visited: set[int] = set()
+        rec_stack: set[int] = set()
+        cycles: list[list[MetricNode]] = []
+
+        def _dfs(node_id: int, path: list[MetricNode]) -> None:
+            """Depth-first search to detect cycles."""
+            visited.add(node_id)
+            rec_stack.add(node_id)
+
+            # Get parent
+            metric = self.get_metric(node_id)
+            if metric and metric.parent is not None:
+                parent = self.get_metric(metric.parent)
+                if parent:
+                    if parent.id in rec_stack:
+                        # Found a cycle
+                        cycle_start = path.index(parent)
+                        cycles.append(path[cycle_start:] + [parent])
+                    elif parent.id not in visited:
+                        _dfs(parent.id, path + [parent])
+
+            rec_stack.remove(node_id)
+
+        for metric_id in self.metric_ids:
+            if metric_id not in visited:
+                _dfs(metric_id, [self.get_metric(metric_id)])  # type: ignore
+
+        return cycles
 
     def __eq__(self, other: object) -> bool:
         """
@@ -838,20 +790,43 @@ class Hierarchy:
             other: Another object to compare with.
 
         Returns:
-            True if other is a Hierarchy with the same nodes, False otherwise.
+            True if other is a Hierarchy with the same metrics, False otherwise.
         """
         if not isinstance(other, Hierarchy):
             return False
-        return self.nodes == other.nodes
+        return self.metrics == other.metrics
 
     def __len__(self) -> int:
-        """Return the number of nodes in the hierarchy."""
-        return len(self.nodes)
+        """Return the total number of metrics in the hierarchy."""
+        return len(self.metrics)
 
-    def __contains__(self, node_id: int) -> bool:
-        """Check if a node ID exists in the hierarchy."""
-        return node_id in self.nodes
+    def __contains__(self, key: int | str) -> bool:
+        """
+        Check if a metric ID or code exists in the hierarchy.
+
+        Args:
+            key: Either a metric ID (int) or metric code (str).
+
+        Returns:
+            True if the key exists, False otherwise.
+
+        Examples:
+            >>> from libfa2.hier_metadata.metric_node import MetricNode
+            >>> h = Hierarchy()
+            >>> h.add_metric(MetricNode(id=1, code="A", name="A"))
+            >>> 1 in h
+            True
+            >>> "A" in h
+            True
+            >>> 2 in h
+            False
+        """
+        if isinstance(key, int):
+            return key in self.metrics
+        elif isinstance(key, str):
+            return key in self.metric_codes
+        return False
 
     def __repr__(self) -> str:
-        """Return a string representation of the Hierarchy."""
-        return f"Hierarchy(nodes={len(self.nodes)}, root_id={self.root.id if self.root else None})"
+        """Return a string representation of Hierarchy."""
+        return f"Hierarchy(metrics={len(self.metrics)})"

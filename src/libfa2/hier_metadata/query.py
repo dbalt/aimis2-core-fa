@@ -1,106 +1,248 @@
 """
-Query module for database query parameters.
+Query module for database query parameter representation.
 
-This module defines the Query class which represents the parameters
-for filtering and retrieving plan/factual values from a database.
+This module defines the Query class which represents database query
+parameters used for fetching plan/actual values of metrics.
 """
 
 from __future__ import annotations
 
-from typing import Any, Self
+from dataclasses import dataclass
+from typing import Any
 
 
+@dataclass
 class Query:
     """
-    Represents database query parameters for retrieving metric values.
+    Represents database query parameters for fetching metric values.
 
-    The Query class encapsulates parameters for filtering and retrieving
-    planned and factual values of a metric from the database. Each metric
-    can have an optional query that defines how to fetch its data.
+    The Query class defines filters and parameters used to retrieve
+    plan and actual values for a metric from the database. Query
+    parameters are stored as key-value pairs where values can be
+    either strings or lists of strings.
 
     Attributes:
-        params (dict[str, Any] | None): Dictionary of field name to value
-            mappings. Values can be single values or lists of values.
-            None if the metric does not require a direct database query.
+        fields: Dictionary of field name to field value mappings.
+            Values can be strings or lists of strings.
 
     Examples:
-        >>> query = Query({"segment": "corporate", "product": "loans"})
-        >>> query.params
-        {'segment': 'corporate', 'product': 'loans'}
+        >>> query = Query(fields={"segment": "corporate"})
+        >>> query.fields
+        {'segment': 'corporate'}
 
-        >>> query = Query({"segment": ["corporate", "sme"]})
-        >>> query.params
-        {'segment': ['corporate', 'sme']}
+        >>> query = Query(fields={
+        ...     "segment": ["corporate", "sme"],
+        ...     "metric": "interest_income"
+        ... })
+        >>> len(query.fields)
+        2
 
-        >>> empty_query = Query()
-        >>> empty_query.params
-        None
+        >>> empty = Query()
+        >>> len(empty.fields)
+        0
     """
 
-    def __init__(self, params: dict[str, Any] | None = None) -> None:
+    fields: dict[str, str | list[str]] | None = None
+    """
+    Dictionary of field name to field value mappings.
+
+    Values can be:
+    - str: Single value for the field
+    - list[str]: Multiple values for the field (e.g., segment filter)
+
+    None indicates no query parameters (metric calculated from children).
+    """
+
+    def __post_init__(self) -> None:
         """
-        Initialize a Query instance.
+        Validate the Query after initialization.
+
+        Ensures that:
+        - All field names are non-empty strings
+        - All field values are non-empty strings or non-empty lists of strings
+        - List values contain only non-empty strings
+        """
+        if self.fields is None:
+            return
+
+        if not isinstance(self.fields, dict):
+            raise ValueError("Query fields must be a dictionary")
+
+        for key, value in self.fields.items():
+            # Validate field name
+            if not isinstance(key, str) or not key:
+                raise ValueError("Query field name must be a non-empty string")
+
+            # Validate field value
+            if isinstance(value, str):
+                if not value:
+                    raise ValueError(f"Query field '{key}' must not be empty")
+            elif isinstance(value, list):
+                if len(value) == 0:
+                    raise ValueError(f"Query field '{key}' list must not be empty")
+                for i, item in enumerate(value):
+                    if not isinstance(item, str) or not item:
+                        raise ValueError(
+                            f"Query field '{key}'[{i}] must be a non-empty string"
+                        )
+            else:
+                raise ValueError(
+                    f"Query field '{key}' must be a string or list of strings"
+                )
+
+    def get_field(self, name: str) -> str | list[str] | None:
+        """
+        Get a field value by name.
 
         Args:
-            params: Dictionary of field name to value mappings. Can be None
-                if the metric does not require a direct database query.
+            name: Name of the field to retrieve.
+
+        Returns:
+            The field value if found, None otherwise.
 
         Examples:
-            >>> q = Query({"metric": "interest_income"})
-            >>> q.params
-            {'metric': 'interest_income'}
+            >>> query = Query(fields={"segment": "corporate"})
+            >>> query.get_field("segment")
+            'corporate'
+            >>> query.get_field("not_found") is None
+            True
         """
-        self.params = params if params else None
+        if self.fields is None:
+            return None
+        return self.fields.get(name)
 
-    @property
+    def get_field_as_list(self, name: str) -> list[str]:
+        """
+        Get a field value as a list (always returns a list).
+
+        Single string values are wrapped in a list.
+
+        Args:
+            name: Name of the field to retrieve.
+
+        Returns:
+            List of field values. Empty list if field not found.
+
+        Examples:
+            >>> query = Query(fields={"segment": "corporate"})
+            >>> query.get_field_as_list("segment")
+            ['corporate']
+
+            >>> query = Query(fields={"segment": ["a", "b"]})
+            >>> query.get_field_as_list("segment")
+            ['a', 'b']
+        """
+        value = self.get_field(name)
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        return list(value)
+
     def is_empty(self) -> bool:
         """
-        Check if the query is empty (has no parameters).
+        Check if the query has no fields.
 
         Returns:
-            True if params is None or empty, False otherwise.
+            True if the query has no fields, False otherwise.
 
         Examples:
-            >>> Query().is_empty
+            >>> Query().is_empty()
             True
-            >>> Query({"segment": "corporate"}).is_empty
+            >>> Query(fields={"a": "b"}).is_empty()
             False
         """
-        return self.params is None or len(self.params) == 0
+        return self.fields is None or len(self.fields) == 0
 
-    def to_dict(self) -> dict[str, Any] | None:
+    def to_dict(self) -> dict[str, object] | None:
         """
-        Convert the Query to a dictionary representation.
+        Convert the Query to a dictionary representation for JSON serialization.
+
+        Returns None if the query is empty (no fields).
 
         Returns:
-            The params dictionary, or None if the query is empty.
+            Dictionary representation of the Query, or None if empty.
 
         Examples:
-            >>> Query({"segment": "corporate"}).to_dict()
+            >>> query = Query(fields={"segment": "corporate"})
+            >>> query.to_dict()
             {'segment': 'corporate'}
+
             >>> Query().to_dict() is None
             True
         """
-        return self.params
+        if self.is_empty():
+            return None
+        # Return a copy to prevent external modification
+        return dict(self.fields)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any] | None) -> Query:
+    def from_dict(cls, data: dict[str, object] | None) -> Query:
         """
         Create a Query instance from a dictionary.
 
         Args:
-            data: Dictionary containing query parameters. Can be None.
+            data: Dictionary containing the query data, or None for empty query.
 
         Returns:
-            A new Query instance with the given parameters.
+            A new Query instance populated from the dictionary.
+
+        Raises:
+            ValueError: If any field has an invalid value.
 
         Examples:
-            >>> Query.from_dict({"metric": "interest_income"}).params
-            {'metric': 'interest_income'}
-            >>> Query.from_dict(None).params
-            None
+            >>> data = {"segment": "corporate", "metric": "interest_income"}
+            >>> query = Query.from_dict(data)
+            >>> query.get_field("segment")
+            'corporate'
+
+            >>> Query.from_dict(None).is_empty()
+            True
         """
-        return cls(params=data)
+        if data is None or len(data) == 0:
+            return cls()
+
+        # Process and validate fields
+        fields: dict[str, str | list[str]] = {}
+        for key, value in data.items():
+            if not isinstance(key, str) or not key:
+                raise ValueError("Query field name must be a non-empty string")
+
+            if value is None:
+                # Skip None values (equivalent to not having the field)
+                continue
+
+            if isinstance(value, str):
+                if not value:
+                    raise ValueError(f"Query field '{key}' must not be empty")
+                fields[key] = value
+            elif isinstance(value, list):
+                if len(value) == 0:
+                    raise ValueError(f"Query field '{key}' list must not be empty")
+                processed_list: list[str] = []
+                for i, item in enumerate(value):
+                    if isinstance(item, str) and item:
+                        processed_list.append(item)
+                    elif item is None:
+                        # Skip None values in list
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Query field '{key}'[{i}] must be a non-empty string"
+                        )
+                if len(processed_list) == 0:
+                    # All items were None, skip this field
+                    continue
+                fields[key] = processed_list
+            elif isinstance(value, (int, float, bool)):
+                # Convert numeric/boolean values to strings
+                fields[key] = str(value)
+            else:
+                raise ValueError(
+                    f"Query field '{key}' must be a string, list, number, or boolean"
+                )
+
+        return cls(fields=fields if fields else None)
 
     def __eq__(self, other: object) -> bool:
         """
@@ -110,47 +252,54 @@ class Query:
             other: Another object to compare with.
 
         Returns:
-            True if other is a Query with the same params, False otherwise.
+            True if other is a Query with the same field values,
+            False otherwise.
 
         Examples:
-            >>> Query({"a": "b"}) == Query({"a": "b"})
+            >>> q1 = Query(fields={"a": "b"})
+            >>> q2 = Query(fields={"a": "b"})
+            >>> q1 == q2
             True
-            >>> Query({"a": "b"}) == Query({"a": "c"})
-            False
         """
         if not isinstance(other, Query):
             return False
-        return self.params == other.params
+        return self.fields == other.fields
 
     def __repr__(self) -> str:
         """
-        Return a string representation of the Query.
+        Return a detailed string representation of the Query.
 
         Returns:
-            A string representation of the Query instance.
+            A string representation containing all field values.
 
         Examples:
-            >>> Query({"segment": "corporate"})
-            Query(params={'segment': 'corporate'})
-            >>> Query()
-            Query(params=None)
+            >>> Query(fields={"a": "b"})
+            Query(fields={'a': 'b'})
         """
-        return f"Query(params={self.params!r})"
+        return f"Query(fields={self.fields!r})"
 
     def __hash__(self) -> int:
         """
         Return a hash value for the Query.
 
+        Note: Lists in fields are converted to tuples for hashing.
+
         Returns:
-            Hash value based on the params dictionary.
+            Hash value based on all field values.
 
         Examples:
-            >>> hash(Query({"a": "b"})) == hash(Query({"a": "b"}))
+            >>> q1 = Query(fields={"a": "b"})
+            >>> q2 = Query(fields={"a": "b"})
+            >>> hash(q1) == hash(q2)
             True
         """
-        if self.params is None:
+        if self.fields is None:
             return hash(None)
-        return hash(frozenset(
-            (k, str(v) if isinstance(v, list) else v)
-            for k, v in self.params.items()
-        ))
+        # Convert lists to tuples for hashing
+        hashable_fields: dict[str, str | tuple[str, ...]] = {}
+        for key, value in self.fields.items():
+            if isinstance(value, list):
+                hashable_fields[key] = tuple(value)
+            else:
+                hashable_fields[key] = value
+        return hash(frozenset(hashable_fields.items()))

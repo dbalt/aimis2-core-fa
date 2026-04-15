@@ -1,16 +1,16 @@
 """
-MetricNode module for hierarchy node representation.
+Metric node module for hierarchy representation.
 
-This module defines the MetricNode class which represents a single node
-in the hierarchy of financial metrics used for factor analysis.
+This module defines the MetricNode class which represents a single
+metric node in the factor analysis hierarchy.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
-from libfa2.hier_metadata.enums import DriverType, MetricType
+from libfa2.hier_metadata.enums import MetricType, MultiplierType
 
 if TYPE_CHECKING:
     from libfa2.hier_metadata.query import Query
@@ -19,48 +19,42 @@ if TYPE_CHECKING:
 @dataclass
 class MetricNode:
     """
-    Represents a single node in the metric hierarchy.
+    Represents a single metric node in the factor analysis hierarchy.
 
     A MetricNode can be:
-    - A leaf node: A metric that can be directly retrieved from the database
-    - A sum node: A composite metric equal to the sum of its children
-    - A multi node: A composite metric equal to the product of its drivers
-      (rate * base)
+    - A leaf node: fetched directly from the database
+    - A composite node of type 'sum': calculated as sum of children
+    - A composite node of type 'multi': calculated as product of rate and base
+    - A composite node of type 'ratio': calculated as numerator / denominator
 
     Attributes:
         id: Unique numeric identifier of the metric.
         code: Short mnemonic code for API/UI usage.
         name: Human-readable display name of the metric.
-        parent: ID of the parent metric, None for the root node.
-        type: Type of composite metric ('sum' or 'multi'), optional.
-        query: Query parameters for retrieving values from the database.
-        driver_type: Type of driver ('rate' or 'base'), only for children
-            of multi-type nodes.
+        parent: ID of the parent metric, or None for root.
+        type: Type of the metric (sum, multi, ratio) for composite nodes.
+        query: Database query parameters for fetching plan/actual values.
+        multiplier_type: Type of multiplier component (rate or base) for children of 'multi'.
+        numerator: ID of the numerator metric for 'ratio' type.
+        denominator: ID of the denominator metric for 'ratio' type.
 
     Examples:
         >>> node = MetricNode(
-        ...     id=1001,
-        ...     code="INT_INC",
-        ...     name="Процентный доход",
-        ...     parent=900,
-        ...     query=Query({"segment": "corporate"})
+        ...     id=1,
+        ...     code="FP",
+        ...     name="Финансовый результат",
+        ...     parent=None,
+        ...     type=MetricType.SUM
         ... )
+        >>> node.id
+        1
 
-        >>> multi_node = MetricNode(
-        ...     id=101,
+        >>> leaf = MetricNode(
+        ...     id=1001,
         ...     code="INT_INC",
         ...     name="Процентный доход",
         ...     parent=10,
-        ...     type=MetricType.MULTI,
-        ...     query=Query({"metric": "interest_income"})
-        ... )
-
-        >>> rate_driver = MetricNode(
-        ...     id=1001,
-        ...     code="INT_RATE",
-        ...     name="Ставка процентного дохода",
-        ...     parent=101,
-        ...     driver_type=DriverType.RATE
+        ...     query=Query(fields={"metric": "interest_income"})
         ... )
     """
 
@@ -74,224 +68,270 @@ class MetricNode:
     """Human-readable display name of the metric."""
 
     parent: int | None = None
-    """ID of the parent metric. None for the root node."""
+    """ID of the parent metric, or None for root node."""
 
     type: MetricType | None = None
     """
-    Type of composite metric.
+    Type of the metric for composite nodes.
 
-    Required for non-leaf nodes:
-    - MetricType.SUM: Equal to sum of children
-    - MetricType.MULTI: Equal to product of drivers (rate * base)
+    - None: Leaf node (or to be inferred)
+    - MetricType.SUM: Sum of child components
+    - MetricType.MULTI: Product of rate and base children
+    - MetricType.RATIO: Ratio of numerator and denominator (root only)
     """
 
     query: Query | None = None
     """
-    Query parameters for retrieving values from the database.
+    Database query parameters for fetching plan/actual values.
 
-    Rules:
-    - Required for MetricType.MULTI (for reverse rate calculation)
-    - Optional for MetricType.SUM and leaf nodes
-    - If present, DB values take precedence over calculated values
+    Required for:
+    - type: multi (for reverse calculation of rate)
+    - Leaf nodes that are fetched directly from DB
+
+    Optional for:
+    - type: sum (if subtotal is stored in DB)
+    - type: ratio (if ratio value is stored in DB)
     """
 
-    driver_type: DriverType | None = None
+    multiplier_type: MultiplierType | None = None
     """
-    Type of driver for multi-type node children.
+    Type of multiplier component for children of 'multi' nodes.
 
-    Only applicable for children of nodes with type=MetricType.MULTI:
-    - DriverType.RATE: Coefficient/rate (calculated: rate = multi / base)
-    - DriverType.BASE: Volume/base metric
+    - MultiplierType.RATE: Normalized indicator (calculated: rate = parent / base)
+    - MultiplierType.BASE: Volumetric indicator (fetched from DB)
+
+    Only applicable for child nodes of a 'multi' parent.
+    """
+
+    numerator: int | None = None
+    """
+    ID of the numerator metric for 'ratio' type.
+
+    Required for metrics with type: MetricType.RATIO.
+    The numerator can be a metric of type 'sum' or 'multi' with its own hierarchy.
+    """
+
+    denominator: int | None = None
+    """
+    ID of the denominator metric for 'ratio' type.
+
+    Required for metrics with type: MetricType.RATIO.
+    The denominator can be a metric of type 'sum' or 'multi' with its own hierarchy.
     """
 
     def __post_init__(self) -> None:
         """Validate the MetricNode after initialization."""
-        # Import Query here to avoid circular dependency
-        from libfa2.hier_metadata.query import Query
+        # Validate ID
+        if not isinstance(self.id, int) or self.id <= 0:
+            raise ValueError("Metric ID must be a positive integer")
 
-        if self.query is not None and not isinstance(self.query, Query):
-            if isinstance(self.query, dict):
-                self.query = Query(self.query)
-            else:
-                raise TypeError(
-                    f"query must be a Query instance or dict, got {type(self.query)}"
-                )
+        # Validate code
+        if not isinstance(self.code, str) or not self.code:
+            raise ValueError("Metric code must be a non-empty string")
+
+        # Validate name
+        if not isinstance(self.name, str) or not self.name:
+            raise ValueError("Metric name must be a non-empty string")
+
+        # Validate parent (if not None)
+        if self.parent is not None and not isinstance(self.parent, int):
+            raise ValueError("Metric parent must be an integer or None")
+
+        # Validate numerator (if not None)
+        if self.numerator is not None and not isinstance(self.numerator, int):
+            raise ValueError("Metric numerator must be an integer or None")
+
+        # Validate denominator (if not None)
+        if self.denominator is not None and not isinstance(self.denominator, int):
+            raise ValueError("Metric denominator must be an integer or None")
+
+        # Type-specific validation
+        if self.type == MetricType.MULTI:
+            # 'multi' type MUST have a query
+            if self.query is None:
+                raise ValueError("Metric of type 'multi' must have a query")
+            # 'multi' type cannot have numerator/denominator
+            if self.numerator is not None or self.denominator is not None:
+                raise ValueError("Metric of type 'multi' cannot have numerator/denominator")
+        elif self.type == MetricType.RATIO:
+            # 'ratio' type MUST have numerator and denominator
+            if self.numerator is None:
+                raise ValueError("Metric of type 'ratio' must have numerator")
+            if self.denominator is None:
+                raise ValueError("Metric of type 'ratio' must have denominator")
+            # 'ratio' type cannot have multiplier_type
+            if self.multiplier_type is not None:
+                raise ValueError("Metric of type 'ratio' cannot have multiplier_type")
 
     @property
     def is_leaf(self) -> bool:
         """
-        Check if this node is a leaf (has no children by definition).
-
-        A node is considered a leaf by structure if it's a driver node
-        (has driver_type) or if type is None.
-
-        Note: The actual leaf status depends on the hierarchy structure,
-        not just this property.
+        Check if this is a leaf node (has no type or is a child of sum/multi/ratio without children).
 
         Returns:
-            True if this node is a leaf candidate, False otherwise.
+            True if this node appears to be a leaf, False otherwise.
 
         Examples:
-            >>> node = MetricNode(id=1001, code="LEAF", name="Leaf", parent=10)
+            >>> node = MetricNode(id=1, code="A", name="A")
             >>> node.is_leaf
             True
-            >>> parent = MetricNode(id=10, code="PARENT", name="Parent", type=MetricType.SUM)
-            >>> parent.is_leaf
-            False
         """
-        return self.driver_type is not None or self.type is None
+        # A node is a leaf if it doesn't have a type
+        # (children will be determined by the Hierarchy class)
+        return self.type is None
 
     @property
     def is_root(self) -> bool:
         """
-        Check if this node is the root (has no parent).
+        Check if this is a root node (has no parent).
 
         Returns:
-            True if this node has no parent, False otherwise.
+            True if this node is a root, False otherwise.
 
         Examples:
-            >>> root = MetricNode(id=1, code="ROOT", name="Root")
-            >>> root.is_root
+            >>> node = MetricNode(id=1, code="A", name="A", parent=None)
+            >>> node.is_root
             True
-            >>> child = MetricNode(id=2, code="CHILD", name="Child", parent=1)
-            >>> child.is_root
-            False
         """
         return self.parent is None
 
     @property
-    def is_sum_type(self) -> bool:
+    def is_composite(self) -> bool:
         """
-        Check if this node is a sum-type composite metric.
+        Check if this is a composite node (has a type).
 
         Returns:
-            True if type is MetricType.SUM, False otherwise.
+            True if this node has a type (sum, multi, or ratio), False otherwise.
 
         Examples:
-            >>> node = MetricNode(id=1, code="SUM", name="Sum", type=MetricType.SUM)
-            >>> node.is_sum_type
+            >>> node = MetricNode(id=1, code="A", name="A", type=MetricType.SUM)
+            >>> node.is_composite
             True
-            >>> node = MetricNode(id=2, code="MULTI", name="Multi", type=MetricType.MULTI)
-            >>> node.is_sum_type
-            False
         """
-        return self.type == MetricType.SUM
+        return self.type is not None
 
     @property
-    def is_multi_type(self) -> bool:
+    def is_multi_child(self) -> bool:
         """
-        Check if this node is a multi-type composite metric.
+        Check if this is a child of a 'multi' node.
 
         Returns:
-            True if type is MetricType.MULTI, False otherwise.
+            True if this node has a multiplier_type, False otherwise.
 
         Examples:
-            >>> node = MetricNode(id=1, code="MULTI", name="Multi", type=MetricType.MULTI)
-            >>> node.is_multi_type
+            >>> node = MetricNode(
+            ...     id=1, code="A", name="A",
+            ...     multiplier_type=MultiplierType.RATE
+            ... )
+            >>> node.is_multi_child
             True
-            >>> node = MetricNode(id=2, code="SUM", name="Sum", type=MetricType.SUM)
-            >>> node.is_multi_type
-            False
         """
-        return self.type == MetricType.MULTI
+        return self.multiplier_type is not None
 
     @property
-    def is_rate_driver(self) -> bool:
+    def is_ratio_root(self) -> bool:
         """
-        Check if this node is a rate-type driver.
+        Check if this is a ratio-type root node.
 
         Returns:
-            True if driver_type is DriverType.RATE, False otherwise.
+            True if this node has type RATIO and is a root, False otherwise.
 
         Examples:
-            >>> node = MetricNode(id=1, code="RATE", name="Rate", driver_type=DriverType.RATE)
-            >>> node.is_rate_driver
+            >>> node = MetricNode(
+            ...     id=1, code="COR", name="COR", parent=None,
+            ...     type=MetricType.RATIO, numerator=501, denominator=502
+            ... )
+            >>> node.is_ratio_root
             True
-            >>> node = MetricNode(id=2, code="BASE", name="Base", driver_type=DriverType.BASE)
-            >>> node.is_rate_driver
-            False
         """
-        return self.driver_type == DriverType.RATE
+        return self.is_root and self.type == MetricType.RATIO
 
     @property
-    def is_base_driver(self) -> bool:
+    def is_rate_multiplier(self) -> bool:
         """
-        Check if this node is a base-type driver.
+        Check if this is a rate-type multiplier component.
 
         Returns:
-            True if driver_type is DriverType.BASE, False otherwise.
+            True if this node has multiplier_type RATE, False otherwise.
 
         Examples:
-            >>> node = MetricNode(id=1, code="BASE", name="Base", driver_type=DriverType.BASE)
-            >>> node.is_base_driver
+            >>> node = MetricNode(
+            ...     id=1, code="A", name="A",
+            ...     multiplier_type=MultiplierType.RATE
+            ... )
+            >>> node.is_rate_multiplier
             True
-            >>> node = MetricNode(id=2, code="RATE", name="Rate", driver_type=DriverType.RATE)
-            >>> node.is_base_driver
-            False
         """
-        return self.driver_type == DriverType.BASE
+        return self.multiplier_type == MultiplierType.RATE
 
     @property
-    def requires_db_query(self) -> bool:
+    def is_base_multiplier(self) -> bool:
         """
-        Check if this node requires a direct database query.
+        Check if this is a base-type multiplier component.
 
         Returns:
-            True if the node has a query defined, False otherwise.
+            True if this node has multiplier_type BASE, False otherwise.
 
         Examples:
-            >>> node = MetricNode(id=1, code="LEAF", name="Leaf", query=Query({"a": "b"}))
-            >>> node.requires_db_query
+            >>> node = MetricNode(
+            ...     id=1, code="A", name="A",
+            ...     multiplier_type=MultiplierType.BASE
+            ... )
+            >>> node.is_base_multiplier
             True
-            >>> node = MetricNode(id=2, code="LEAF", name="Leaf")
-            >>> node.requires_db_query
-            False
         """
-        return self.query is not None and not self.query.is_empty
+        return self.multiplier_type == MultiplierType.BASE
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the MetricNode to a dictionary representation for JSON serialization.
 
-        Empty/None fields are omitted from the output to keep the JSON compact.
+        Empty/None fields are omitted from the output unless they are required.
 
         Returns:
             Dictionary representation of the MetricNode.
 
         Examples:
+            >>> from libfa2.hier_metadata.query import Query
             >>> node = MetricNode(
-            ...     id=1001,
-            ...     code="INT_INC",
-            ...     name="Процентный доход",
-            ...     parent=900,
-            ...     query=Query({"segment": "corporate"})
+            ...     id=1,
+            ...     code="A",
+            ...     name="A",
+            ...     parent=None
             ... )
-            >>> d = node.to_dict()
-            >>> d["id"]
-            1001
-            >>> d["code"]
-            'INT_INC'
+            >>> result = node.to_dict()
+            >>> result["id"]
+            1
         """
-        result: dict[str, object] = {
+        result: dict[str, Any] = {
             "id": self.id,
             "code": self.code,
             "name": self.name,
         }
 
-        # Add optional fields only if they have meaningful values
+        # Add optional fields only if they have values
         if self.parent is not None:
             result["parent"] = self.parent
+
         if self.type is not None:
             result["type"] = self.type.value
-        if self.query is not None and not self.query.is_empty:
+
+        if self.query is not None and not self.query.is_empty():
             result["query"] = self.query.to_dict()
-        if self.driver_type is not None:
-            result["driverType"] = self.driver_type.value
+
+        if self.multiplier_type is not None:
+            result["multiplierType"] = self.multiplier_type.value
+
+        if self.numerator is not None:
+            result["numerator"] = self.numerator
+
+        if self.denominator is not None:
+            result["denominator"] = self.denominator
 
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, object]) -> MetricNode:
+    def from_dict(cls, data: dict[str, Any]) -> MetricNode:
         """
         Create a MetricNode instance from a dictionary.
 
@@ -303,37 +343,44 @@ class MetricNode:
 
         Raises:
             KeyError: If required fields (id, code, name) are missing.
-            ValueError: If type or driverType has an invalid value.
+            ValueError: If any field has an invalid value.
 
         Examples:
             >>> data = {
-            ...     "id": 1001,
-            ...     "code": "INT_INC",
-            ...     "name": "Процентный доход",
-            ...     "parent": 900,
-            ...     "type": "multi",
-            ...     "query": {"segment": "corporate"}
+            ...     "id": 1,
+            ...     "code": "A",
+            ...     "name": "A Metric",
+            ...     "parent": None,
+            ...     "type": "sum"
             ... }
             >>> node = MetricNode.from_dict(data)
-            >>> node.id
-            1001
             >>> node.code
-            'INT_INC'
+            'A'
         """
         from libfa2.hier_metadata.query import Query
 
         # Extract required fields
-        node_id = data["id"]
-        code = data["code"]
-        name = data["name"]
+        node_id = data.get("id")
+        if node_id is None:
+            raise KeyError("Missing required field: 'id'")
+
+        code = data.get("code")
+        if code is None:
+            raise KeyError("Missing required field: 'code'")
+
+        name = data.get("name")
+        if name is None:
+            raise KeyError("Missing required field: 'name'")
 
         # Extract optional fields
         parent = data.get("parent")
         type_str = data.get("type")
-        query_dict = data.get("query")
-        driver_type_str = data.get("driverType")
+        query_data = data.get("query")
+        multiplier_type_str = data.get("multiplierType")
+        numerator = data.get("numerator")
+        denominator = data.get("denominator")
 
-        # Convert string enums to enum values
+        # Process type
         metric_type: MetricType | None = None
         if type_str is not None:
             try:
@@ -341,20 +388,22 @@ class MetricNode:
             except ValueError as e:
                 raise ValueError(f"Invalid metric type: {type_str}") from e
 
-        driver_type: DriverType | None = None
-        if driver_type_str is not None:
+        # Process multiplier_type
+        multiplier_type: MultiplierType | None = None
+        if multiplier_type_str is not None:
             try:
-                driver_type = DriverType(driver_type_str)
+                multiplier_type = MultiplierType(multiplier_type_str)
             except ValueError as e:
-                raise ValueError(f"Invalid driver type: {driver_type_str}") from e
+                raise ValueError(f"Invalid multiplier type: {multiplier_type_str}") from e
 
-        # Create query if provided
+        # Process query
         query: Query | None = None
-        if query_dict is not None:
-            if isinstance(query_dict, dict):
-                query = Query(query_dict)
-            else:
-                raise TypeError(f"query must be a dict, got {type(query_dict)}")
+        if query_data is not None:
+            if not isinstance(query_data, dict):
+                raise ValueError("Query must be a dictionary")
+            query = Query.from_dict(query_data)
+            if query.is_empty():
+                query = None
 
         return cls(
             id=int(node_id),
@@ -363,7 +412,9 @@ class MetricNode:
             parent=int(parent) if parent is not None else None,
             type=metric_type,
             query=query,
-            driver_type=driver_type,
+            multiplier_type=multiplier_type,
+            numerator=int(numerator) if numerator is not None else None,
+            denominator=int(denominator) if denominator is not None else None,
         )
 
     def __eq__(self, other: object) -> bool:
@@ -392,7 +443,9 @@ class MetricNode:
             and self.parent == other.parent
             and self.type == other.type
             and self.query == other.query
-            and self.driver_type == other.driver_type
+            and self.multiplier_type == other.multiplier_type
+            and self.numerator == other.numerator
+            and self.denominator == other.denominator
         )
 
     def __repr__(self) -> str:
@@ -400,16 +453,17 @@ class MetricNode:
         Return a detailed string representation of the MetricNode.
 
         Returns:
-            A string representation containing all field values.
+            A string representation containing key field values.
 
         Examples:
             >>> MetricNode(id=1, code="A", name="A")
-            MetricNode(id=1, code='A', name='A', parent=None, type=None, query=None, driver_type=None)
+            MetricNode(id=1, code='A', name='A')
         """
         return (
-            f"MetricNode(id={self.id}, code={self.code!r}, name={self.name!r}, "
-            f"parent={self.parent}, type={self.type}, query={self.query}, "
-            f"driver_type={self.driver_type})"
+            f"MetricNode(id={self.id}, code={self.code!r}, name={self.name!r}"
+            f", parent={self.parent}, type={self.type}"
+            f", multiplier_type={self.multiplier_type}"
+            f", numerator={self.numerator}, denominator={self.denominator})"
         )
 
     def __hash__(self) -> int:
@@ -420,7 +474,9 @@ class MetricNode:
             Hash value based on all field values.
 
         Examples:
-            >>> hash(MetricNode(id=1, code="A", name="A")) == hash(MetricNode(id=1, code="A", name="A"))
+            >>> n1 = MetricNode(id=1, code="A", name="A")
+            >>> n2 = MetricNode(id=1, code="A", name="A")
+            >>> hash(n1) == hash(n2)
             True
         """
         return hash((
@@ -430,5 +486,7 @@ class MetricNode:
             self.parent,
             self.type,
             self.query,
-            self.driver_type,
+            self.multiplier_type,
+            self.numerator,
+            self.denominator,
         ))
