@@ -1,36 +1,63 @@
 """
-Hierarchy metadata module for factor analysis.
+Модуль hier_metadata для управления иерархией метрик факторного анализа.
 
-This module contains classes for managing metadata about the hierarchical
-structure of financial metrics used in factor analysis.
+Этот модуль предоставляет классы для работы с метаданными иерархии финансовых показателей,
+используемых при выполнении факторного анализа отклонений факта от плана.
 
-Modules:
-    enums: Enum classes for string constants
-    query: Query class for database query parameters
-    metric_node: MetricNode class for hierarchy nodes
-    hierarchy: Hierarchy class for managing the metric tree
+Основные классы:
+- Hierarchy: Контейнер для управления деревом метрик
+- MetricNode: Узел в иерархии показателей
+- Query: Параметры запроса к БД
+
+Enum классы для строковых констант:
+- MetricType: Тип показателя (sum, multi, ratio)
+- ComponentMultiPartType: Тип компонента-множителя (rate, base)
+- ComponentRatioPartType: Тип компонента-отношения (numerator, denominator)
+
+Пример использования:
+    >>> from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query
+    >>>
+    >>> hierarchy = Hierarchy()
+    >>>
+    >>> # Создаем корневой узел
+    >>> root = MetricNode(
+    ...     id=100,
+    ...     code="NII",
+    ...     name="Чистый процентный доход",
+    ...     type=MetricType.SUM
+    ... )
+    >>> hierarchy.add_node(root)
+    >>>
+    >>> # Создаем дочерний узел с query
+    >>> child = MetricNode(
+    ...     id=101,
+    ...     code="INT_INC",
+    ...     name="Процентный доход",
+    ...     type=MetricType.MULTI,
+    ...     parent=100,
+    ...     query=Query({"metricType": "interest_income"})
+    ... )
+    >>> hierarchy.add_node(child)
+    >>>
+    >>> # Сериализация
+    >>> json_str = hierarchy.to_json_string()
+    >>>
+    >>> # Десериализация
+    >>> restored = Hierarchy.from_json_string(json_str)
 """
 
-from libfa2.hier_metadata.enums import (
-    MetricType,
-    MultiplierType,
-    ValidationErrorType,
-)
-from libfa2.hier_metadata.hierarchy import (
-    Hierarchy,
-    ValidationError,
-    ValidationReport,
-)
-from libfa2.hier_metadata.metric_node import MetricNode
-from libfa2.hier_metadata.query import Query
+from .hierarchy import Hierarchy
+from .metric_node import MetricNode
+from .query import Query
+from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType
 
 __all__ = [
-    "MetricType",
-    "MultiplierType",
-    "ValidationErrorType",
     "Hierarchy",
-    "ValidationError",
-    "ValidationReport",
     "MetricNode",
     "Query",
+    "MetricType",
+    "ComponentMultiPartType",
+    "ComponentRatioPartType",
 ]
+
+__version__ = "1.0.0"

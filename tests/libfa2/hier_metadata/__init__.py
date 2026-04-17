@@ -1,3 +1,5 @@
 """
-Unit tests for hierarchy metadata module.
+Модуль тестов для hier_metadata.
 """
+
+__all__ = []

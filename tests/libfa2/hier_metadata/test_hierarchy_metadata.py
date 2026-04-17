@@ -1,1514 +1,1245 @@
 """
-Comprehensive unit tests for hierarchy metadata module.
+Unit tests для модуля hier_metadata.
 
-Tests cover:
-- Query class
-- MetricNode class
-- Hierarchy class
-- JSON serialization/deserialization
-- Validation
-- Full example from documentation
+Тесты проверяют функциональность классов:
+- Query: параметры запросов к БД
+- MetricNode: узлы иерархии
+- Hierarchy: управление деревом метрик
+- Enums: строковые константы
+
+Тесты включают валидацию, сериализацию/десериализацию,
+навигацию по иерархии и проверку целостности.
 """
 
-from __future__ import annotations
-
 import json
-
 import pytest
 
 from libfa2.hier_metadata import (
     Hierarchy,
     MetricNode,
-    MetricType,
-    MultiplierType,
     Query,
-    ValidationError,
-    ValidationErrorType,
-    ValidationReport,
+    MetricType,
+    ComponentMultiPartType,
+    ComponentRatioPartType,
+)
+from libfa2.analyt_struct_metadata import (
+    AnalyticalStructureMetadata,
+    Algorithm,
+    Dimension,
 )
 
 
 # =============================================================================
-# Query Class Tests
+# Tests for Query class
 # =============================================================================
 
 class TestQuery:
-    """Test cases for the Query class."""
+    """Тесты для класса Query."""
 
-    def test_init_empty(self) -> None:
-        """Test Query initialization with no fields."""
+    def test_init_empty(self):
+        """Создание пустого Query."""
         query = Query()
         assert query.is_empty()
-        assert query.fields is None
+        assert len(query) == 0
 
-    def test_init_with_fields(self) -> None:
-        """Test Query initialization with fields."""
-        query = Query(fields={"segment": "corporate"})
-        assert query.get_field("segment") == "corporate"
+    def test_init_with_dict(self):
+        """Создание Query с параметрами."""
+        query = Query({"metricType": "interest_income"})
         assert not query.is_empty()
+        assert len(query) == 1
+        assert query["metricType"] == "interest_income"
 
-    def test_init_with_list_field(self) -> None:
-        """Test Query initialization with list field."""
-        query = Query(fields={"segment": ["corporate", "sme"]})
-        assert query.get_field("segment") == ["corporate", "sme"]
+    def test_add(self):
+        """Добавление параметров."""
+        query = Query()
+        query.add("metricType", "interest_income")
+        query.add("segment", "corporate")
+        assert len(query) == 2
+        assert query["metricType"] == "interest_income"
+        assert query["segment"] == "corporate"
 
-    def test_init_invalid_field_name(self) -> None:
-        """Test that empty field name raises ValueError."""
-        with pytest.raises(ValueError, match="field name must be a non-empty string"):
-            Query(fields={"": "value"})
+    def test_add_chain(self):
+        """Цепочка вызовов add."""
+        query = Query()
+        result = query.add("metricType", "interest_income").add("segment", "corporate")
+        assert result is query  # Возвращает self
 
-    def test_init_invalid_field_value(self) -> None:
-        """Test that empty string field value raises ValueError."""
-        with pytest.raises(ValueError, match="must not be empty"):
-            Query(fields={"segment": ""})
+    def test_get(self):
+        """Получение значения параметра."""
+        query = Query({"metricType": "interest_income"})
+        assert query.get("metricType") == "interest_income"
+        assert query.get("nonexistent", "default") == "default"
+        assert query.get("nonexistent") is None
 
-    def test_init_invalid_list_field(self) -> None:
-        """Test that empty list raises ValueError."""
-        with pytest.raises(ValueError, match="list must not be empty"):
-            Query(fields={"segment": []})
+    def test_remove(self):
+        """Удаление параметра."""
+        query = Query({"metricType": "interest_income", "segment": "corporate"})
+        query.remove("segment")
+        assert "segment" not in query
+        assert len(query) == 1
 
-    def test_init_invalid_list_item(self) -> None:
-        """Test that empty string in list raises ValueError."""
-        with pytest.raises(ValueError, match="must be a non-empty string"):
-            Query(fields={"segment": ["a", "", "b"]})
+    def test_remove_nonexistent(self):
+        """Удаление несуществующего параметра не вызывает ошибку."""
+        query = Query({"metricType": "interest_income"})
+        query.remove("nonexistent")
+        assert len(query) == 1
 
-    def test_get_field_exists(self) -> None:
-        """Test get_field with existing field."""
-        query = Query(fields={"segment": "corporate"})
-        assert query.get_field("segment") == "corporate"
+    def test_keys_values_items(self):
+        """Методы keys(), values(), items()."""
+        query = Query({"a": 1, "b": 2})
+        assert sorted(query.keys()) == ["a", "b"]
+        assert sorted(query.values()) == [1, 2]
+        assert sorted(query.items()) == [("a", 1), ("b", 2)]
 
-    def test_get_field_not_exists(self) -> None:
-        """Test get_field with non-existing field."""
-        query = Query(fields={"segment": "corporate"})
-        assert query.get_field("not_found") is None
+    def test_to_dict(self):
+        """Преобразование в словарь."""
+        query = Query({"metricType": "interest_income"})
+        d = query.to_dict()
+        assert d == {"metricType": "interest_income"}
 
-    def test_get_field_as_list_string(self) -> None:
-        """Test get_field_as_list with string value."""
-        query = Query(fields={"segment": "corporate"})
-        assert query.get_field_as_list("segment") == ["corporate"]
+    def test_to_json_omits_empty(self):
+        """to_json() исключает пустые значения."""
+        query = Query({
+            "metricType": "interest_income",
+            "segment": None,
+            "status": "",
+            "tags": []
+        })
+        d = query.to_json()
+        assert d == {"metricType": "interest_income"}
 
-    def test_get_field_as_list_list(self) -> None:
-        """Test get_field_as_list with list value."""
-        query = Query(fields={"segment": ["a", "b"]})
-        assert query.get_field_as_list("segment") == ["a", "b"]
+    def test_from_dict(self):
+        """Создание Query из словаря."""
+        d = {"metricType": "interest_income", "segment": "corporate"}
+        query = Query.from_dict(d)
+        assert query["metricType"] == "interest_income"
+        assert query["segment"] == "corporate"
 
-    def test_get_field_as_list_not_exists(self) -> None:
-        """Test get_field_as_list with non-existing field."""
-        query = Query(fields={"segment": "corporate"})
-        assert query.get_field_as_list("not_found") == []
-
-    def test_is_empty_true(self) -> None:
-        """Test is_empty with empty query."""
-        assert Query().is_empty()
-        assert Query(fields=None).is_empty()
-
-    def test_is_empty_false(self) -> None:
-        """Test is_empty with non-empty query."""
-        assert not Query(fields={"a": "b"}).is_empty()
-
-    def test_to_dict_with_fields(self) -> None:
-        """Test converting Query with fields to dictionary."""
-        query = Query(fields={"segment": "corporate"})
-        result = query.to_dict()
-        assert result == {"segment": "corporate"}
-
-    def test_to_dict_empty(self) -> None:
-        """Test converting empty Query to dictionary returns None."""
-        assert Query().to_dict() is None
-
-    def test_from_dict_valid(self) -> None:
-        """Test creating Query from dictionary."""
-        data = {"segment": "corporate", "metric": "interest_income"}
-        query = Query.from_dict(data)
-        assert query.get_field("segment") == "corporate"
-        assert query.get_field("metric") == "interest_income"
-
-    def test_from_dict_none(self) -> None:
-        """Test creating Query from None returns empty query."""
+    def test_from_dict_empty(self):
+        """Создание пустого Query из None."""
         query = Query.from_dict(None)
         assert query.is_empty()
 
-    def test_from_dict_with_list(self) -> None:
-        """Test creating Query with list field."""
-        data = {"segment": ["corporate", "sme"]}
-        query = Query.from_dict(data)
-        assert query.get_field("segment") == ["corporate", "sme"]
+    def test_from_json(self):
+        """Создание Query из JSON-словаря."""
+        d = {"metricType": "interest_income"}
+        query = Query.from_json(d)
+        assert query["metricType"] == "interest_income"
 
-    def test_from_dict_numeric_value(self) -> None:
-        """Test that numeric values are converted to strings."""
-        data = {"amount": 100, "ratio": 0.05}
-        query = Query.from_dict(data)
-        assert query.get_field("amount") == "100"
-        assert query.get_field("ratio") == "0.05"
+    def test_bool(self):
+        """Преобразование в bool."""
+        assert not Query()
+        assert Query({"a": 1})
+        assert not Query({})
 
-    def test_from_dict_boolean_value(self) -> None:
-        """Test that boolean values are converted to strings."""
-        data = {"active": True, "deleted": False}
-        query = Query.from_dict(data)
-        assert query.get_field("active") == "True"
-        assert query.get_field("deleted") == "False"
-
-    def test_from_dict_empty_dict(self) -> None:
-        """Test creating Query from empty dict returns empty query."""
-        query = Query.from_dict({})
-        assert query.is_empty()
-
-    def test_from_dict_skip_none_in_list(self) -> None:
-        """Test that None values in list are skipped."""
-        data = {"segment": ["a", None, "b", None]}
-        query = Query.from_dict(data)
-        assert query.get_field("segment") == ["a", "b"]
-
-    def test_from_dict_all_none_in_list(self) -> None:
-        """Test that list with only None values is skipped."""
-        data = {"segment": [None, None]}
-        query = Query.from_dict(data)
-        assert query.get_field("segment") is None
-
-    def test_equality(self) -> None:
-        """Test Query equality."""
-        q1 = Query(fields={"a": "b"})
-        q2 = Query(fields={"a": "b"})
-        q3 = Query(fields={"a": "c"})
+    def test_equality(self):
+        """Проверка равенства."""
+        q1 = Query({"a": 1, "b": 2})
+        q2 = Query({"a": 1, "b": 2})
+        q3 = Query({"a": 1, "b": 3})
         assert q1 == q2
         assert q1 != q3
-        assert q1 != "not a query"
 
-    def test_hash(self) -> None:
-        """Test Query hash for set membership."""
-        q1 = Query(fields={"a": "b"})
-        q2 = Query(fields={"a": "b"})
-        queries = {q1}
-        assert q2 in queries
+    def test_hash(self):
+        """Проверка хеша для использования в множествах."""
+        q1 = Query({"a": 1})
+        q2 = Query({"a": 1})
+        q3 = Query({"b": 1})
+        assert hash(q1) == hash(q2)
+        assert hash(q1) != hash(q3)
+
+    def test_repr(self):
+        """Строковое представление."""
+        query = Query({"a": 1})
+        assert repr(query) == "Query({'a': 1})"
 
 
 # =============================================================================
-# MetricNode Class Tests
+# Tests for MetricNode class
 # =============================================================================
 
 class TestMetricNode:
-    """Test cases for the MetricNode class."""
+    """Тесты для класса MetricNode."""
 
-    def test_init_minimal(self) -> None:
-        """Test MetricNode initialization with minimal fields."""
-        node = MetricNode(
-            id=1,
-            code="A",
-            name="A Metric"
-        )
-        assert node.id == 1
-        assert node.code == "A"
-        assert node.name == "A Metric"
-        assert node.parent is None
+    def test_init_minimal(self):
+        """Создание узла с минимальными полями."""
+        node = MetricNode(id=100, code="NII", name="ЧПД")
+        assert node.id == 100
+        assert node.code == "NII"
+        assert node.name == "ЧПД"
         assert node.type is None
-        assert node.query is None
-        assert node.multiplier_type is None
-
-    def test_init_full(self) -> None:
-        """Test MetricNode initialization with all fields."""
-        node = MetricNode(
-            id=1,
-            code="A",
-            name="A Metric",
-            parent=0,
-            type=MetricType.SUM,
-            query=Query(fields={"segment": "corporate"}),
-            multiplier_type=MultiplierType.RATE,
-        )
-        assert node.type == MetricType.SUM
-        assert node.multiplier_type == MultiplierType.RATE
-
-    def test_init_invalid_id(self) -> None:
-        """Test that invalid ID raises ValueError."""
-        with pytest.raises(ValueError, match="ID must be a positive integer"):
-            MetricNode(id=0, code="A", name="A")
-        with pytest.raises(ValueError, match="ID must be a positive integer"):
-            MetricNode(id=-1, code="A", name="A")
-
-    def test_init_empty_code(self) -> None:
-        """Test that empty code raises ValueError."""
-        with pytest.raises(ValueError, match="code must be a non-empty string"):
-            MetricNode(id=1, code="", name="A")
-
-    def test_init_empty_name(self) -> None:
-        """Test that empty name raises ValueError."""
-        with pytest.raises(ValueError, match="name must be a non-empty string"):
-            MetricNode(id=1, code="A", name="")
-
-    def test_init_multi_without_query(self) -> None:
-        """Test that multi type without query raises ValueError."""
-        with pytest.raises(ValueError, match="type 'multi' must have a query"):
-            MetricNode(
-                id=1,
-                code="A",
-                name="A",
-                type=MetricType.MULTI,
-                query=None
-            )
-
-    def test_init_multi_with_numerator_denominator(self) -> None:
-        """Test that multi type with numerator/denominator raises ValueError."""
-        with pytest.raises(ValueError, match="cannot have numerator/denominator"):
-            MetricNode(
-                id=1,
-                code="A",
-                name="A",
-                type=MetricType.MULTI,
-                query=Query(),
-                numerator=2,
-                denominator=3
-            )
-
-    def test_init_ratio_without_numerator(self) -> None:
-        """Test that ratio type without numerator raises ValueError."""
-        with pytest.raises(ValueError, match="must have numerator"):
-            MetricNode(
-                id=1,
-                code="A",
-                name="A",
-                type=MetricType.RATIO,
-                numerator=None,
-                denominator=2
-            )
-
-    def test_init_ratio_without_denominator(self) -> None:
-        """Test that ratio type without denominator raises ValueError."""
-        with pytest.raises(ValueError, match="must have denominator"):
-            MetricNode(
-                id=1,
-                code="A",
-                name="A",
-                type=MetricType.RATIO,
-                numerator=1,
-                denominator=None
-            )
-
-    def test_init_ratio_with_multiplier_type(self) -> None:
-        """Test that ratio type with multiplier_type raises ValueError."""
-        with pytest.raises(ValueError, match="cannot have multiplier_type"):
-            MetricNode(
-                id=1,
-                code="A",
-                name="A",
-                type=MetricType.RATIO,
-                numerator=1,
-                denominator=2,
-                multiplier_type=MultiplierType.RATE
-            )
-
-    def test_is_leaf_true(self) -> None:
-        """Test is_leaf returns True for nodes without type."""
-        node = MetricNode(id=1, code="A", name="A")
-        assert node.is_leaf
-
-    def test_is_leaf_false(self) -> None:
-        """Test is_leaf returns False for nodes with type."""
-        node = MetricNode(id=1, code="A", name="A", type=MetricType.SUM)
-        assert not node.is_leaf
-
-    def test_is_root_true(self) -> None:
-        """Test is_root returns True for nodes with no parent."""
-        node = MetricNode(id=1, code="A", name="A", parent=None)
-        assert node.is_root
-
-    def test_is_root_false(self) -> None:
-        """Test is_root returns False for nodes with parent."""
-        node = MetricNode(id=1, code="A", name="A", parent=0)
-        assert not node.is_root
-
-    def test_is_composite_true(self) -> None:
-        """Test is_composite returns True for nodes with type."""
-        node = MetricNode(id=1, code="A", name="A", type=MetricType.SUM)
-        assert node.is_composite
-
-    def test_is_composite_false(self) -> None:
-        """Test is_composite returns False for nodes without type."""
-        node = MetricNode(id=1, code="A", name="A")
-        assert not node.is_composite
-
-    def test_is_multi_child_true(self) -> None:
-        """Test is_multi_child returns True for nodes with multiplier_type."""
-        node = MetricNode(
-            id=1, code="A", name="A",
-            multiplier_type=MultiplierType.RATE
-        )
-        assert node.is_multi_child
-
-    def test_is_multi_child_false(self) -> None:
-        """Test is_multi_child returns False for nodes without multiplier_type."""
-        node = MetricNode(id=1, code="A", name="A")
-        assert not node.is_multi_child
-
-    def test_is_ratio_root_true(self) -> None:
-        """Test is_ratio_root returns True for ratio root nodes."""
-        node = MetricNode(
-            id=1,
-            code="COR",
-            name="Cost of Risk",
-            parent=None,
-            type=MetricType.RATIO,
-            numerator=2,
-            denominator=3
-        )
-        assert node.is_ratio_root
-
-    def test_is_ratio_root_false(self) -> None:
-        """Test is_ratio_root returns False for non-ratio nodes."""
-        node = MetricNode(
-            id=1,
-            code="A",
-            name="A",
-            parent=None,
-            type=MetricType.SUM
-        )
-        assert not node.is_ratio_root
-
-    def test_is_rate_multiplier_true(self) -> None:
-        """Test is_rate_multiplier returns True for rate multipliers."""
-        node = MetricNode(
-            id=1, code="A", name="A",
-            multiplier_type=MultiplierType.RATE
-        )
-        assert node.is_rate_multiplier
-
-    def test_is_base_multiplier_true(self) -> None:
-        """Test is_base_multiplier returns True for base multipliers."""
-        node = MetricNode(
-            id=1, code="A", name="A",
-            multiplier_type=MultiplierType.BASE
-        )
-        assert node.is_base_multiplier
-
-    def test_to_dict_minimal(self) -> None:
-        """Test converting MetricNode with minimal fields to dict."""
-        node = MetricNode(id=1, code="A", name="A")
-        result = node.to_dict()
-        assert result == {"id": 1, "code": "A", "name": "A"}
-
-    def test_to_dict_with_all_fields(self) -> None:
-        """Test converting MetricNode with all fields to dict."""
-        node = MetricNode(
-            id=1,
-            code="A",
-            name="A",
-            parent=0,
-            type=MetricType.SUM,
-            query=Query(fields={"segment": "corporate"}),
-            multiplier_type=MultiplierType.RATE,
-            numerator=2,
-            denominator=3
-        )
-        result = node.to_dict()
-        assert result["id"] == 1
-        assert result["code"] == "A"
-        assert result["parent"] == 0
-        assert result["type"] == "sum"
-        assert result["query"] == {"segment": "corporate"}
-        assert result["multiplierType"] == "rate"
-        assert result["numerator"] == 2
-        assert result["denominator"] == 3
-
-    def test_to_dict_omits_empty_query(self) -> None:
-        """Test that empty query is omitted from dict."""
-        node = MetricNode(
-            id=1,
-            code="A",
-            name="A",
-            query=Query()  # Empty query
-        )
-        result = node.to_dict()
-        assert "query" not in result
-
-    def test_to_dict_omits_none_parent(self) -> None:
-        """Test that None parent is omitted from dict."""
-        node = MetricNode(id=1, code="A", name="A", parent=None)
-        result = node.to_dict()
-        assert "parent" not in result
-
-    def test_from_dict_minimal(self) -> None:
-        """Test creating MetricNode from minimal dict."""
-        data = {"id": 1, "code": "A", "name": "A"}
-        node = MetricNode.from_dict(data)
-        assert node.id == 1
-        assert node.code == "A"
-        assert node.name == "A"
-
-    def test_from_dict_full(self) -> None:
-        """Test creating MetricNode from full dict."""
-        data = {
-            "id": 1,
-            "code": "A",
-            "name": "A Metric",
-            "parent": 0,
-            "type": "sum",
-            "query": {"segment": "corporate"},
-            "multiplierType": "rate",
-            "numerator": 2,
-            "denominator": 3
-        }
-        node = MetricNode.from_dict(data)
-        assert node.id == 1
-        assert node.code == "A"
-        assert node.name == "A Metric"
-        assert node.parent == 0
-        assert node.type == MetricType.SUM
-        assert node.multiplier_type == MultiplierType.RATE
-        assert node.numerator == 2
-        assert node.denominator == 3
-
-    def test_from_dict_missing_id(self) -> None:
-        """Test from_dict with missing id raises KeyError."""
-        data = {"code": "A", "name": "A"}
-        with pytest.raises(KeyError, match="'id'"):
-            MetricNode.from_dict(data)
-
-    def test_from_dict_missing_code(self) -> None:
-        """Test from_dict with missing code raises KeyError."""
-        data = {"id": 1, "name": "A"}
-        with pytest.raises(KeyError, match="'code'"):
-            MetricNode.from_dict(data)
-
-    def test_from_dict_missing_name(self) -> None:
-        """Test from_dict with missing name raises KeyError."""
-        data = {"id": 1, "code": "A"}
-        with pytest.raises(KeyError, match="'name'"):
-            MetricNode.from_dict(data)
-
-    def test_from_dict_invalid_type(self) -> None:
-        """Test from_dict with invalid type raises ValueError."""
-        data = {"id": 1, "code": "A", "name": "A", "type": "invalid"}
-        with pytest.raises(ValueError, match="Invalid metric type"):
-            MetricNode.from_dict(data)
-
-    def test_from_dict_invalid_multiplier_type(self) -> None:
-        """Test from_dict with invalid multiplier_type raises ValueError."""
-        data = {"id": 1, "code": "A", "name": "A", "multiplierType": "invalid"}
-        with pytest.raises(ValueError, match="Invalid multiplier type"):
-            MetricNode.from_dict(data)
-
-    def test_from_dict_empty_query(self) -> None:
-        """Test that empty query dict results in None query."""
-        data = {"id": 1, "code": "A", "name": "A", "query": {}}
-        node = MetricNode.from_dict(data)
-        assert node.query is None
-
-    def test_from_dict_with_parent_null(self) -> None:
-        """Test that parent: null results in None."""
-        data = {"id": 1, "code": "A", "name": "A", "parent": None}
-        node = MetricNode.from_dict(data)
         assert node.parent is None
-
-    def test_equality(self) -> None:
-        """Test MetricNode equality."""
-        n1 = MetricNode(id=1, code="A", name="A")
-        n2 = MetricNode(id=1, code="A", name="A")
-        n3 = MetricNode(id=2, code="A", name="A")
-        assert n1 == n2
-        assert n1 != n3
-        assert n1 != "not a metric"
-
-    def test_hash(self) -> None:
-        """Test MetricNode hash for set membership."""
-        n1 = MetricNode(id=1, code="A", name="A")
-        n2 = MetricNode(id=1, code="A", name="A")
-        metrics = {n1}
-        assert n2 in metrics
-
-
-# =============================================================================
-# Hierarchy Class Tests
-# =============================================================================
-
-class TestHierarchy:
-    """Test cases for the Hierarchy class."""
-
-    def test_init_empty(self) -> None:
-        """Test Hierarchy initialization."""
-        h = Hierarchy()
-        assert len(h.metrics) == 0
-
-    def test_add_metric(self) -> None:
-        """Test adding a metric to hierarchy."""
-        h = Hierarchy()
-        node = MetricNode(id=1, code="A", name="A")
-        h.add_metric(node)
-        assert 1 in h.metrics
-        assert "A" in h.metric_codes
-
-    def test_add_duplicate_id(self) -> None:
-        """Test that adding duplicate ID raises ValueError."""
-        h = Hierarchy()
-        node1 = MetricNode(id=1, code="A", name="A")
-        node2 = MetricNode(id=1, code="B", name="B")
-        h.add_metric(node1)
-        with pytest.raises(ValueError, match="already exists"):
-            h.add_metric(node2)
-
-    def test_add_duplicate_code(self) -> None:
-        """Test that adding duplicate code raises ValueError."""
-        h = Hierarchy()
-        node1 = MetricNode(id=1, code="A", name="A")
-        node2 = MetricNode(id=2, code="A", name="B")
-        h.add_metric(node1)
-        with pytest.raises(ValueError, match="already exists"):
-            h.add_metric(node2)
-
-    def test_remove_metric(self) -> None:
-        """Test removing a metric from hierarchy."""
-        h = Hierarchy()
-        node = MetricNode(id=1, code="A", name="A")
-        h.add_metric(node)
-        h.remove_metric(1)
-        assert 1 not in h.metrics
-
-    def test_remove_nonexistent(self) -> None:
-        """Test removing non-existent metric raises KeyError."""
-        h = Hierarchy()
-        with pytest.raises(KeyError, match="not found"):
-            h.remove_metric(999)
-
-    def test_add_metrics(self) -> None:
-        """Test adding multiple metrics."""
-        h = Hierarchy()
-        metrics = [
-            MetricNode(id=1, code="A", name="A"),
-            MetricNode(id=2, code="B", name="B")
-        ]
-        h.add_metrics(metrics)
-        assert len(h.metrics) == 2
-
-    def test_get_metric(self) -> None:
-        """Test getting a metric by ID."""
-        h = Hierarchy()
-        node = MetricNode(id=1, code="A", name="A")
-        h.add_metric(node)
-        result = h.get_metric(1)
-        assert result is not None
-        assert result.code == "A"
-
-    def test_get_metric_not_found(self) -> None:
-        """Test getting non-existent metric returns None."""
-        h = Hierarchy()
-        assert h.get_metric(999) is None
-
-    def test_get_metric_by_code(self) -> None:
-        """Test getting a metric by code."""
-        h = Hierarchy()
-        node = MetricNode(id=1, code="A", name="A")
-        h.add_metric(node)
-        result = h.get_metric_by_code("A")
-        assert result is not None
-        assert result.id == 1
-
-    def test_get_metric_by_code_not_found(self) -> None:
-        """Test getting non-existent metric by code returns None."""
-        h = Hierarchy()
-        assert h.get_metric_by_code("not_found") is None
-
-    def test_get_children(self) -> None:
-        """Test getting children of a metric."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        h.add_metric(MetricNode(id=3, code="C", name="C", parent=1))
-        children = h.get_children(1)
-        assert len(children) == 2
-        codes = {c.code for c in children}
-        assert codes == {"B", "C"}
-
-    def test_get_children_leaf(self) -> None:
-        """Test getting children of a leaf returns empty list."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        assert len(h.get_children(1)) == 0
-
-    def test_get_parent(self) -> None:
-        """Test getting parent of a metric."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        parent = h.get_parent(2)
-        assert parent is not None
-        assert parent.code == "A"
-
-    def test_get_parent_root(self) -> None:
-        """Test getting parent of root returns None."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
-        assert h.get_parent(1) is None
-
-    def test_get_ancestors(self) -> None:
-        """Test getting ancestors of a metric."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
-        ancestors = h.get_ancestors(3)
-        codes = [a.code for a in ancestors]
-        assert codes == ["B", "A"]
-
-    def test_get_ancestors_root(self) -> None:
-        """Test getting ancestors of root returns empty list."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
-        assert len(h.get_ancestors(1)) == 0
-
-    def test_get_descendants(self) -> None:
-        """Test getting descendants of a metric."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
-        descendants = h.get_descendants(1)
-        codes = {d.code for d in descendants}
-        assert codes == {"B", "C"}
-
-    def test_get_descendants_leaf(self) -> None:
-        """Test getting descendants of a leaf returns empty list."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        assert len(h.get_descendants(1)) == 0
-
-    def test_get_path_to_root(self) -> None:
-        """Test getting path from metric to root."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        path = h.get_path_to_root(2)
-        codes = [m.code for m in path]
-        assert codes == ["B", "A"]
-
-    def test_get_depth(self) -> None:
-        """Test getting depth of a metric."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
-        assert h.get_depth(1) == 0
-        assert h.get_depth(2) == 1
-        assert h.get_depth(3) == 2
-
-    def test_get_max_depth(self) -> None:
-        """Test getting max depth of hierarchy."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
-        assert h.get_max_depth() == 2
-
-    def test_is_ancestor_of(self) -> None:
-        """Test checking if one metric is ancestor of another."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
-        assert h.is_ancestor_of(1, 3)
-        assert not h.is_ancestor_of(3, 1)
-        assert not h.is_ancestor_of(1, 1)
-
-    def test_roots_property(self) -> None:
-        """Test roots property returns root nodes."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        assert len(h.roots) == 1
-        assert h.roots[0].code == "A"
-
-    def test_leaves_property(self) -> None:
-        """Test leaves property returns leaf nodes."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        assert len(h.leaves) == 1
-        assert h.leaves[0].code == "B"
-
-    def test_to_json(self) -> None:
-        """Test serializing hierarchy to JSON."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        json_str = h.to_json()
-        data = json.loads(json_str)
-        assert "metrics" in data
-        assert len(data["metrics"]) == 1
-
-    def test_from_json(self) -> None:
-        """Test deserializing hierarchy from JSON."""
-        json_str = '{"metrics": []}'
-        h = Hierarchy.from_json(json_str)
-        assert len(h.metrics) == 0
-
-    def test_from_json_with_data(self) -> None:
-        """Test deserializing hierarchy with data."""
-        json_str = '''{
-            "metrics": [
-                {"id": 1, "code": "A", "name": "A"},
-                {"id": 2, "code": "B", "name": "B", "parent": 1}
-            ]
-        }'''
-        h = Hierarchy.from_json(json_str)
-        assert len(h.metrics) == 2
-
-    def test_json_roundtrip(self) -> None:
-        """Test JSON serialization roundtrip preserves data."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", type=MetricType.SUM))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-
-        json_str = h.to_json()
-        result = Hierarchy.from_json(json_str)
-
-        assert len(result.metrics) == len(h.metrics)
-        assert result.get_metric(1).code == "A"
-        assert result.get_metric(2).parent == 1
-
-    def test_contains_with_int(self) -> None:
-        """Test 'in' operator with metric ID."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        assert 1 in h
-        assert 2 not in h
-
-    def test_contains_with_str(self) -> None:
-        """Test 'in' operator with metric code."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        assert "A" in h
-        assert "B" not in h
-
-    def test_len(self) -> None:
-        """Test Hierarchy length."""
-        h = Hierarchy()
-        assert len(h) == 0
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        h.add_metric(MetricNode(id=2, code="B", name="B"))
-        assert len(h) == 2
-
-    def test_equality(self) -> None:
-        """Test Hierarchy equality."""
-        h1 = Hierarchy()
-        h2 = Hierarchy()
-        node = MetricNode(id=1, code="A", name="A")
-        h1.add_metric(node)
-        h2.add_metric(node)
-        assert h1 == h2
-
-
-# =============================================================================
-# Validation Tests
-# =============================================================================
-
-class TestValidation:
-    """Test cases for hierarchy metadata validation."""
-
-    def test_valid_hierarchy(self) -> None:
-        """Test validation of valid hierarchy."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1, code="A", name="A", parent=None, type=MetricType.SUM
-        ))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-
-        report = h.validate()
-        assert report.is_valid
-        assert len(report.errors) == 0
-
-    def test_empty_metrics(self) -> None:
-        """Test detection of empty metrics."""
-        h = Hierarchy()
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.EMPTY_METRICS in error_types
-
-    def test_no_root(self) -> None:
-        """Test detection of no root node."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=2))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.NO_ROOT in error_types
-
-    def test_multiple_roots(self) -> None:
-        """Test detection of multiple roots."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=None))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.MULTIPLE_ROOTS in error_types
-
-    def test_missing_parent_reference(self) -> None:
-        """Test detection of missing parent reference."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=999))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.MISSING_PARENT_REFERENCE in error_types
-
-    def test_multi_without_query(self) -> None:
-        """Test detection of multi without query."""
-        h = Hierarchy()
-        node = MetricNode(id=1, code="A", name="A", type=MetricType.MULTI, query=Query())
-        # Bypass validation to create invalid state
-        object.__setattr__(node, "query", None)
-        h.metrics[1] = node
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.MISSING_QUERY_FOR_MULTI in error_types
-
-    def test_ratio_not_at_root(self) -> None:
-        """Test detection of ratio not at root."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None))
-        h.add_metric(MetricNode(
-            id=2, code="B", name="B", parent=1,
-            type=MetricType.RATIO, numerator=3, denominator=4
-        ))
-        h.add_metric(MetricNode(id=3, code="C", name="C"))
-        h.add_metric(MetricNode(id=4, code="D", name="D"))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.RATIO_NOT_AT_ROOT in error_types
-
-    def test_ratio_has_children(self) -> None:
-        """Test detection of ratio with children."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1, code="COR", name="COR", parent=None,
-            type=MetricType.RATIO, numerator=2, denominator=3
-        ))
-        h.add_metric(MetricNode(id=2, code="A", name="A"))
-        h.add_metric(MetricNode(id=3, code="B", name="B"))
-        h.add_metric(MetricNode(id=4, code="C", name="C", parent=1))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.RATIO_HAS_CHILDREN in error_types
-
-    def test_missing_numerator_reference(self) -> None:
-        """Test detection of missing numerator reference."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1, code="COR", name="COR", parent=None,
-            type=MetricType.RATIO, numerator=999, denominator=2
-        ))
-        h.add_metric(MetricNode(id=2, code="A", name="A"))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.MISSING_NUMERATOR_REFERENCE in error_types
-
-    def test_missing_denominator_reference(self) -> None:
-        """Test detection of missing denominator reference."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1, code="COR", name="COR", parent=None,
-            type=MetricType.RATIO, numerator=2, denominator=999
-        ))
-        h.add_metric(MetricNode(id=2, code="A", name="A"))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.MISSING_DENOMINATOR_REFERENCE in error_types
-
-    def test_multiplier_on_non_multi_child(self) -> None:
-        """Test detection of multiplier type on non-multi child."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None, type=MetricType.SUM))
-        h.add_metric(MetricNode(
-            id=2, code="B", name="B", parent=1,
-            multiplier_type=MultiplierType.RATE
-        ))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.INVALID_MULTIPLIER_FOR_NON_MULTI in error_types
-
-    def test_incomplete_multi_children_no_rate(self) -> None:
-        """Test detection of multi children missing rate."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1, code="A", name="A", parent=None,
-            type=MetricType.MULTI, query=Query()
-        ))
-        h.add_metric(MetricNode(
-            id=2, code="B", name="B", parent=1,
-            multiplier_type=MultiplierType.BASE
-        ))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.INCOMPLETE_MULTI_CHILDREN in error_types
-
-    def test_incomplete_multi_children_no_base(self) -> None:
-        """Test detection of multi children missing base."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1, code="A", name="A", parent=None,
-            type=MetricType.MULTI, query=Query()
-        ))
-        h.add_metric(MetricNode(
-            id=2, code="B", name="B", parent=1,
-            multiplier_type=MultiplierType.RATE
-        ))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.INCOMPLETE_MULTI_CHILDREN in error_types
-
-    def test_disconnected_subtree(self) -> None:
-        """Test detection of disconnected subtree within a single-root hierarchy."""
-        # Create a hierarchy with a root, a connected subtree, and a disconnected node
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=None, type=MetricType.SUM))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-        h.add_metric(MetricNode(id=3, code="C", name="C", parent=2))
-        # Add a disconnected node by setting its parent to a non-existent node
-        node = MetricNode(id=4, code="D", name="D", parent=999)
-        h.metrics[4] = node
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.MISSING_PARENT_REFERENCE in error_types
-
-    def test_cyclic_reference(self) -> None:
-        """Test detection of cyclic reference."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A", parent=2))
-        h.add_metric(MetricNode(id=2, code="B", name="B", parent=1))
-
-        report = h.validate()
-        assert not report.is_valid
-        error_types = {e.type for e in report.errors}
-        assert ValidationErrorType.CYCLIC_REFERENCE in error_types
-
-    def test_validation_report_success(self) -> None:
-        """Test ValidationReport.success factory method."""
-        report = ValidationReport.success()
-        assert report.is_valid
-        assert len(report.errors) == 0
-
-    def test_validation_report_failure(self) -> None:
-        """Test ValidationReport.failure factory method."""
-        errors = [
-            ValidationError(type=ValidationErrorType.EMPTY_METRICS, message="Error 1"),
-            ValidationError(type=ValidationErrorType.NO_ROOT, message="Error 2"),
-        ]
-        report = ValidationReport.failure(errors)
-        assert not report.is_valid
-        assert len(report.errors) == 2
-
-
-# =============================================================================
-# Full Example Tests (from documentation)
-# =============================================================================
-
-class TestFullExample:
-    """Integration tests with full example from documentation."""
-
-    def test_full_example_serialization_deserialization(self) -> None:
-        """
-        Test serialization and deserialization of full example from
-        documentation.
-        """
-        h = self._create_full_example_hierarchy()
-
-        # Serialize to JSON
-        json_str = h.to_json()
-
-        # Verify JSON is valid
-        data = json.loads(json_str)
-        assert "metrics" in data
-        assert len(data["metrics"]) == 16
-
-        # Deserialize from JSON
-        deserialized = Hierarchy.from_json(json_str)
-
-        # Verify deserialized hierarchy matches the original
-        assert len(deserialized.metrics) == len(h.metrics)
-
-        # Verify root
-        root = deserialized.get_metric(1)
-        assert root is not None
-        assert root.code == "FP"
-
-        # Verify deep node
-        deep = deserialized.get_metric(1001)
-        assert deep is not None
-        assert deep.code == "INT_RATE"
-        assert deep.multiplier_type == MultiplierType.RATE
-
-    def test_full_example_validation(self) -> None:
-        """Test that full example passes validation."""
-        h = self._create_full_example_hierarchy()
-        report = h.validate()
-        assert report.is_valid
-        assert len(report.errors) == 0
-
-    def test_full_example_hierarchy_structure(self) -> None:
-        """Test hierarchy structure properties on full example."""
-        h = self._create_full_example_hierarchy()
-
-        # Test root
-        assert len(h.roots) == 1
-        assert h.roots[0].code == "FP"
-
-        # Test children of root
-        fp_children = h.get_children(1)
-        codes = {c.code for c in fp_children}
-        assert codes == {"NII", "COMM_INC", "NON_INT_INC"}
-
-        # Test max depth
-        assert h.get_max_depth() == 3
-
-        # Test leaves
-        leaves = {l.code for l in h.leaves}
-        assert "INT_RATE" in leaves
-        assert "DEBT_ASSETS" in leaves
-
-    def test_full_example_navigation(self) -> None:
-        """Test navigation methods on full example."""
-        h = self._create_full_example_hierarchy()
-
-        # Test get_path_to_root
-        path = h.get_path_to_root(1001)
-        codes = [m.code for m in path]
-        assert codes == ["INT_RATE", "INT_INC", "NII", "FP"]
-
-        # Test is_ancestor_of
-        assert h.is_ancestor_of(1, 1001)  # FP is ancestor of INT_RATE
-        assert not h.is_ancestor_of(1001, 1)  # INT_RATE is not ancestor of FP
-
-    def test_full_example_multi_node_structure(self) -> None:
-        """Test multi node structure in full example."""
-        h = self._create_full_example_hierarchy()
-
-        # Test INT_INC multi node
-        int_inc = h.get_metric(101)
-        assert int_inc is not None
-        assert int_inc.type == MetricType.MULTI
-        assert int_inc.query is not None
-
-        # Test children of INT_INC
-        children = h.get_children(101)
-        assert len(children) == 2
-        codes = {c.code for c in children}
-        assert codes == {"INT_RATE", "DEBT_ASSETS"}
-
-        # Verify one is rate and one is base
-        rate_child = next(c for c in children if c.multiplier_type == MultiplierType.RATE)
-        base_child = next(c for c in children if c.multiplier_type == MultiplierType.BASE)
-        assert rate_child.code == "INT_RATE"
-        assert base_child.code == "DEBT_ASSETS"
-
-    def test_full_example_sum_node_with_query(self) -> None:
-        """Test sum node with query (subtotal stored in DB)."""
-        h = self._create_full_example_hierarchy()
-
-        comm_inc = h.get_metric(20)
-        assert comm_inc is not None
-        assert comm_inc.type == MetricType.SUM
-        assert comm_inc.query is not None
-        assert comm_inc.query.get_field("metric") == "commission_income_total"
-
-    def _create_full_example_hierarchy(self) -> Hierarchy:
-        """
-        Create a full example hierarchy from the documentation.
-
-        This creates a complete hierarchy matching the example in
-        factor_analysis__hieararchy_drill_metadata.md.
-        """
-        h = Hierarchy()
-
-        # Level 0: Root
-        h.add_metric(MetricNode(
-            id=1,
-            code="FP",
-            name="Финансовый результат",
-            parent=None,
-            type=MetricType.SUM
-        ))
-
-        # Level 1: Main components
-        h.add_metric(MetricNode(
-            id=10,
+        assert node.query is None
+
+    def test_init_with_all_fields(self):
+        """Создание узла со всеми полями."""
+        query = Query({"metricType": "interest_income"})
+        node = MetricNode(
+            id=100,
             code="NII",
-            name="Чистый процентный доход",
-            parent=1,
-            type=MetricType.SUM
-        ))
-
-        h.add_metric(MetricNode(
-            id=20,
-            code="COMM_INC",
-            name="Комиссионный доход",
-            parent=1,
+            name="ЧПД",
             type=MetricType.SUM,
-            query=Query(fields={"metric": "commission_income_total"})
-        ))
+            parent=None,
+            query=query,
+            componentMultiPartType=None,
+            componentRatioPartType=None
+        )
+        assert node.id == 100
+        assert node.type == MetricType.SUM
+        assert node.query is not None
 
-        h.add_metric(MetricNode(
-            id=30,
-            code="NON_INT_INC",
-            name="Непроцентные доходы",
-            parent=1,
-            type=MetricType.SUM
-        ))
+    def test_is_root(self):
+        """Проверка корневого узла."""
+        root = MetricNode(id=100, code="NII", name="ЧПД")
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", parent=100)
+        assert root.is_root()
+        assert not child.is_root()
 
-        # Level 2: NII components (sum and multi)
-        h.add_metric(MetricNode(
+    def test_is_leaf(self):
+        """Проверка листового узла."""
+        leaf = MetricNode(id=201, code="RATE", name="Ставка", parent=101)
+        non_leaf = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        assert leaf.is_leaf()
+        assert not non_leaf.is_leaf()
+
+    def test_has_query(self):
+        """Проверка наличия query."""
+        node_with_query = MetricNode(
             id=101,
             code="INT_INC",
             name="Процентный доход",
-            parent=10,
-            type=MetricType.MULTI,
-            query=Query(fields={"metric": "interest_income"})
-        ))
+            query=Query({"metricType": "interest_income"})
+        )
+        node_without_query = MetricNode(id=100, code="NII", name="ЧПД")
+        node_with_empty_query = MetricNode(id=102, code="TEST", name="Test", query=Query())
 
-        h.add_metric(MetricNode(
+        assert node_with_query.has_query()
+        assert not node_without_query.has_query()
+        assert not node_with_empty_query.has_query()
+
+    def test_to_dict(self):
+        """Преобразование в словарь."""
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            type=MetricType.SUM,
+            parent=None,
+            query=Query({"metricType": "interest_income"})
+        )
+        d = node.to_dict()
+        assert d["id"] == 100
+        assert d["code"] == "NII"
+        assert d["name"] == "ЧПД"
+        assert d["type"] == "sum"
+        assert "parent" not in d  # None не включается
+        assert d["query"] == {"metricType": "interest_income"}
+
+    def test_to_json(self):
+        """Преобразование в JSON-формат."""
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            type=MetricType.SUM,
+            parent=None
+        )
+        d = node.to_json()
+        assert d["id"] == 100
+        assert d["code"] == "NII"
+        assert d["name"] == "ЧПД"
+        assert d["type"] == "sum"
+        assert "parent" not in d  # None не включается
+        assert "query" not in d
+        assert "componentMultiPartType" not in d
+        assert "componentRatioPartType" not in d
+
+    def test_to_json_with_empty_query(self):
+        """to_json() исключает пустой query."""
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            query=Query()
+        )
+        d = node.to_json()
+        assert "query" not in d
+
+    def test_from_dict(self):
+        """Создание узла из словаря."""
+        d = {
+            "id": 100,
+            "code": "NII",
+            "name": "Чистый процентный доход",
+            "type": "sum",
+            "parent": None,
+            "query": {"metricType": "interest_income"}
+        }
+        node = MetricNode.from_dict(d)
+        assert node.id == 100
+        assert node.code == "NII"
+        assert node.type == MetricType.SUM
+        assert node.query is not None
+        assert node.query["metricType"] == "interest_income"
+
+    def test_from_dict_missing_required_field(self):
+        """Ошибка при отсутствии обязательного поля."""
+        d = {"code": "NII", "name": "ЧПД"}
+        with pytest.raises(ValueError, match="Обязательное поле 'id' отсутствует"):
+            MetricNode.from_dict(d)
+
+    def test_from_dict_invalid_type(self):
+        """Ошибка при неверном типе обязательного поля."""
+        d = {"id": "not_int", "code": "NII", "name": "ЧПД"}
+        with pytest.raises(ValueError, match="Поле 'id' должно быть int"):
+            MetricNode.from_dict(d)
+
+    def test_from_dict_invalid_metric_type(self):
+        """Ошибка при неверном значении type."""
+        d = {"id": 100, "code": "NII", "name": "ЧПД", "type": "invalid"}
+        with pytest.raises(ValueError, match="Неверное значение 'type'"):
+            MetricNode.from_dict(d)
+
+    def test_validate_valid_node(self):
+        """Валидация корректного узла."""
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            type=MetricType.SUM
+        )
+        assert node.validate() == []
+        assert node.is_valid()
+
+    def test_validate_negative_id(self):
+        """Ошибка при отрицательном id."""
+        node = MetricNode(id=-1, code="TEST", name="Test")
+        errors = node.validate()
+        assert len(errors) > 0
+        assert any("ID должен быть положительным" in e for e in errors)
+
+    def test_validate_empty_code(self):
+        """Ошибка при пустом code."""
+        node = MetricNode(id=100, code="", name="Test")
+        errors = node.validate()
+        assert len(errors) > 0
+        assert any("code" in e and "пуст" in e.lower() for e in errors)
+
+    def test_validate_empty_name(self):
+        """Ошибка при пустом name."""
+        node = MetricNode(id=100, code="TEST", name="")
+        errors = node.validate()
+        assert len(errors) > 0
+        assert any("name" in e and "пуст" in e.lower() for e in errors)
+
+    def test_validate_circular_reference(self):
+        """Ошибка при parent == id."""
+        node = MetricNode(id=100, code="TEST", name="Test", parent=100)
+        errors = node.validate()
+        assert len(errors) > 0
+        assert any("циклическая" in e.lower() for e in errors)
+
+    def test_validate_leaf_without_query(self):
+        """Ошибка при листовом узле без query."""
+        node = MetricNode(id=201, code="RATE", name="Ставка", parent=101)
+        errors = node.validate()
+        assert len(errors) > 0
+        assert any("должен иметь query" in e for e in errors)
+
+    def test_validate_multi_without_query(self):
+        """Ошибка при узле типа MULTI без query."""
+        node = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI)
+        errors = node.validate()
+        assert len(errors) > 0
+        assert any("должен иметь query" in e for e in errors)
+
+    def test_equality(self):
+        """Проверка равенства узлов."""
+        n1 = MetricNode(id=100, code="NII", name="ЧПД")
+        n2 = MetricNode(id=100, code="NII", name="ЧПД")
+        n3 = MetricNode(id=101, code="NII", name="ЧПД")
+        assert n1 == n2
+        assert n1 != n3
+
+    def test_repr(self):
+        """Строковое представление."""
+        node = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        r = repr(node)
+        assert "id=100" in r
+        assert "code='NII'" in r
+        assert "type=sum" in r
+
+    def test_init_with_analyt_metadata(self):
+        """Создание узла с analyt_metadata."""
+        analyt_metadata = AnalyticalStructureMetadata()
+        analyt_metadata.add_dimension(Dimension(code="segment", name="Сегмент", column="segment_id"))
+        analyt_metadata.add_algorithm(Algorithm(id=1, drill_order=[["segment"]]))
+
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            analyt_metadata=analyt_metadata
+        )
+
+        assert node.analyt_metadata is not None
+        assert len(node.analyt_metadata.dimensions) == 1
+        assert len(node.analyt_metadata.algorithms) == 1
+
+    def test_to_dict_with_analyt_metadata(self):
+        """to_dict() включает analyt_metadata."""
+        analyt_metadata = AnalyticalStructureMetadata()
+        analyt_metadata.add_dimension(Dimension(code="segment", name="Сегмент", column="segment_id"))
+        analyt_metadata.add_algorithm(Algorithm(id=1, drill_order=[["segment"]]))
+
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            type=MetricType.SUM,
+            analyt_metadata=analyt_metadata
+        )
+
+        d = node.to_dict()
+        assert "analyt_metadata" in d
+        assert "fa_impl" in d["analyt_metadata"]
+        assert "dimensions" in d["analyt_metadata"]
+
+    def test_to_dict_without_analyt_metadata(self):
+        """to_dict() не включает пустой analyt_metadata."""
+        node = MetricNode(id=100, code="NII", name="ЧПД")
+        d = node.to_dict()
+        assert "analyt_metadata" not in d
+
+    def test_to_json_with_analyt_metadata(self):
+        """to_json() включает analyt_metadata."""
+        analyt_metadata = AnalyticalStructureMetadata()
+        analyt_metadata.add_dimension(Dimension(code="segment", name="Сегмент", column="segment_id"))
+        analyt_metadata.add_algorithm(Algorithm(id=1, drill_order=[["segment"]]))
+
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            type=MetricType.SUM,
+            analyt_metadata=analyt_metadata
+        )
+
+        d = node.to_json()
+        assert "analyt_metadata" in d
+        assert "fa_impl" in d["analyt_metadata"]
+
+    def test_to_json_without_analyt_metadata(self):
+        """to_json() не включает пустой analyt_metadata."""
+        node = MetricNode(id=100, code="NII", name="ЧПД")
+        d = node.to_json()
+        assert "analyt_metadata" not in d
+
+    def test_from_dict_with_analyt_metadata(self):
+        """from_dict() создает узел с analyt_metadata."""
+        d = {
+            "id": 100,
+            "code": "NII",
+            "name": "ЧПД",
+            "type": "sum",
+            "analyt_metadata": {
+                "fa_impl": [
+                    {
+                        "id": 1,
+                        "drill_order": [["segment"]]
+                    }
+                ],
+                "dimensions": [
+                    {
+                        "code": "segment",
+                        "name": "Сегмент",
+                        "column": "segment_id"
+                    }
+                ]
+            }
+        }
+
+        node = MetricNode.from_dict(d)
+        assert node.analyt_metadata is not None
+        assert len(node.analyt_metadata.dimensions) == 1
+        assert len(node.analyt_metadata.algorithms) == 1
+
+    def test_from_dict_without_analyt_metadata(self):
+        """from_dict() создает узел без analyt_metadata."""
+        d = {
+            "id": 100,
+            "code": "NII",
+            "name": "ЧПД",
+            "type": "sum"
+        }
+
+        node = MetricNode.from_dict(d)
+        assert node.analyt_metadata is None
+
+    def test_equality_with_analyt_metadata(self):
+        """Равенство узлов с analyt_metadata."""
+        analyt_metadata = AnalyticalStructureMetadata()
+        analyt_metadata.add_dimension(Dimension(code="segment", name="Сегмент", column="segment_id"))
+
+        n1 = MetricNode(id=100, code="NII", name="ЧПД", analyt_metadata=analyt_metadata)
+        n2 = MetricNode(id=100, code="NII", name="ЧПД", analyt_metadata=analyt_metadata)
+        n3 = MetricNode(id=100, code="NII", name="ЧПД")
+
+        assert n1 == n2
+        assert n1 != n3
+
+    def test_hash_with_analyt_metadata(self):
+        """Хеш узлов с одинаковым analyt_metadata."""
+        analyt_metadata = AnalyticalStructureMetadata()
+        analyt_metadata.add_dimension(Dimension(code="segment", name="Сегмент", column="segment_id"))
+
+        n1 = MetricNode(id=100, code="NII", name="ЧПД", analyt_metadata=analyt_metadata)
+        n2 = MetricNode(id=100, code="NII", name="ЧПД", analyt_metadata=analyt_metadata)
+
+        assert hash(n1) == hash(n2)
+
+
+# =============================================================================
+# Tests for Hierarchy class
+# =============================================================================
+
+class TestHierarchy:
+    """Тесты для класса Hierarchy."""
+
+    def test_init_empty(self):
+        """Создание пустой иерархии."""
+        hierarchy = Hierarchy()
+        assert hierarchy.is_empty()
+        assert hierarchy.count_nodes() == 0
+
+    def test_add_node(self):
+        """Добавление узла."""
+        hierarchy = Hierarchy()
+        node = MetricNode(id=100, code="NII", name="ЧПД")
+        hierarchy.add_node(node)
+        assert hierarchy.count_nodes() == 1
+        assert hierarchy.has_node(100)
+
+    def test_add_duplicate_node(self):
+        """Ошибка при добавлении дубликата узла."""
+        hierarchy = Hierarchy()
+        node = MetricNode(id=100, code="NII", name="ЧПД")
+        hierarchy.add_node(node)
+        with pytest.raises(ValueError, match="уже существует"):
+            hierarchy.add_node(node)
+
+    def test_remove_node(self):
+        """Удаление узла."""
+        hierarchy = Hierarchy()
+        node = MetricNode(id=100, code="NII", name="ЧПД")
+        hierarchy.add_node(node)
+        removed = hierarchy.remove_node(100)
+        assert removed == node
+        assert hierarchy.is_empty()
+
+    def test_remove_nonexistent_node(self):
+        """Удаление несуществующего узла."""
+        hierarchy = Hierarchy()
+        assert hierarchy.remove_node(999) is None
+
+    def test_get_node(self):
+        """Получение узла по ID."""
+        hierarchy = Hierarchy()
+        node = MetricNode(id=100, code="NII", name="ЧПД")
+        hierarchy.add_node(node)
+        assert hierarchy.get_node(100) == node
+        assert hierarchy.get_node(999) is None
+
+    def test_get_parent(self):
+        """Получение родительского узла."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД")
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", parent=100)
+        hierarchy.add_node(root)
+        hierarchy.add_node(child)
+        assert hierarchy.get_parent(101) == root
+        assert hierarchy.get_parent(100) is None
+
+    def test_get_children(self):
+        """Получение потомков."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД")
+        child1 = MetricNode(id=101, code="INT_INC", name="Процентный доход", parent=100)
+        child2 = MetricNode(id=102, code="INT_EXP", name="Процентный расход", parent=100)
+        hierarchy.add_node(root)
+        hierarchy.add_node(child1)
+        hierarchy.add_node(child2)
+
+        children = hierarchy.get_children(100)
+        assert len(children) == 2
+        assert child1 in children
+        assert child2 in children
+
+    def test_get_root(self):
+        """Получение корневого узла."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД")
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", parent=100)
+        hierarchy.add_node(root)
+        hierarchy.add_node(child)
+        assert hierarchy.get_root() == root
+
+    def test_get_root_empty(self):
+        """Корень пустой иерархии."""
+        hierarchy = Hierarchy()
+        assert hierarchy.get_root() is None
+
+    def test_get_roots_multiple(self):
+        """Несколько корней (невалидно, но метод работает)."""
+        hierarchy = Hierarchy()
+        root1 = MetricNode(id=100, code="NII", name="ЧПД")
+        root2 = MetricNode(id=200, code="NII2", name="ЧПД2")
+        hierarchy.add_node(root1)
+        hierarchy.add_node(root2)
+        assert len(hierarchy.get_roots()) == 2
+
+    def test_get_leaves(self):
+        """Получение листовых узлов."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        child1 = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        leaf1 = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
+                          componentMultiPartType=ComponentMultiPartType.RATE,
+                          query=Query({"a": 1}))
+        leaf2 = MetricNode(id=202, code="BASE", name="Объем", parent=101,
+                          componentMultiPartType=ComponentMultiPartType.BASE,
+                          query=Query({"a": 1}))
+        hierarchy.add_node(root)
+        hierarchy.add_node(child1)
+        hierarchy.add_node(leaf1)
+        hierarchy.add_node(leaf2)
+
+        leaves = hierarchy.get_leaves()
+        assert len(leaves) == 2
+        assert leaf1 in leaves
+        assert leaf2 in leaves
+
+    def test_get_descendants(self):
+        """Получение всех потомков."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        leaf1 = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
+                          componentMultiPartType=ComponentMultiPartType.RATE,
+                          query=Query({"a": 1}))
+        leaf2 = MetricNode(id=202, code="BASE", name="Объем", parent=101,
+                          componentMultiPartType=ComponentMultiPartType.BASE,
+                          query=Query({"a": 1}))
+        hierarchy.add_node(root)
+        hierarchy.add_node(child)
+        hierarchy.add_node(leaf1)
+        hierarchy.add_node(leaf2)
+
+        descendants = hierarchy.get_descendants(100)
+        assert len(descendants) == 3
+        assert child in descendants
+        assert leaf1 in descendants
+        assert leaf2 in descendants
+
+    def test_get_ancestors(self):
+        """Получение предков."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        leaf = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
+                         componentMultiPartType=ComponentMultiPartType.RATE,
+                         query=Query({"a": 1}))
+        hierarchy.add_node(root)
+        hierarchy.add_node(child)
+        hierarchy.add_node(leaf)
+
+        ancestors = hierarchy.get_ancestors(201)
+        assert len(ancestors) == 2
+        assert child in ancestors
+        assert root in ancestors
+
+    def test_get_path(self):
+        """Получение пути от корня к узлу."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        leaf = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
+                         componentMultiPartType=ComponentMultiPartType.RATE,
+                         query=Query({"a": 1}))
+        hierarchy.add_node(root)
+        hierarchy.add_node(child)
+        hierarchy.add_node(leaf)
+
+        path = hierarchy.get_path(201)
+        assert len(path) == 3
+        assert path[0] == root
+        assert path[1] == child
+        assert path[2] == leaf
+
+    def test_clear(self):
+        """Очистка иерархии."""
+        hierarchy = Hierarchy()
+        hierarchy.add_node(MetricNode(id=100, code="NII", name="ЧПД"))
+        hierarchy.add_node(MetricNode(id=101, code="INT_INC", name="Процентный доход", parent=100))
+        hierarchy.clear()
+        assert hierarchy.is_empty()
+
+    def test_to_dict_list(self):
+        """Преобразование в список словарей."""
+        hierarchy = Hierarchy()
+        node = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        hierarchy.add_node(node)
+        dict_list = hierarchy.to_dict_list()
+        assert len(dict_list) == 1
+        assert dict_list[0]["id"] == 100
+
+    def test_to_json(self):
+        """Преобразование в JSON-формат."""
+        hierarchy = Hierarchy()
+        node = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        hierarchy.add_node(node)
+        json_dict = hierarchy.to_json()
+        assert "nodes" in json_dict
+        assert len(json_dict["nodes"]) == 1
+        assert json_dict["nodes"][0]["id"] == 100
+
+    def test_to_json_string(self):
+        """Сериализация в JSON-строку."""
+        hierarchy = Hierarchy()
+        node = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        hierarchy.add_node(node)
+        json_str = hierarchy.to_json_string()
+        data = json.loads(json_str)
+        assert "nodes" in data
+        assert len(data["nodes"]) == 1
+
+    def test_from_dict_list(self):
+        """Создание иерархии из списка словарей."""
+        data = [
+            {"id": 100, "code": "NII", "name": "ЧПД", "type": "sum"},
+            {"id": 101, "code": "INT_INC", "name": "Процентный доход", "type": "multi", "parent": 100}
+        ]
+        hierarchy = Hierarchy.from_dict_list(data)
+        assert hierarchy.count_nodes() == 2
+        assert hierarchy.get_node(100).type == MetricType.SUM
+
+    def test_from_json(self):
+        """Создание иерархии из JSON-словаря."""
+        data = {
+            "nodes": [
+                {"id": 100, "code": "NII", "name": "ЧПД", "type": "sum"},
+                {"id": 101, "code": "INT_INC", "name": "Процентный доход", "type": "multi", "parent": 100}
+            ]
+        }
+        hierarchy = Hierarchy.from_json(data)
+        assert hierarchy.count_nodes() == 2
+
+    def test_from_json_string(self):
+        """Десериализация из JSON-строки."""
+        json_str = '{"nodes": [{"id": 100, "code": "NII", "name": "ЧПД", "type": "sum"}]}'
+        hierarchy = Hierarchy.from_json_string(json_str)
+        assert hierarchy.count_nodes() == 1
+
+    def test_from_json_missing_nodes_field(self):
+        """Ошибка при отсутствии поля 'nodes'."""
+        data = {"items": [{"id": 100}]}
+        with pytest.raises(ValueError, match="должен содержать поле 'nodes'"):
+            Hierarchy.from_json(data)
+
+    def test_validate_valid_hierarchy(self):
+        """Валидация корректной иерархии."""
+        hierarchy = self._create_valid_nii_hierarchy()
+        assert hierarchy.validate() == []
+        assert hierarchy.is_valid()
+
+    def test_validate_no_root(self):
+        """Ошибка при отсутствии корня."""
+        hierarchy = Hierarchy()
+        hierarchy.add_node(MetricNode(id=101, code="INT_INC", name="Процентный доход", parent=100))
+        errors = hierarchy.validate()
+        assert any("должна иметь ровно один корневой узел" in e for e in errors)
+
+    def test_validate_multiple_roots(self):
+        """Ошибка при нескольких корнях."""
+        hierarchy = Hierarchy()
+        hierarchy.add_node(MetricNode(id=100, code="NII", name="ЧПД"))
+        hierarchy.add_node(MetricNode(id=200, code="NII2", name="ЧПД2"))
+        errors = hierarchy.validate()
+        assert any("должна иметь ровно один корневой узел" in e for e in errors)
+
+    def test_validate_orphan_node(self):
+        """Ошибка при узле с несуществующим родителем."""
+        hierarchy = Hierarchy()
+        hierarchy.add_node(MetricNode(id=100, code="NII", name="ЧПД"))
+        hierarchy.add_node(MetricNode(id=102, code="INT_EXP", name="Процентный расход", parent=999))
+        errors = hierarchy.validate()
+        assert any("ссылается на несуществующий родитель" in e for e in errors)
+
+    def test_validate_multi_missing_rate(self):
+        """Ошибка при отсутствии потомка rate для MULTI."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        multi = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
+                         query=Query({"a": 1}))
+        base = MetricNode(id=202, code="BASE", name="Объем", parent=101,
+                         componentMultiPartType=ComponentMultiPartType.BASE,
+                         query=Query({"a": 1}))
+        hierarchy.add_node(root)
+        hierarchy.add_node(multi)
+        hierarchy.add_node(base)
+
+        errors = hierarchy.validate()
+        assert any("должен иметь ровно одного потомка с componentMultiPartType=rate" in e for e in errors)
+
+    def test_validate_multi_missing_base(self):
+        """Ошибка при отсутствии потомка base для MULTI."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        multi = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
+                         query=Query({"a": 1}))
+        rate = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
+                         componentMultiPartType=ComponentMultiPartType.RATE,
+                         query=Query({"a": 1}))
+        hierarchy.add_node(root)
+        hierarchy.add_node(multi)
+        hierarchy.add_node(rate)
+
+        errors = hierarchy.validate()
+        assert any("должен иметь ровно одного потомка с componentMultiPartType=base" in e for e in errors)
+
+    def test_validate_ratio_missing_parts(self):
+        """Ошибка при отсутствии потомков для RATIO."""
+        hierarchy = Hierarchy()
+        ratio = MetricNode(id=300, code="COR", name="Cost of Risk", type=MetricType.RATIO)
+        hierarchy.add_node(ratio)
+
+        errors = hierarchy.validate()
+        assert any("должен иметь ровно одного потомка с componentRatioPartType=numerator" in e for e in errors)
+        assert any("должен иметь ровно одного потомка с componentRatioPartType=denominator" in e for e in errors)
+
+    def test_validate_leaf_with_children(self):
+        """Ошибка при листовом узле с потомками."""
+        hierarchy = Hierarchy()
+        leaf = MetricNode(id=201, code="RATE", name="Ставка", query=Query({"a": 1}))
+        child = MetricNode(id=301, code="SUB_RATE", name="Подставка", parent=201, query=Query({"a": 1}))
+        hierarchy.add_node(leaf)
+        hierarchy.add_node(child)
+
+        errors = hierarchy.validate()
+        assert any("не может иметь потомков" in e for e in errors)
+
+    def test_iterate(self):
+        """Итерация по узлам."""
+        hierarchy = Hierarchy()
+        hierarchy.add_node(MetricNode(id=100, code="NII", name="ЧПД"))
+        hierarchy.add_node(MetricNode(id=101, code="INT_INC", name="Процентный доход", parent=100))
+
+        nodes = list(hierarchy)
+        assert len(nodes) == 2
+
+    def test_contains(self):
+        """Проверка наличия узла через оператор in."""
+        hierarchy = Hierarchy()
+        hierarchy.add_node(MetricNode(id=100, code="NII", name="ЧПД"))
+        assert 100 in hierarchy
+        assert 200 not in hierarchy
+
+    def test_len(self):
+        """Получение количества узлов через len()."""
+        hierarchy = Hierarchy()
+        assert len(hierarchy) == 0
+        hierarchy.add_node(MetricNode(id=100, code="NII", name="ЧПД"))
+        assert len(hierarchy) == 1
+
+    def test_visualize(self):
+        """Визуализация иерархии."""
+        hierarchy = self._create_valid_nii_hierarchy()
+        viz = hierarchy.visualize()
+        assert "NII" in viz
+        assert "INT_INC" in viz
+        assert "INT_EXP" in viz
+
+    # =============================================================================
+    # Helper methods
+    # =============================================================================
+
+    def _create_valid_nii_hierarchy(self) -> Hierarchy:
+        """
+        Создать валидную иерархию ЧПД для тестов.
+
+        Структура:
+        NII (sum)
+        ├── INT_INC (multi)
+        │   ├── RATE (rate)
+        │   └── BASE (base)
+        └── INT_EXP (multi)
+            ├── RATE (rate)
+            └── BASE (base)
+        """
+        hierarchy = Hierarchy()
+
+        # Корень
+        root = MetricNode(id=100, code="NII", name="Чистый процентный доход", type=MetricType.SUM)
+        hierarchy.add_node(root)
+
+        # Процентный доход (MULTI)
+        int_inc = MetricNode(
+            id=101,
+            code="INT_INC",
+            name="Процентный доход",
+            type=MetricType.MULTI,
+            parent=100,
+            query=Query({"metricType": "interest_income"})
+        )
+        hierarchy.add_node(int_inc)
+
+        # Ставка процентного дохода (rate)
+        int_inc_rate = MetricNode(
+            id=201,
+            code="INT_INC_RATE",
+            name="Ставка процентного дохода",
+            parent=101,
+            componentMultiPartType=ComponentMultiPartType.RATE,
+            query=Query({"metricType": "interest_income", "component": "rate"})
+        )
+        hierarchy.add_node(int_inc_rate)
+
+        # Объем требований по долговым фин. инструментам (base)
+        int_inc_base = MetricNode(
+            id=202,
+            code="INT_INC_BASE",
+            name="Объем требований по долговым фин. инструментам",
+            parent=101,
+            componentMultiPartType=ComponentMultiPartType.BASE,
+            query=Query({"metricType": "interest_income", "component": "base"})
+        )
+        hierarchy.add_node(int_inc_base)
+
+        # Процентный расход (MULTI)
+        int_exp = MetricNode(
             id=102,
             code="INT_EXP",
             name="Процентный расход",
-            parent=10,
             type=MetricType.MULTI,
-            query=Query(fields={"metric": "interest_expense"})
-        ))
+            parent=100,
+            query=Query({"metricType": "interest_expense"})
+        )
+        hierarchy.add_node(int_exp)
 
-        h.add_metric(MetricNode(
-            id=103,
-            code="OTHER_NII",
-            name="Прочие компоненты, включенные в ЧПД",
-            parent=10,
-            query=Query(fields={"metric_type": "other_nii"})
-        ))
-
-        # Level 2: Commission income leaves
-        h.add_metric(MetricNode(
-            id=201,
-            code="COMM_INC_CORP",
-            name="Комиссионный доход от юр. лиц",
-            parent=20,
-            query=Query(fields={"segment": ["corporate", "sme"]})
-        ))
-
-        h.add_metric(MetricNode(
-            id=202,
-            code="COMM_INC_RET",
-            name="Комиссионный доход от физ. лиц",
-            parent=20,
-            query=Query(fields={"segment": ["retail", "vip"]})
-        ))
-
-        h.add_metric(MetricNode(
-            id=203,
-            code="COMM_INC_OTHER",
-            name="Прочий комиссионный доход",
-            parent=20,
-            query=Query(fields={"segment": ["other"]})
-        ))
-
-        # Level 2: Non-interest income leaves
-        h.add_metric(MetricNode(
+        # Ставка процентного расхода (rate)
+        int_exp_rate = MetricNode(
             id=301,
-            code="TRADING_INC",
-            name="Доходы от торговых операций",
-            parent=30,
-            query=Query(fields={"metric_type": "trading_pnl"})
-        ))
-
-        h.add_metric(MetricNode(
-            id=302,
-            code="OTHER_INC",
-            name="Прочие доходы",
-            parent=30,
-            query=Query(fields={"metric_type": "other_income"})
-        ))
-
-        # Level 3: INT_INC multipliers
-        h.add_metric(MetricNode(
-            id=1001,
-            code="INT_RATE",
-            name="Ставка процентного дохода",
-            parent=101,
-            multiplier_type=MultiplierType.RATE
-        ))
-
-        h.add_metric(MetricNode(
-            id=1002,
-            code="DEBT_ASSETS",
-            name="Объем требований по долговым фин. инструментам",
-            parent=101,
-            multiplier_type=MultiplierType.BASE,
-            query=Query(fields={"metric": "debt_assets_volume"})
-        ))
-
-        # Level 3: INT_EXP multipliers
-        h.add_metric(MetricNode(
-            id=1003,
-            code="EXP_RATE",
+            code="INT_EXP_RATE",
             name="Ставка процентного расхода",
             parent=102,
-            multiplier_type=MultiplierType.RATE
-        ))
+            componentMultiPartType=ComponentMultiPartType.RATE,
+            query=Query({"metricType": "interest_expense", "component": "rate"})
+        )
+        hierarchy.add_node(int_exp_rate)
 
-        h.add_metric(MetricNode(
-            id=1004,
-            code="DEBT_LIAB",
+        # Объем обязательств по долговым фин. инструментам (base)
+        int_exp_base = MetricNode(
+            id=302,
+            code="INT_EXP_BASE",
             name="Объем обязательств по долговым фин. инструментам",
             parent=102,
-            multiplier_type=MultiplierType.BASE,
-            query=Query(fields={"metric": "debt_liabilities_volume"})
-        ))
+            componentMultiPartType=ComponentMultiPartType.BASE,
+            query=Query({"metricType": "interest_expense", "component": "base"})
+        )
+        hierarchy.add_node(int_exp_base)
 
-        return h
+        return hierarchy
 
 
 # =============================================================================
-# Ratio Example Tests (COR)
+# Tests for full serialization/deserialization cycle
 # =============================================================================
 
-class TestRatioExample:
-    """Test cases for ratio-type metrics (COR example)."""
+class TestSerializationCycle:
+    """Тесты полного цикла сериализации/десериализации."""
 
-    def test_ratio_root_creation(self) -> None:
-        """Test creating a ratio root node."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=5,
-            code="COR",
-            name="Cost of Risk",
-            parent=None,
-            type=MetricType.RATIO,
-            numerator=501,
-            denominator=502
-        ))
+    def test_nii_hierarchy_serialization(self):
+        """Полный цикл сериализации/десериализации для иерархии ЧПД."""
+        # Создаем иерархию
+        test_hierarchy = TestHierarchy()._create_valid_nii_hierarchy()
 
-        cor = h.get_metric(5)
-        assert cor is not None
-        assert cor.is_ratio_root
-        assert cor.numerator == 501
-        assert cor.denominator == 502
+        # Сериализация
+        json_str = test_hierarchy.to_json_string()
 
-    def test_ratio_with_full_hierarchy(self) -> None:
-        """Test ratio metric with full numerator/denominator hierarchies."""
-        h = self._create_cor_example()
+        # Десериализация
+        restored = Hierarchy.from_json_string(json_str)
 
-        # Verify ratio root
-        cor = h.get_metric(5)
-        assert cor is not None
-        assert cor.type == MetricType.RATIO
-        assert cor.is_root
+        # Проверка
+        assert test_hierarchy.count_nodes() == restored.count_nodes()
 
-        # Verify numerator hierarchy
-        numerator = h.get_metric(501)
-        assert numerator is not None
-        assert numerator.type == MetricType.SUM
-        assert len(h.get_children(501)) == 4  # Reserves by type
+        # Проверяем каждый узел
+        for original_node in test_hierarchy:
+            restored_node = restored.get_node(original_node.id)
+            assert restored_node is not None
+            assert restored_node.id == original_node.id
+            assert restored_node.code == original_node.code
+            assert restored_node.name == original_node.name
+            assert restored_node.type == original_node.type
+            assert restored_node.parent == original_node.parent
 
-        # Verify denominator hierarchy
-        denominator = h.get_metric(502)
-        assert denominator is not None
-        assert denominator.type == MetricType.SUM
-        assert len(h.get_children(502)) == 2  # Assets by type
+            # Проверка query
+            if original_node.query is not None:
+                assert restored_node.query is not None
+                assert restored_node.query.to_dict() == original_node.query.to_dict()
+            else:
+                assert restored_node.query is None
 
-    def test_ratio_example_validation(self) -> None:
-        """Test that COR example passes validation."""
-        h = self._create_cor_example()
-        report = h.validate()
-        assert report.is_valid
+        # Проверка валидности восстановленной иерархии
+        assert restored.is_valid()
 
-    def test_ratio_example_serialization(self) -> None:
-        """Test serialization of ratio example."""
-        h = self._create_cor_example()
+    def test_ratio_hierarchy_serialization(self):
+        """Полный цикл сериализации/десериализации для иерархии COR (ratio)."""
+        hierarchy = self._create_valid_cor_hierarchy()
 
-        json_str = h.to_json()
+        # Сериализация
+        json_str = hierarchy.to_json_string()
+
+        # Десериализация
+        restored = Hierarchy.from_json_string(json_str)
+
+        # Проверка
+        assert hierarchy.count_nodes() == restored.count_nodes()
+        assert restored.is_valid()
+
+        # Проверяем структуру
+        root = restored.get_root()
+        assert root.code == "COR"
+        assert root.type == MetricType.RATIO
+
+        children = restored.get_children(root.id)
+        assert len(children) == 2
+        assert any(c.componentRatioPartType == ComponentRatioPartType.NUMERATOR for c in children)
+        assert any(c.componentRatioPartType == ComponentRatioPartType.DENOMINATOR for c in children)
+
+    def test_json_with_omitted_fields(self):
+        """JSON с опущенными пустыми полями."""
+        hierarchy = Hierarchy()
+        node = MetricNode(
+            id=100,
+            code="NII",
+            name="ЧПД",
+            type=MetricType.SUM
+        )
+        hierarchy.add_node(node)
+
+        json_str = hierarchy.to_json_string(include_empty_fields=False)
         data = json.loads(json_str)
 
-        # Find the COR metric
-        cor_metric = next(m for m in data["metrics"] if m["code"] == "COR")
-        assert cor_metric["type"] == "ratio"
-        assert cor_metric["numerator"] == 501
-        assert cor_metric["denominator"] == 502
-        assert "parent" not in cor_metric
+        # Проверяем что parent, query не включены (они None)
+        assert "parent" not in data["nodes"][0]
+        assert "query" not in data["nodes"][0]
 
-        # Deserialize and verify
-        deserialized = Hierarchy.from_json(json_str)
-        assert len(deserialized.metrics) == len(h.metrics)
+        # Но при этом основные поля есть
+        assert data["nodes"][0]["id"] == 100
+        assert data["nodes"][0]["code"] == "NII"
+        assert data["nodes"][0]["type"] == "sum"
 
-    def _create_cor_example(self) -> Hierarchy:
+    def test_roundtrip_preserves_all_data(self):
+        """Полный цикл сохраняет все данные."""
+        test_hierarchy = TestHierarchy()._create_valid_nii_hierarchy()
+
+        json_str = test_hierarchy.to_json_string()
+        restored = Hierarchy.from_json_string(json_str)
+
+        # Проверяем что структура идентична
+        for node in test_hierarchy:
+            restored_node = restored.get_node(node.id)
+            assert restored_node == node, f"Node {node.id} not equal after roundtrip"
+
+        # Проверка визуализации
+        assert test_hierarchy.visualize() == restored.visualize()
+
+    def _create_valid_cor_hierarchy(self) -> Hierarchy:
         """
-        Create a COR (Cost of Risk) example hierarchy.
+        Создать валидную иерархию COR (ratio) для тестов.
 
-        This creates a complete hierarchy matching the COR example in
-        factor_analysis__general_description.md.
+        Структура:
+        COR (ratio)
+        ├── RES_EXP (numerator)
+        │   ├── LOAN_RES
+        │   │   ├── CORP_RES
+        │   │   ├── RETAIL_RES
+        │   │   └── SMB_RES
+        │   └── OTHER_RES
+        └── WA_AVG_ASSETS (denominator)
+            ├── LOAN_PORTFOLIO
+            │   ├── CORP_LOANS
+            │   ├── RETAIL_LOANS
+            │   └── SMB_LOANS
+            └── OTHER_WORKING_ASSETS
         """
-        h = Hierarchy()
+        hierarchy = Hierarchy()
 
-        # COR ratio root
-        h.add_metric(MetricNode(
-            id=5,
-            code="COR",
-            name="Cost of Risk",
-            parent=None,
-            type=MetricType.RATIO,
-            numerator=501,
-            denominator=502
-        ))
+        # Корень COR
+        cor = MetricNode(id=300, code="COR", name="Cost of Risk", type=MetricType.RATIO)
+        hierarchy.add_node(cor)
 
-        # Numerator: Расходы на резервы
-        h.add_metric(MetricNode(
-            id=501,
-            code="RESERVE_EXP",
+        # Числитель: Расходы на резервы
+        res_exp = MetricNode(
+            id=301,
+            code="RES_EXP",
             name="Расходы на резервы",
-            type=MetricType.SUM
-        ))
+            type=MetricType.SUM,
+            parent=300,
+            componentRatioPartType=ComponentRatioPartType.NUMERATOR
+        )
+        hierarchy.add_node(res_exp)
 
-        # Numerator children: Reserve by credit type
-        h.add_metric(MetricNode(
-            id=511,
-            code="RESERVE_CORP",
+        # Результаты от резервов по кредитам
+        loan_res = MetricNode(
+            id=30101,
+            code="LOAN_RES",
+            name="Результаты от резервов по кредитам",
+            type=MetricType.SUM,
+            parent=301
+        )
+        hierarchy.add_node(loan_res)
+
+        # Резервы по корпоративным кредитам
+        corp_res = MetricNode(
+            id=3010101,
+            code="CORP_RES",
             name="Резервы по корпоративным кредитам",
-            parent=501,
-            query=Query(fields={"credit_type": "corporate"})
-        ))
+            parent=30101,
+            query=Query({"metricType": "loan_reserves", "segment": "corporate"})
+        )
+        hierarchy.add_node(corp_res)
 
-        h.add_metric(MetricNode(
-            id=512,
-            code="RESERVE_RETAIL",
+        # Резервы по розничным кредитам
+        retail_res = MetricNode(
+            id=3010102,
+            code="RETAIL_RES",
             name="Резервы по розничным кредитам",
-            parent=501,
-            query=Query(fields={"credit_type": "retail"})
-        ))
+            parent=30101,
+            query=Query({"metricType": "loan_reserves", "segment": "retail"})
+        )
+        hierarchy.add_node(retail_res)
 
-        h.add_metric(MetricNode(
-            id=513,
-            code="RESERVE_SME",
+        # Резервы по кредитам МСБ
+        smb_res = MetricNode(
+            id=3010103,
+            code="SMB_RES",
             name="Резервы по кредитам МСБ",
-            parent=501,
-            query=Query(fields={"credit_type": "sme"})
-        ))
+            parent=30101,
+            query=Query({"metricType": "loan_reserves", "segment": "smb"})
+        )
+        hierarchy.add_node(smb_res)
 
-        # Numerator child: Reserves on other assets
-        h.add_metric(MetricNode(
-            id=521,
-            code="RESERVE_OTHER",
+        # Резервы по прочим активам
+        other_res = MetricNode(
+            id=30102,
+            code="OTHER_RES",
             name="Резервы по прочим активам",
-            parent=501,
-            query=Query(fields={"reserve_type": "other_assets"})
-        ))
+            parent=301,
+            query=Query({"metricType": "other_reserves"})
+        )
+        hierarchy.add_node(other_res)
 
-        # Denominator: Среднехронологические работающие активы
-        h.add_metric(MetricNode(
-            id=502,
-            code="AVG_WORK_ASSETS",
+        # Знаменатель: Среднехронологические работающие активы
+        wa_avg_assets = MetricNode(
+            id=302,
+            code="WA_AVG_ASSETS",
             name="Среднехронологические работающие активы",
-            type=MetricType.SUM
-        ))
+            type=MetricType.SUM,
+            parent=300,
+            componentRatioPartType=ComponentRatioPartType.DENOMINATOR
+        )
+        hierarchy.add_node(wa_avg_assets)
 
-        # Denominator children: Assets by type
-        h.add_metric(MetricNode(
-            id=531,
+        # Кредитный портфель
+        loan_portfolio = MetricNode(
+            id=30201,
             code="LOAN_PORTFOLIO",
             name="Кредитный портфель",
-            parent=502,
-            query=Query(fields={"asset_type": "loans"})
-        ))
-
-        h.add_metric(MetricNode(
-            id=532,
-            code="OTHER_WORK_ASSETS",
-            name="Прочие работающие активы",
-            parent=502,
-            query=Query(fields={"asset_type": "other_working"})
-        ))
-
-        return h
-
-
-# =============================================================================
-# JSON Edge Cases Tests
-# =============================================================================
-
-class TestJsonEdgeCases:
-    """Tests for JSON serialization/deserialization edge cases."""
-
-    def test_empty_hierarchy_json(self) -> None:
-        """Test deserializing empty hierarchy."""
-        json_str = '{"metrics": []}'
-        h = Hierarchy.from_json(json_str)
-        assert len(h.metrics) == 0
-
-    def test_json_compact_format(self) -> None:
-        """Test compact JSON without indentation."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(id=1, code="A", name="A"))
-        json_str = h.to_json(indent=None)
-        assert json_str.count("\n") == 0
-
-    def test_json_unicode_handling(self) -> None:
-        """Test that JSON handles Unicode characters correctly."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1,
-            code="COR",
-            name="Стоимость риска"
-        ))
-        json_str = h.to_json()
-        assert "Стоимость риска" in json_str
-        # Verify it's not escaped
-        assert "\\u" not in json_str
-
-    def test_json_with_all_field_types(self) -> None:
-        """Test JSON with all field types present."""
-        h = Hierarchy()
-        h.add_metric(MetricNode(
-            id=1,
-            code="A",
-            name="A",
-            parent=None,
             type=MetricType.SUM,
-            query=Query(fields={"a": "b", "c": ["d", "e"]}),
-            numerator=2,
-            denominator=3
-        ))
+            parent=302
+        )
+        hierarchy.add_node(loan_portfolio)
 
-        json_str = h.to_json()
-        data = json.loads(json_str)
+        # Корпоративные кредиты
+        corp_loans = MetricNode(
+            id=3020101,
+            code="CORP_LOANS",
+            name="Корпоративные кредиты",
+            parent=30201,
+            query=Query({"metricType": "wa_avg_assets", "segment": "corporate"})
+        )
+        hierarchy.add_node(corp_loans)
 
-        assert data["metrics"][0]["id"] == 1
-        assert data["metrics"][0]["type"] == "sum"
-        assert data["metrics"][0]["query"] == {"a": "b", "c": ["d", "e"]}
+        # Розничные кредиты
+        retail_loans = MetricNode(
+            id=3020102,
+            code="RETAIL_LOANS",
+            name="Розничные кредиты",
+            parent=30201,
+            query=Query({"metricType": "wa_avg_assets", "segment": "retail"})
+        )
+        hierarchy.add_node(retail_loans)
 
-    def test_json_dict_immutable(self) -> None:
-        """Test that to_dict returns independent copies."""
-        h = Hierarchy()
-        node = MetricNode(id=1, code="A", name="A")
-        h.add_metric(node)
-        json_str = h.to_json()
-        data = json.loads(json_str)
+        # Кредиты МСБ
+        smb_loans = MetricNode(
+            id=3020103,
+            code="SMB_LOANS",
+            name="Кредиты МСБ",
+            parent=30201,
+            query=Query({"metricType": "wa_avg_assets", "segment": "smb"})
+        )
+        hierarchy.add_node(smb_loans)
 
-        # Modify dict
-        data["metrics"][0]["name"] = "Changed"
+        # Прочие работающие активы
+        other_working_assets = MetricNode(
+            id=30202,
+            code="OTHER_WORKING_ASSETS",
+            name="Прочие работающие активы",
+            parent=302,
+            query=Query({"metricType": "other_working_assets"})
+        )
+        hierarchy.add_node(other_working_assets)
 
-        # Original should be unchanged
-        assert h.get_metric(1).name == "A"
+        return hierarchy
+
+
+# =============================================================================
+# Tests for Enums
+# =============================================================================
+
+class TestEnums:
+    """Тесты для Enum классов."""
+
+    def test_metric_type_values(self):
+        """Значения MetricType."""
+        assert MetricType.SUM.value == "sum"
+        assert MetricType.MULTI.value == "multi"
+        assert MetricType.RATIO.value == "ratio"
+
+    def test_metric_type_from_string(self):
+        """Создание MetricType из строки."""
+        assert MetricType("sum") == MetricType.SUM
+        assert MetricType("multi") == MetricType.MULTI
+        assert MetricType("ratio") == MetricType.RATIO
+
+    def test_metric_type_invalid_string(self):
+        """Ошибка при неверной строке."""
+        with pytest.raises(ValueError):
+            MetricType("invalid")
+
+    def test_component_multi_part_type_values(self):
+        """Значения ComponentMultiPartType."""
+        assert ComponentMultiPartType.RATE.value == "rate"
+        assert ComponentMultiPartType.BASE.value == "base"
+
+    def test_component_ratio_part_type_values(self):
+        """Значения ComponentRatioPartType."""
+        assert ComponentRatioPartType.NUMERATOR.value == "numerator"
+        assert ComponentRatioPartType.DENOMINATOR.value == "denominator"
+
+    def test_enums_are_strings(self):
+        """Enum классы наследуются от str."""
+        assert isinstance(MetricType.SUM, str)
+        assert isinstance(ComponentMultiPartType.RATE, str)
+        assert isinstance(ComponentRatioPartType.NUMERATOR, str)

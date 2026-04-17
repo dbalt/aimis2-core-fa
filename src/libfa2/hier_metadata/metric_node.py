@@ -1,492 +1,414 @@
 """
-Metric node module for hierarchy representation.
+Класс MetricNode для узлов иерархии показателей.
 
-This module defines the MetricNode class which represents a single
-metric node in the factor analysis hierarchy.
+MetricNode представляет собой отдельный узел в иерархии финансовых показателей
+факторного анализа. Каждый узел содержит метаданные о показателе и связь
+с родительским узлом.
 """
 
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-from libfa2.hier_metadata.enums import MetricType, MultiplierType
+from dataclasses import dataclass, field
+from typing import Optional, TYPE_CHECKING
+from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType
+from .query import Query
 
 if TYPE_CHECKING:
-    from libfa2.hier_metadata.query import Query
+    from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata
 
 
 @dataclass
 class MetricNode:
     """
-    Represents a single metric node in the factor analysis hierarchy.
+    Узел в иерархии показателей факторного анализа.
 
-    A MetricNode can be:
-    - A leaf node: fetched directly from the database
-    - A composite node of type 'sum': calculated as sum of children
-    - A composite node of type 'multi': calculated as product of rate and base
-    - A composite node of type 'ratio': calculated as numerator / denominator
+    Каждый узел представляет собой финансовый показатель с метаданными,
+    необходимыми для выполнения факторного анализа.
 
     Attributes:
-        id: Unique numeric identifier of the metric.
-        code: Short mnemonic code for API/UI usage.
-        name: Human-readable display name of the metric.
-        parent: ID of the parent metric, or None for root.
-        type: Type of the metric (sum, multi, ratio) for composite nodes.
-        query: Database query parameters for fetching plan/actual values.
-        multiplier_type: Type of multiplier component (rate or base) for children of 'multi'.
-        numerator: ID of the numerator metric for 'ratio' type.
-        denominator: ID of the denominator metric for 'ratio' type.
+        id: Уникальный идентификатор показателя.
+        code: Код показателя для системного использования.
+        name: Отображаемое название показателя.
+        type: Тип показателя (sum, multi, ratio). Если None - это листовой элемент.
+        parent: ID родительского показателя. None для корневого узла.
+        query: Параметры запроса к БД для получения данных. None если данные
+               вычисляются из потомков.
+        componentMultiPartType: Тип компонента-множителя (rate или base).
+                                Используется для дочерних элементов type=MULTI.
+        componentRatioPartType: Тип компонента-отношения (numerator или denominator).
+                                  Используется для дочерних элементов type=RATIO.
+        analyt_metadata: Опциональные метаданные разложения по аналитическим разрезам.
+                         Может быть None для узлов, для которых детализация не применима.
 
-    Examples:
+    Example:
         >>> node = MetricNode(
-        ...     id=1,
-        ...     code="FP",
-        ...     name="Финансовый результат",
-        ...     parent=None,
-        ...     type=MetricType.SUM
+        ...     id=100,
+        ...     code="NII",
+        ...     name="Чистый процентный доход",
+        ...     type=MetricType.SUM,
+        ...     parent=None
         ... )
-        >>> node.id
-        1
-
         >>> leaf = MetricNode(
-        ...     id=1001,
+        ...     id=101,
         ...     code="INT_INC",
         ...     name="Процентный доход",
-        ...     parent=10,
-        ...     query=Query(fields={"metric": "interest_income"})
+        ...     type=MetricType.MULTI,
+        ...     parent=100,
+        ...     query=Query({"metricType": "interest_income"})
         ... )
     """
 
+    #: Уникальный идентификатор показателя
     id: int
-    """Unique numeric identifier of the metric."""
 
+    #: Код показателя для системного использования
     code: str
-    """Short mnemonic code for API/UI usage."""
 
+    #: Отображаемое название показателя
     name: str
-    """Human-readable display name of the metric."""
 
-    parent: int | None = None
-    """ID of the parent metric, or None for root node."""
+    #: Тип показателя (sum, multi, ratio). None - листовой элемент
+    type: Optional[MetricType] = None
 
-    type: MetricType | None = None
-    """
-    Type of the metric for composite nodes.
+    #: ID родительского показателя. None для корня
+    parent: Optional[int] = None
 
-    - None: Leaf node (or to be inferred)
-    - MetricType.SUM: Sum of child components
-    - MetricType.MULTI: Product of rate and base children
-    - MetricType.RATIO: Ratio of numerator and denominator (root only)
-    """
+    #: Параметры запроса к БД для получения данных
+    query: Optional[Query] = None
 
-    query: Query | None = None
-    """
-    Database query parameters for fetching plan/actual values.
+    #: Тип компонента-множителя (rate или base)
+    componentMultiPartType: Optional[ComponentMultiPartType] = None
 
-    Required for:
-    - type: multi (for reverse calculation of rate)
-    - Leaf nodes that are fetched directly from DB
+    #: Тип компонента-отношения (numerator или denominator)
+    componentRatioPartType: Optional[ComponentRatioPartType] = None
 
-    Optional for:
-    - type: sum (if subtotal is stored in DB)
-    - type: ratio (if ratio value is stored in DB)
-    """
+    #: Опциональные метаданные разложения по аналитическим разрезам
+    analyt_metadata: Optional["AnalyticalStructureMetadata"] = None
 
-    multiplier_type: MultiplierType | None = None
-    """
-    Type of multiplier component for children of 'multi' nodes.
-
-    - MultiplierType.RATE: Normalized indicator (calculated: rate = parent / base)
-    - MultiplierType.BASE: Volumetric indicator (fetched from DB)
-
-    Only applicable for child nodes of a 'multi' parent.
-    """
-
-    numerator: int | None = None
-    """
-    ID of the numerator metric for 'ratio' type.
-
-    Required for metrics with type: MetricType.RATIO.
-    The numerator can be a metric of type 'sum' or 'multi' with its own hierarchy.
-    """
-
-    denominator: int | None = None
-    """
-    ID of the denominator metric for 'ratio' type.
-
-    Required for metrics with type: MetricType.RATIO.
-    The denominator can be a metric of type 'sum' or 'multi' with its own hierarchy.
-    """
-
-    def __post_init__(self) -> None:
-        """Validate the MetricNode after initialization."""
-        # Validate ID
-        if not isinstance(self.id, int) or self.id <= 0:
-            raise ValueError("Metric ID must be a positive integer")
-
-        # Validate code
-        if not isinstance(self.code, str) or not self.code:
-            raise ValueError("Metric code must be a non-empty string")
-
-        # Validate name
-        if not isinstance(self.name, str) or not self.name:
-            raise ValueError("Metric name must be a non-empty string")
-
-        # Validate parent (if not None)
-        if self.parent is not None and not isinstance(self.parent, int):
-            raise ValueError("Metric parent must be an integer or None")
-
-        # Validate numerator (if not None)
-        if self.numerator is not None and not isinstance(self.numerator, int):
-            raise ValueError("Metric numerator must be an integer or None")
-
-        # Validate denominator (if not None)
-        if self.denominator is not None and not isinstance(self.denominator, int):
-            raise ValueError("Metric denominator must be an integer or None")
-
-        # Type-specific validation
-        if self.type == MetricType.MULTI:
-            # 'multi' type MUST have a query
-            if self.query is None:
-                raise ValueError("Metric of type 'multi' must have a query")
-            # 'multi' type cannot have numerator/denominator
-            if self.numerator is not None or self.denominator is not None:
-                raise ValueError("Metric of type 'multi' cannot have numerator/denominator")
-        elif self.type == MetricType.RATIO:
-            # 'ratio' type MUST have numerator and denominator
-            if self.numerator is None:
-                raise ValueError("Metric of type 'ratio' must have numerator")
-            if self.denominator is None:
-                raise ValueError("Metric of type 'ratio' must have denominator")
-            # 'ratio' type cannot have multiplier_type
-            if self.multiplier_type is not None:
-                raise ValueError("Metric of type 'ratio' cannot have multiplier_type")
-
-    @property
-    def is_leaf(self) -> bool:
-        """
-        Check if this is a leaf node (has no type or is a child of sum/multi/ratio without children).
-
-        Returns:
-            True if this node appears to be a leaf, False otherwise.
-
-        Examples:
-            >>> node = MetricNode(id=1, code="A", name="A")
-            >>> node.is_leaf
-            True
-        """
-        # A node is a leaf if it doesn't have a type
-        # (children will be determined by the Hierarchy class)
-        return self.type is None
-
-    @property
     def is_root(self) -> bool:
         """
-        Check if this is a root node (has no parent).
+        Проверить, является ли узел корневым.
 
         Returns:
-            True if this node is a root, False otherwise.
-
-        Examples:
-            >>> node = MetricNode(id=1, code="A", name="A", parent=None)
-            >>> node.is_root
-            True
+            True, если parent=None, иначе False
         """
         return self.parent is None
 
-    @property
-    def is_composite(self) -> bool:
+    def is_leaf(self) -> bool:
         """
-        Check if this is a composite node (has a type).
+        Проверить, является ли узел листовым.
+
+        Листовой узел:
+        - Не имеет типа (type=None)
+        - Обязательное наличие query
 
         Returns:
-            True if this node has a type (sum, multi, or ratio), False otherwise.
-
-        Examples:
-            >>> node = MetricNode(id=1, code="A", name="A", type=MetricType.SUM)
-            >>> node.is_composite
-            True
+            True, если узел листовой, иначе False
         """
-        return self.type is not None
+        return self.type is None
 
-    @property
-    def is_multi_child(self) -> bool:
+    def has_query(self) -> bool:
         """
-        Check if this is a child of a 'multi' node.
+        Проверить, есть ли у узла параметры запроса к БД.
 
         Returns:
-            True if this node has a multiplier_type, False otherwise.
-
-        Examples:
-            >>> node = MetricNode(
-            ...     id=1, code="A", name="A",
-            ...     multiplier_type=MultiplierType.RATE
-            ... )
-            >>> node.is_multi_child
-            True
+            True, если query не None и не пустой, иначе False
         """
-        return self.multiplier_type is not None
+        return self.query is not None and not self.query.is_empty()
 
-    @property
-    def is_ratio_root(self) -> bool:
+    def to_dict(self) -> dict:
         """
-        Check if this is a ratio-type root node.
+        Преобразовать MetricNode в словарь.
+
+        Все поля включаются, даже если равны None.
 
         Returns:
-            True if this node has type RATIO and is a root, False otherwise.
+            Словарь с полями узла
 
-        Examples:
-            >>> node = MetricNode(
-            ...     id=1, code="COR", name="COR", parent=None,
-            ...     type=MetricType.RATIO, numerator=501, denominator=502
-            ... )
-            >>> node.is_ratio_root
-            True
+        Example:
+            >>> node = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+            >>> d = node.to_dict()
+            >>> d["id"]
+            100
         """
-        return self.is_root and self.type == MetricType.RATIO
-
-    @property
-    def is_rate_multiplier(self) -> bool:
-        """
-        Check if this is a rate-type multiplier component.
-
-        Returns:
-            True if this node has multiplier_type RATE, False otherwise.
-
-        Examples:
-            >>> node = MetricNode(
-            ...     id=1, code="A", name="A",
-            ...     multiplier_type=MultiplierType.RATE
-            ... )
-            >>> node.is_rate_multiplier
-            True
-        """
-        return self.multiplier_type == MultiplierType.RATE
-
-    @property
-    def is_base_multiplier(self) -> bool:
-        """
-        Check if this is a base-type multiplier component.
-
-        Returns:
-            True if this node has multiplier_type BASE, False otherwise.
-
-        Examples:
-            >>> node = MetricNode(
-            ...     id=1, code="A", name="A",
-            ...     multiplier_type=MultiplierType.BASE
-            ... )
-            >>> node.is_base_multiplier
-            True
-        """
-        return self.multiplier_type == MultiplierType.BASE
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Convert the MetricNode to a dictionary representation for JSON serialization.
-
-        Empty/None fields are omitted from the output unless they are required.
-
-        Returns:
-            Dictionary representation of the MetricNode.
-
-        Examples:
-            >>> from libfa2.hier_metadata.query import Query
-            >>> node = MetricNode(
-            ...     id=1,
-            ...     code="A",
-            ...     name="A",
-            ...     parent=None
-            ... )
-            >>> result = node.to_dict()
-            >>> result["id"]
-            1
-        """
-        result: dict[str, Any] = {
+        result = {
             "id": self.id,
             "code": self.code,
             "name": self.name,
         }
 
-        # Add optional fields only if they have values
-        if self.parent is not None:
-            result["parent"] = self.parent
-
+        # Добавляем необязательные поля
         if self.type is not None:
             result["type"] = self.type.value
-
-        if self.query is not None and not self.query.is_empty():
+        if self.parent is not None:
+            result["parent"] = self.parent
+        if self.query is not None:
             result["query"] = self.query.to_dict()
+        if self.componentMultiPartType is not None:
+            result["componentMultiPartType"] = self.componentMultiPartType.value
+        if self.componentRatioPartType is not None:
+            result["componentRatioPartType"] = self.componentRatioPartType.value
+        if self.analyt_metadata is not None:
+            import json
+            result["analyt_metadata"] = json.loads(self.analyt_metadata.to_json())
 
-        if self.multiplier_type is not None:
-            result["multiplierType"] = self.multiplier_type.value
+        return result
 
-        if self.numerator is not None:
-            result["numerator"] = self.numerator
+    def to_json(self) -> dict:
+        """
+        Подготовить MetricNode для JSON-сериализации.
 
-        if self.denominator is not None:
-            result["denominator"] = self.denominator
+        Пустые поля (None, пустой query) исключаются из результата.
+
+        Returns:
+            Словарь, готовый для JSON-сериализации
+
+        Example:
+            >>> node = MetricNode(
+            ...     id=100,
+            ...     code="NII",
+            ...     name="ЧПД",
+            ...     type=MetricType.SUM,
+            ...     parent=None
+            ... )
+            >>> json_dict = node.to_json()
+            >>> "parent" in json_dict  # parent=None, поэтому не включается
+            False
+        """
+        result = {
+            "id": self.id,
+            "code": self.code,
+            "name": self.name,
+        }
+
+        # Добавляем только непустые необязательные поля
+        if self.type is not None:
+            result["type"] = self.type.value
+        if self.parent is not None:
+            result["parent"] = self.parent
+        if self.query is not None and not self.query.is_empty():
+            result["query"] = self.query.to_json()
+        if self.componentMultiPartType is not None:
+            result["componentMultiPartType"] = self.componentMultiPartType.value
+        if self.componentRatioPartType is not None:
+            result["componentRatioPartType"] = self.componentRatioPartType.value
+        if self.analyt_metadata is not None:
+            import json
+            # AnalyticalStructureMetadata сериализуется как {fa_impl: [...], dimensions: [...]}
+            result["analyt_metadata"] = json.loads(self.analyt_metadata.to_json())
 
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> MetricNode:
+    def from_dict(cls, data: dict) -> "MetricNode":
         """
-        Create a MetricNode instance from a dictionary.
+        Создать MetricNode из словаря.
 
         Args:
-            data: Dictionary containing the metric node data.
+            data: Словарь с полями узла
 
         Returns:
-            A new MetricNode instance populated from the dictionary.
+            Экземпляр MetricNode
 
         Raises:
-            KeyError: If required fields (id, code, name) are missing.
-            ValueError: If any field has an invalid value.
+            ValueError: Если обязательные поля отсутствуют или имеют неверный тип
 
-        Examples:
+        Example:
             >>> data = {
-            ...     "id": 1,
-            ...     "code": "A",
-            ...     "name": "A Metric",
-            ...     "parent": None,
+            ...     "id": 100,
+            ...     "code": "NII",
+            ...     "name": "Чистый процентный доход",
             ...     "type": "sum"
             ... }
             >>> node = MetricNode.from_dict(data)
-            >>> node.code
-            'A'
         """
-        from libfa2.hier_metadata.query import Query
+        # Проверка обязательных полей
+        if "id" not in data:
+            raise ValueError("Обязательное поле 'id' отсутствует")
+        if "code" not in data:
+            raise ValueError("Обязательное поле 'code' отсутствует")
+        if "name" not in data:
+            raise ValueError("Обязательное поле 'name' отсутствует")
 
-        # Extract required fields
-        node_id = data.get("id")
-        if node_id is None:
-            raise KeyError("Missing required field: 'id'")
+        node_id = data["id"]
+        if not isinstance(node_id, int):
+            raise ValueError(f"Поле 'id' должно быть int, получено {type(node_id)}")
 
-        code = data.get("code")
-        if code is None:
-            raise KeyError("Missing required field: 'code'")
+        code = data["code"]
+        if not isinstance(code, str):
+            raise ValueError(f"Поле 'code' должно быть str, получено {type(code)}")
 
-        name = data.get("name")
-        if name is None:
-            raise KeyError("Missing required field: 'name'")
+        name = data["name"]
+        if not isinstance(name, str):
+            raise ValueError(f"Поле 'name' должно быть str, получено {type(name)}")
 
-        # Extract optional fields
+        # Обработка необязательных полей
+        metric_type = None
+        if "type" in data and data["type"] is not None:
+            try:
+                metric_type = MetricType(data["type"])
+            except ValueError:
+                raise ValueError(f"Неверное значение 'type': {data['type']}")
+
         parent = data.get("parent")
-        type_str = data.get("type")
-        query_data = data.get("query")
-        multiplier_type_str = data.get("multiplierType")
-        numerator = data.get("numerator")
-        denominator = data.get("denominator")
 
-        # Process type
-        metric_type: MetricType | None = None
-        if type_str is not None:
+        # Обработка query
+        query = None
+        if "query" in data and data["query"] is not None:
+            query = Query.from_dict(data["query"])
+
+        # Обработка componentMultiPartType
+        component_multi_part_type = None
+        if "componentMultiPartType" in data and data["componentMultiPartType"] is not None:
             try:
-                metric_type = MetricType(type_str)
-            except ValueError as e:
-                raise ValueError(f"Invalid metric type: {type_str}") from e
+                component_multi_part_type = ComponentMultiPartType(data["componentMultiPartType"])
+            except ValueError:
+                raise ValueError(f"Неверное значение 'componentMultiPartType': {data['componentMultiPartType']}")
 
-        # Process multiplier_type
-        multiplier_type: MultiplierType | None = None
-        if multiplier_type_str is not None:
+        # Обработка componentRatioPartType
+        component_ratio_part_type = None
+        if "componentRatioPartType" in data and data["componentRatioPartType"] is not None:
             try:
-                multiplier_type = MultiplierType(multiplier_type_str)
-            except ValueError as e:
-                raise ValueError(f"Invalid multiplier type: {multiplier_type_str}") from e
+                component_ratio_part_type = ComponentRatioPartType(data["componentRatioPartType"])
+            except ValueError:
+                raise ValueError(f"Неверное значение 'componentRatioPartType': {data['componentRatioPartType']}")
 
-        # Process query
-        query: Query | None = None
-        if query_data is not None:
-            if not isinstance(query_data, dict):
-                raise ValueError("Query must be a dictionary")
-            query = Query.from_dict(query_data)
-            if query.is_empty():
-                query = None
+        # Обработка analyt_metadata
+        analyt_metadata = None
+        if "analyt_metadata" in data and data["analyt_metadata"] is not None:
+            from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata
+            import json
+            analyt_metadata = AnalyticalStructureMetadata.from_json(json.dumps(data["analyt_metadata"]))
 
         return cls(
-            id=int(node_id),
-            code=str(code),
-            name=str(name),
-            parent=int(parent) if parent is not None else None,
+            id=node_id,
+            code=code,
+            name=name,
             type=metric_type,
+            parent=parent,
             query=query,
-            multiplier_type=multiplier_type,
-            numerator=int(numerator) if numerator is not None else None,
-            denominator=int(denominator) if denominator is not None else None,
+            componentMultiPartType=component_multi_part_type,
+            componentRatioPartType=component_ratio_part_type,
+            analyt_metadata=analyt_metadata,
         )
 
-    def __eq__(self, other: object) -> bool:
+    @classmethod
+    def from_json(cls, data: dict) -> "MetricNode":
         """
-        Check equality with another MetricNode instance.
+        Создать MetricNode из JSON-объекта (словаря).
+
+        Метод аналогичен from_dict, но название подчеркивает,
+        что ожидается десериализованный JSON.
 
         Args:
-            other: Another object to compare with.
+            data: Словарь из JSON
 
         Returns:
-            True if other is a MetricNode with the same field values,
-            False otherwise.
-
-        Examples:
-            >>> n1 = MetricNode(id=1, code="A", name="A")
-            >>> n2 = MetricNode(id=1, code="A", name="A")
-            >>> n1 == n2
-            True
+            Экземпляр MetricNode
         """
+        return cls.from_dict(data)
+
+    def validate(self) -> list[str]:
+        """
+        Проверить корректность заполнения полей узла.
+
+        Выполняет валидацию в соответствии с правилами формирования иерархии.
+
+        Returns:
+            Список строк с описанием ошибок. Пустой список - ошибок нет.
+
+        Validation rules:
+        - id должен быть положительным
+        - code не должен быть пустым
+        - name не должен быть пустым
+        - parent не может быть равен id (циклическая ссылка)
+        - Листовой узел (type=None) должен иметь query
+        - Узел типа MULTI должен иметь query
+        - componentMultiPartType устанавливается только при type родителя=MULTI
+        - componentRatioPartType устанавливается только при type родителя=RATIO
+        """
+        errors = []
+
+        # Проверка id
+        if self.id <= 0:
+            errors.append(f"ID должен быть положительным числом, получен {self.id}")
+
+        # Проверка code
+        if not self.code:
+            errors.append("Поле 'code' не должно быть пустым")
+
+        # Проверка name
+        if not self.name:
+            errors.append("Поле 'name' не должно быть пустым")
+
+        # Проверка parent
+        if self.parent is not None and self.parent == self.id:
+            errors.append("Поле 'parent' не может быть равно 'id' (циклическая ссылка)")
+
+        # Проверка type и query
+        if self.type is None:
+            # Листовой узел
+            if not self.has_query():
+                errors.append(f"Листовой узел (id={self.id}, code={self.code}) должен иметь query")
+        elif self.type == MetricType.MULTI:
+            # Узел типа MULTI обязан иметь query
+            if not self.has_query():
+                errors.append(f"Узел типа MULTI (id={self.id}, code={self.code}) должен иметь query")
+        elif self.type == MetricType.RATIO:
+            # Узел типа RATIO обычно не имеет query (значение вычисляется)
+            pass
+        elif self.type == MetricType.SUM:
+            # Узел типа SUM может иметь или не иметь query
+            pass
+
+        # Проверка: не должно быть одновременно componentMultiPartType и componentRatioPartType
+        if self.componentMultiPartType is not None and self.componentRatioPartType is not None:
+            errors.append(f"Узел (id={self.id}, code={self.code}) не может иметь одновременно componentMultiPartType и componentRatioPartType")
+
+        return errors
+
+    def is_valid(self) -> bool:
+        """
+        Быстро проверить валидность узла.
+
+        Returns:
+            True, если узел валиден, иначе False
+        """
+        return len(self.validate()) == 0
+
+    def __repr__(self) -> str:
+        """Строковое представление MetricNode."""
+        parts = [f"id={self.id}", f"code={self.code!r}", f"name={self.name!r}"]
+        if self.type is not None:
+            parts.append(f"type={self.type.value}")
+        if self.parent is not None:
+            parts.append(f"parent={self.parent}")
+        return f"MetricNode({', '.join(parts)})"
+
+    def __eq__(self, other: object) -> bool:
+        """Проверить равенство двух MetricNode."""
         if not isinstance(other, MetricNode):
             return False
         return (
-            self.id == other.id
-            and self.code == other.code
-            and self.name == other.name
-            and self.parent == other.parent
-            and self.type == other.type
-            and self.query == other.query
-            and self.multiplier_type == other.multiplier_type
-            and self.numerator == other.numerator
-            and self.denominator == other.denominator
-        )
-
-    def __repr__(self) -> str:
-        """
-        Return a detailed string representation of the MetricNode.
-
-        Returns:
-            A string representation containing key field values.
-
-        Examples:
-            >>> MetricNode(id=1, code="A", name="A")
-            MetricNode(id=1, code='A', name='A')
-        """
-        return (
-            f"MetricNode(id={self.id}, code={self.code!r}, name={self.name!r}"
-            f", parent={self.parent}, type={self.type}"
-            f", multiplier_type={self.multiplier_type}"
-            f", numerator={self.numerator}, denominator={self.denominator})"
+            self.id == other.id and
+            self.code == other.code and
+            self.name == other.name and
+            self.type == other.type and
+            self.parent == other.parent and
+            self.query == other.query and
+            self.componentMultiPartType == other.componentMultiPartType and
+            self.componentRatioPartType == other.componentRatioPartType and
+            self.analyt_metadata == other.analyt_metadata
         )
 
     def __hash__(self) -> int:
-        """
-        Return a hash value for the MetricNode.
-
-        Returns:
-            Hash value based on all field values.
-
-        Examples:
-            >>> n1 = MetricNode(id=1, code="A", name="A")
-            >>> n2 = MetricNode(id=1, code="A", name="A")
-            >>> hash(n1) == hash(n2)
-            True
-        """
+        """Хеш MetricNode для использования в множествах."""
         return hash((
             self.id,
             self.code,
             self.name,
-            self.parent,
             self.type,
-            self.query,
-            self.multiplier_type,
-            self.numerator,
-            self.denominator,
+            self.parent,
+            tuple(sorted(self.query.items())) if self.query else None,
+            self.componentMultiPartType,
+            self.componentRatioPartType,
+            hash(str(self.analyt_metadata)) if self.analyt_metadata else None
         ))

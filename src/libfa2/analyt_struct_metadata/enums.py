@@ -18,7 +18,7 @@ class ValidationErrorType(Enum):
     """
 
     DUPLICATE_ALGORITHM_ID = "duplicate_algorithm_id"
-    """Multiple algorithms have the same ID."""
+    """Multiple fa_impl have the same ID."""
 
     DUPLICATE_DIMENSION_CODE = "duplicate_dimension_code"
     """Multiple dimensions have the same code."""

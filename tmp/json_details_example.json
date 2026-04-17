@@ -1,0 +1,19 @@
+{
+    "hier_id": 10,
+    "analyt_struct_id": 10,
+
+    "res":{
+        "plan": 100,
+        "fact": 120,
+        "deviation": 20,
+        "impact": 20
+    },
+
+    "drills": [
+        {
+            
+
+        }
+    ]
+
+}

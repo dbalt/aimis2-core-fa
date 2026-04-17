@@ -1,305 +1,212 @@
 """
-Query module for database query parameter representation.
+Класс Query для параметров запросов к БД.
 
-This module defines the Query class which represents database query
-parameters used for fetching plan/actual values of metrics.
+Query представляет собой контейнер для параметров запроса к базе данных,
+необходимых для получения значений показателя. Параметры могут быть
+строками, числами или списками значений.
 """
 
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field, asdict
+from typing import Any, Dict
+from collections.abc import Mapping
 
 
 @dataclass
 class Query:
     """
-    Represents database query parameters for fetching metric values.
+    Контейнер параметров запроса к базе данных.
 
-    The Query class defines filters and parameters used to retrieve
-    plan and actual values for a metric from the database. Query
-    parameters are stored as key-value pairs where values can be
-    either strings or lists of strings.
+    Параметры запроса используются для получения данных показателя
+    из базы данных. Каждый параметр может быть:
+    - Строкой
+    - Числом (int, float)
+    - Списком значений
+    - Любым JSON-сериализуемым типом
 
     Attributes:
-        fields: Dictionary of field name to field value mappings.
-            Values can be strings or lists of strings.
+        params: Словарь параметров запроса. Ключ - имя параметра,
+               значение - значение параметра (может быть списком).
 
-    Examples:
-        >>> query = Query(fields={"segment": "corporate"})
-        >>> query.fields
-        {'segment': 'corporate'}
-
-        >>> query = Query(fields={
-        ...     "segment": ["corporate", "sme"],
-        ...     "metric": "interest_income"
-        ... })
-        >>> len(query.fields)
-        2
-
-        >>> empty = Query()
-        >>> len(empty.fields)
-        0
+    Example:
+        >>> query = Query({"metricType": "interest_income"})
+        >>> query = Query({"metricType": "interest_income", "segment": ["corporate", "retail"]})
     """
 
-    fields: dict[str, str | list[str]] | None = None
-    """
-    Dictionary of field name to field value mappings.
+    #: Словарь параметров запроса
+    params: Dict[str, Any] = field(default_factory=dict)
 
-    Values can be:
-    - str: Single value for the field
-    - list[str]: Multiple values for the field (e.g., segment filter)
-
-    None indicates no query parameters (metric calculated from children).
-    """
-
-    def __post_init__(self) -> None:
+    def __init__(self, params: Dict[str, Any] | None = None):
         """
-        Validate the Query after initialization.
-
-        Ensures that:
-        - All field names are non-empty strings
-        - All field values are non-empty strings or non-empty lists of strings
-        - List values contain only non-empty strings
-        """
-        if self.fields is None:
-            return
-
-        if not isinstance(self.fields, dict):
-            raise ValueError("Query fields must be a dictionary")
-
-        for key, value in self.fields.items():
-            # Validate field name
-            if not isinstance(key, str) or not key:
-                raise ValueError("Query field name must be a non-empty string")
-
-            # Validate field value
-            if isinstance(value, str):
-                if not value:
-                    raise ValueError(f"Query field '{key}' must not be empty")
-            elif isinstance(value, list):
-                if len(value) == 0:
-                    raise ValueError(f"Query field '{key}' list must not be empty")
-                for i, item in enumerate(value):
-                    if not isinstance(item, str) or not item:
-                        raise ValueError(
-                            f"Query field '{key}'[{i}] must be a non-empty string"
-                        )
-            else:
-                raise ValueError(
-                    f"Query field '{key}' must be a string or list of strings"
-                )
-
-    def get_field(self, name: str) -> str | list[str] | None:
-        """
-        Get a field value by name.
+        Инициализация Query.
 
         Args:
-            name: Name of the field to retrieve.
-
-        Returns:
-            The field value if found, None otherwise.
-
-        Examples:
-            >>> query = Query(fields={"segment": "corporate"})
-            >>> query.get_field("segment")
-            'corporate'
-            >>> query.get_field("not_found") is None
-            True
+            params: Словарь параметров запроса. Если None, создается пустой словарь.
         """
-        if self.fields is None:
-            return None
-        return self.fields.get(name)
+        self.params = params if params is not None else {}
 
-    def get_field_as_list(self, name: str) -> list[str]:
+    def add(self, key: str, value: Any) -> "Query":
         """
-        Get a field value as a list (always returns a list).
-
-        Single string values are wrapped in a list.
+        Добавить или обновить параметр запроса.
 
         Args:
-            name: Name of the field to retrieve.
+            key: Имя параметра
+            value: Значение параметра
 
         Returns:
-            List of field values. Empty list if field not found.
+            Self для цепочки вызовов
 
-        Examples:
-            >>> query = Query(fields={"segment": "corporate"})
-            >>> query.get_field_as_list("segment")
-            ['corporate']
-
-            >>> query = Query(fields={"segment": ["a", "b"]})
-            >>> query.get_field_as_list("segment")
-            ['a', 'b']
+        Example:
+            >>> query = Query()
+            >>> query.add("metricType", "interest_income").add("segment", "corporate")
         """
-        value = self.get_field(name)
-        if value is None:
-            return []
-        if isinstance(value, str):
-            return [value]
-        return list(value)
+        self.params[key] = value
+        return self
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Получить значение параметра.
+
+        Args:
+            key: Имя параметра
+            default: Значение по умолчанию, если параметр не найден
+
+        Returns:
+            Значение параметра или default
+        """
+        return self.params.get(key, default)
+
+    def remove(self, key: str) -> "Query":
+        """
+        Удалить параметр из запроса.
+
+        Args:
+            key: Имя параметра для удаления
+
+        Returns:
+            Self для цепочки вызовов
+        """
+        self.params.pop(key, None)
+        return self
 
     def is_empty(self) -> bool:
         """
-        Check if the query has no fields.
+        Проверить, что запрос не содержит параметров.
 
         Returns:
-            True if the query has no fields, False otherwise.
-
-        Examples:
-            >>> Query().is_empty()
-            True
-            >>> Query(fields={"a": "b"}).is_empty()
-            False
+            True, если запрос пустой, иначе False
         """
-        return self.fields is None or len(self.fields) == 0
+        return len(self.params) == 0
 
-    def to_dict(self) -> dict[str, object] | None:
+    def keys(self) -> list[str]:
+        """Возвращает список ключей параметров."""
+        return list(self.params.keys())
+
+    def values(self) -> list[Any]:
+        """Возвращает список значений параметров."""
+        return list(self.params.values())
+
+    def items(self) -> list[tuple[str, Any]]:
+        """Возвращает список кортежей (ключ, значение)."""
+        return list(self.params.items())
+
+    def to_dict(self) -> Dict[str, Any]:
         """
-        Convert the Query to a dictionary representation for JSON serialization.
-
-        Returns None if the query is empty (no fields).
+        Преобразовать Query в словарь.
 
         Returns:
-            Dictionary representation of the Query, or None if empty.
-
-        Examples:
-            >>> query = Query(fields={"segment": "corporate"})
-            >>> query.to_dict()
-            {'segment': 'corporate'}
-
-            >>> Query().to_dict() is None
-            True
+            Словарь параметров запроса
         """
-        if self.is_empty():
-            return None
-        # Return a copy to prevent external modification
-        return dict(self.fields)
+        return dict(self.params)
+
+    def to_json(self) -> Dict[str, Any]:
+        """
+        Подготовить Query для JSON-сериализации.
+
+        В отличие от to_dict(), этот метод удаляет пустые параметры
+        (None, пустые строки, пустые списки).
+
+        Returns:
+            Словарь параметров, готовый для JSON-сериализации
+        """
+        return {k: v for k, v in self.params.items()
+                if v is not None and v != "" and v != []}
 
     @classmethod
-    def from_dict(cls, data: dict[str, object] | None) -> Query:
+    def from_dict(cls, data: Dict[str, Any]) -> "Query":
         """
-        Create a Query instance from a dictionary.
+        Создать Query из словаря.
 
         Args:
-            data: Dictionary containing the query data, or None for empty query.
+            data: Словарь параметров
 
         Returns:
-            A new Query instance populated from the dictionary.
+            Экземпляр Query
 
-        Raises:
-            ValueError: If any field has an invalid value.
-
-        Examples:
-            >>> data = {"segment": "corporate", "metric": "interest_income"}
+        Example:
+            >>> data = {"metricType": "interest_income", "segment": "corporate"}
             >>> query = Query.from_dict(data)
-            >>> query.get_field("segment")
-            'corporate'
-
-            >>> Query.from_dict(None).is_empty()
-            True
         """
-        if data is None or len(data) == 0:
-            return cls()
+        return cls(dict(data) if data else None)
 
-        # Process and validate fields
-        fields: dict[str, str | list[str]] = {}
-        for key, value in data.items():
-            if not isinstance(key, str) or not key:
-                raise ValueError("Query field name must be a non-empty string")
-
-            if value is None:
-                # Skip None values (equivalent to not having the field)
-                continue
-
-            if isinstance(value, str):
-                if not value:
-                    raise ValueError(f"Query field '{key}' must not be empty")
-                fields[key] = value
-            elif isinstance(value, list):
-                if len(value) == 0:
-                    raise ValueError(f"Query field '{key}' list must not be empty")
-                processed_list: list[str] = []
-                for i, item in enumerate(value):
-                    if isinstance(item, str) and item:
-                        processed_list.append(item)
-                    elif item is None:
-                        # Skip None values in list
-                        continue
-                    else:
-                        raise ValueError(
-                            f"Query field '{key}'[{i}] must be a non-empty string"
-                        )
-                if len(processed_list) == 0:
-                    # All items were None, skip this field
-                    continue
-                fields[key] = processed_list
-            elif isinstance(value, (int, float, bool)):
-                # Convert numeric/boolean values to strings
-                fields[key] = str(value)
-            else:
-                raise ValueError(
-                    f"Query field '{key}' must be a string, list, number, or boolean"
-                )
-
-        return cls(fields=fields if fields else None)
-
-    def __eq__(self, other: object) -> bool:
+    @classmethod
+    def from_json(cls, data: Dict[str, Any]) -> "Query":
         """
-        Check equality with another Query instance.
+        Создать Query из JSON-объекта (словаря).
+
+        Метод аналогичен from_dict, но название подчеркивает,
+        что ожидается десериализованный JSON.
 
         Args:
-            other: Another object to compare with.
+            data: Словарь из JSON
 
         Returns:
-            True if other is a Query with the same field values,
-            False otherwise.
-
-        Examples:
-            >>> q1 = Query(fields={"a": "b"})
-            >>> q2 = Query(fields={"a": "b"})
-            >>> q1 == q2
-            True
+            Экземпляр Query
         """
-        if not isinstance(other, Query):
-            return False
-        return self.fields == other.fields
+        # Позволяем пустой словарь - это валидный пустой запрос
+        if data is None:
+            return cls()
+        return cls(dict(data))
+
+    def __bool__(self) -> bool:
+        """
+        Query является True, если содержит параметры.
+
+        Returns:
+            True, если параметры есть, иначе False
+        """
+        return not self.is_empty()
+
+    def __len__(self) -> int:
+        """Возвращает количество параметров."""
+        return len(self.params)
+
+    def __contains__(self, key: str) -> bool:
+        """Проверить наличие параметра по ключу."""
+        return key in self.params
+
+    def __getitem__(self, key: str) -> Any:
+        """Получить значение параметра по ключу."""
+        return self.params[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Установить значение параметра по ключу."""
+        self.params[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        """Удалить параметр по ключу."""
+        del self.params[key]
 
     def __repr__(self) -> str:
-        """
-        Return a detailed string representation of the Query.
+        """Строковое представление Query."""
+        return f"Query({self.params})"
 
-        Returns:
-            A string representation containing all field values.
-
-        Examples:
-            >>> Query(fields={"a": "b"})
-            Query(fields={'a': 'b'})
-        """
-        return f"Query(fields={self.fields!r})"
+    def __eq__(self, other: object) -> bool:
+        """Проверить равенство двух Query."""
+        if not isinstance(other, Query):
+            return False
+        return self.params == other.params
 
     def __hash__(self) -> int:
-        """
-        Return a hash value for the Query.
-
-        Note: Lists in fields are converted to tuples for hashing.
-
-        Returns:
-            Hash value based on all field values.
-
-        Examples:
-            >>> q1 = Query(fields={"a": "b"})
-            >>> q2 = Query(fields={"a": "b"})
-            >>> hash(q1) == hash(q2)
-            True
-        """
-        if self.fields is None:
-            return hash(None)
-        # Convert lists to tuples for hashing
-        hashable_fields: dict[str, str | tuple[str, ...]] = {}
-        for key, value in self.fields.items():
-            if isinstance(value, list):
-                hashable_fields[key] = tuple(value)
-            else:
-                hashable_fields[key] = value
-        return hash(frozenset(hashable_fields.items()))
+        """Хеш Query для использования в множествах и как ключ словаря."""
+        # Преобразуем в кортеж отсортированных элементов для детерминированного хеша
+        return hash(tuple(sorted(self.items())))

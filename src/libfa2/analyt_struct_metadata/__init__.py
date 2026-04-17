@@ -2,12 +2,12 @@
 Analytical structure metadata module for factor analysis.
 
 This module contains classes for managing metadata about analytical
-dimension drill-down algorithms used in factor analysis.
+dimension drill-down fa_impl used in factor analysis.
 
 Modules:
     enums: Enum classes for string constants
     dimension: Dimension class for analytical dimensions
-    algorithm: Algorithm class for drill-down algorithms
+    algorithm: Algorithm class for drill-down fa_impl
     metadata: AnalyticalStructureMetadata container class
 """
 
