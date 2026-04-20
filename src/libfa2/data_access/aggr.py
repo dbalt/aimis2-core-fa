@@ -5,12 +5,14 @@ This module provides a high-level interface for constructing and executing
 aggregated SQL queries using the GeneralSQLDataGateClientPart from aimis-sdk.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from coredis import Redis as KeyDbClient
 
 from sdk.datagate.dg_client import GeneralSQLDataGateClientPart
 from sdk.core.monadic import Res
+
+from .conditions import ConditionBase, get_where_clause_part, reduce_condition
 
 
 class DataAccess:
@@ -33,35 +35,37 @@ class DataAccess:
     async def get_aggr_data(
         self,
         source: str,
-        grp_by_columns: List[str],
+        grp_by_columns: Optional[List[str]],
         aggr_columns: List[str],
-        conditions: Dict[str, Any | List[Any]]
+        conditions: ConditionBase
     ) -> Res[List[Dict[str, Any]]]:
         """
-        Execute an aggregated SQL query with grouping and summation.
+        Execute an aggregated SQL query with optional grouping and summation.
 
         Args:
             source: Table name in schema.table format (e.g., 'missa_bidr.t_aimis_fa__metrics_bsp')
-            grp_by_columns: List of column names to group by
+            grp_by_columns: List of column names to group by. Empty list or None for aggregation
+                           without grouping (single row result with summed values).
             aggr_columns: List of column names to aggregate with SUM()
-            conditions: Dictionary of WHERE clause conditions.
-                        If value is a list, uses IN operator.
-                        If value is a single value, uses = operator.
+            conditions: ConditionBase object representing WHERE clause conditions.
+                        Can be ConditionSet for simple filters or ConditionOr/ConditionAnd
+                        for complex combined conditions.
 
         Returns:
             Res[List[Dict[str, Any]]]: Result containing list of dictionaries with aggregated data,
                                       or an error if query fails.
 
         Example:
+            >>> from libfa2.data_access.conditions import ConditionSet
             >>> await get_aggr_data(
             ...     'missa_bidr.t_aimis_fa__metrics_bsp',
             ...     ['gosb_name'],
             ...     ['plan', 'fact'],
-            ...     {
+            ...     ConditionSet({
             ...         'rep_dt': datetime.date(2026, 2, 28),
             ...         'kpi_name': 'Чистая прибыль',
             ...         'tb_name': ['Уральский банк', 'Байкальский банк']
-            ...     }
+            ...     })
             ... )
         """
         sql, params = self._build_query(
@@ -76,22 +80,26 @@ class DataAccess:
     def _build_query(
         self,
         source: str,
-        grp_by_columns: List[str],
+        grp_by_columns: Optional[List[str]],
         aggr_columns: List[str],
-        conditions: Dict[str, Any | List[Any]]
+        conditions: ConditionBase
     ) -> tuple[str, Dict[str, Any]]:
         """
         Build SQL query and parameters dictionary.
 
         Args:
             source: Table name
-            grp_by_columns: Columns to group by
+            grp_by_columns: Columns to group by (empty list or None for aggregation without grouping)
             aggr_columns: Columns to aggregate
-            conditions: WHERE conditions
+            conditions: WHERE conditions as ConditionBase
 
         Returns:
             Tuple of (sql_query_string, parameters_dict)
         """
+        # Handle None for grp_by_columns
+        if grp_by_columns is None:
+            grp_by_columns = []
+
         # Build SELECT clause
         select_parts = []
         for col in grp_by_columns:
@@ -101,35 +109,33 @@ class DataAccess:
 
         select_clause = ",\n    ".join(select_parts)
 
-        # Build WHERE clause
-        where_conditions = []
-        params: Dict[str, Any] = {}
-
-        for key, value in conditions.items():
-            if isinstance(value, list):
-                # Use IN operator for lists
-                where_conditions.append(f"t.{key} in %({key})s")
-                params[key] = tuple(value)
-            else:
-                # Use = operator for single values
-                where_conditions.append(f"t.{key} = %({key})s")
-                params[key] = value
+        # Reduce and build WHERE clause
+        reduced_condition = reduce_condition(conditions)
+        where_sql, params = get_where_clause_part(reduced_condition)
 
         where_clause = ""
-        if where_conditions:
-            where_conditions_str = "\n    and ".join(where_conditions)
-            where_clause = f"\nwhere 1=1\n    and {where_conditions_str}"
+        if where_sql:
+            where_clause = f"\nwhere 1=1\n    and {where_sql}"
 
-        # Build GROUP BY clause
-        group_by_parts = [f"t.{col}" for col in grp_by_columns]
-        group_by_clause = ",\n    ".join(group_by_parts)
+        # Build GROUP BY clause (only if there are group by columns)
+        group_by_clause = ""
+        if grp_by_columns:
+            group_by_parts = [f"t.{col}" for col in grp_by_columns]
+            group_by_clause = ",\n    ".join(group_by_parts)
 
         # Construct full query
-        sql = f"""select
+        if group_by_clause:
+            sql = f"""select
     {select_clause}
 from {source} t{where_clause}
 group by
     {group_by_clause}
+"""
+        else:
+            # No GROUP BY clause when grp_by_columns is empty
+            sql = f"""select
+    {select_clause}
+from {source} t{where_clause}
 """
 
         return sql, params

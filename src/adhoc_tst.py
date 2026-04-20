@@ -1,6 +1,41 @@
 
 
-async def main():
+
+async def _instantiate_keydb():
+    from sdk.tools.settings import env__init_keydb_instance
+    kdb = env__init_keydb_instance()
+    return kdb
+
+
+async def test_data_access():
+    from libfa2.data_access.aggr import DataAccess
+    from libfa2.data_access.conditions import ConditionSet
+    from datetime import date
+
+
+
+
+    kdb = await _instantiate_keydb()
+    da = DataAccess(kdb)
+
+    _conds = ConditionSet.from_dict({
+        'fact_dt': date(2025,5,31),
+        'kpi_name': 'ТБ. Операционная прибыль',
+        'segment': 'ММБ',
+        'tb_id': 55
+    })
+
+    res = await da.get_aggr_data(
+        source='missa_bidr.t_aimis_all_kpi',
+        grp_by_columns=[],
+        aggr_columns=['plan', 'fact'],
+        conditions=_conds
+    )
+
+    print(res)
+
+
+async def run_test_dg():
     from sdk.tools.settings import env__init_keydb_instance
     from sdk.datagate.dg_client import GeneralSQLDataGateClientPart
     from datetime import date, datetime
@@ -31,7 +66,10 @@ limit 1000
     print(res)
 
 
+def main():
+    import asyncio
+    asyncio.run(test_data_access())
+
 
 if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+    main()

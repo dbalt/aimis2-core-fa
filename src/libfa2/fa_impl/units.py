@@ -8,6 +8,10 @@ class EnumDrillType:
     ANALYTICAL:str = 'a'
 
 
+@dataclass
+class SourceParameters:
+    source_name:str = ''
+    rep_dt_column:str = 'rep_dt'
 
 
 @dataclass

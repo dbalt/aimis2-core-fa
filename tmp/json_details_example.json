@@ -1,8 +1,6 @@
 {
     "hier_id": 10,
-    "analyt_struct_id": 10,
-
-    "res":{
+    "amts":{
         "plan": 100,
         "fact": 120,
         "deviation": 20,
@@ -11,7 +9,35 @@
 
     "drills": [
         {
-            
+            "drillType": "HIER",
+            "amts": {
+                "deviation": 20,
+                "dev_pos": 100,
+                "dev_neg": -80
+            },
+            "components": [
+                {
+                    "hier_id": 20,
+                    "amts": {
+                        "plan":60,
+                        "fact":20,
+                        "deviation": -40,
+                        "impact": -40
+                    },
+                    
+                },
+
+                {
+                    "hier_id": 30,
+                    "amts": {
+                        "plan":40,
+                        "fact":10,
+                        "deviation": -30,
+                        "impact": -30
+                    }
+                }
+            ]
+
 
         }
     ]

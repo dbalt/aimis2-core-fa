@@ -90,6 +90,13 @@ def reduce_condition(condition:ConditionBase) -> ConditionBase
 
 
 
+Сгенерируй код модулей и юнит тесты
+Все должно быть лаконично откомментировано
+Сохрани отчет о проделанной работе в @agent_stuff/reports/condition_logic_impl_glm_report.md
+
+
+
+
 
 
 
