@@ -592,3 +592,5 @@ class AnalyticalStructureMetadata:
             f"AnalyticalStructureMetadata(fa_impl={len(self.algorithms)}, "
             f"dimensions={len(self.dimensions)})"
         )
+
+
