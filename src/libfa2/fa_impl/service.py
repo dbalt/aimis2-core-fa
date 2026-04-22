@@ -6,6 +6,7 @@ from ..hier_metadata import Hierarchy, MetricNode
 from ..analyt_struct_metadata import AnalyticalStructureMetadata
 from datetime import date
 from ..data_access import DataAccess
+from ..data_access.aggr import DataRow
 from ..data_access.conditions import ConditionBase, ConditionSet, ConditionOr, reduce_condition, ConditionAnd
 from sdk.core.monadic import Res
 from typing import List, Dict, Any
@@ -13,23 +14,7 @@ from dataclasses import dataclass, field
 from .deviation_calc_params import DeviationCalcParams
 
 
-@dataclass
-class DataRow:
-    dims:Dict[str,Any] = field(default_factory=Dict)
-    plan:float = 0
-    fact:float = 0
 
-    @property
-    def deviation(self)->float:
-        return self.fact - self.plan
-
-    @classmethod
-    def from_dict(cls, row:Dict[str,Any],params:SearchDevParameters)->'DataRow':
-        plan_val = row[params.plan_column]
-        fact_val = row[params.fact_column]
-        dims = {k:v for (k,v) in row.items() if k != params.plan_column and k != params.fact_column}
-        it = DataRow(dims, plan_val, fact_val)
-        return it
 
 
 
@@ -93,7 +78,7 @@ async def _get_data(
         conditions=_conditions
     )
 
-    res.transform_data(lambda d: [DataRow.from_dict(x, cp.search_dev_params) for x in d])
+
 
     return res
 

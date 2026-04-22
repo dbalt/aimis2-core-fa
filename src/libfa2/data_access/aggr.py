@@ -4,6 +4,7 @@ Data access layer for aggregated SQL queries.
 This module provides a high-level interface for constructing and executing
 aggregated SQL queries using the GeneralSQLDataGateClientPart from aimis-sdk.
 """
+from __future__ import annotations
 
 from typing import List, Dict, Any, Optional
 
@@ -13,6 +14,27 @@ from sdk.datagate.dg_client import GeneralSQLDataGateClientPart
 from sdk.core.monadic import Res
 
 from .conditions import ConditionBase, get_where_clause_part, reduce_condition
+from dataclasses import dataclass, field
+
+
+@dataclass
+class DataRow:
+    dims:Dict[str,Any] = field(default_factory=Dict)
+    plan:float = 0
+    fact:float = 0
+
+    @property
+    def deviation(self)->float:
+        return self.fact - self.plan
+
+    @classmethod
+    def from_dict(cls, row:Dict[str,Any],params:SearchDevParameters)->'DataRow':
+        plan_val = row[params.plan_column]
+        fact_val = row[params.fact_column]
+        dims = {k:v for (k,v) in row.items() if k != params.plan_column and k != params.fact_column}
+        it = DataRow(dims, plan_val, fact_val)
+        return it
+
 
 
 class DataAccess:
@@ -75,7 +97,9 @@ class DataAccess:
             conditions=conditions
         )
 
-        return await self._dg_client.get_data(sql=sql, params=params)
+        res:Res[List[Dict[str,Any]]] =  await self._dg_client.get_data(sql=sql, params=params)
+        res.transform_data(lambda d: [DataRow.from_dict(x, cp.search_dev_params) for x in d])
+        return res
 
     def _build_query(
         self,

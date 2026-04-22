@@ -43,7 +43,7 @@ class DeviationAmts:
         )
         return res
 
-@classmethod
+@dataclass
 class DeviationDetailAmts:
     positive_contrib:float = 0
     negative_contrib:float = 0
