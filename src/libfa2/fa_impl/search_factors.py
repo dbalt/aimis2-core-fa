@@ -13,7 +13,7 @@ def _is_negative(deviation: float, sign_negative_impact: int) -> bool:
 
 
 def get_factors(
-    data_set: List[DataRow],
+    data_set: List[DataRow], 
     params: SearchDevParameters,
 ) -> Tuple[List[DataRow], DeviationDetailAmts]:
     """
