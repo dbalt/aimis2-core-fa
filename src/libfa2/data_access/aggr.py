@@ -16,6 +16,8 @@ from sdk.core.monadic import Res
 from .conditions import ConditionBase, get_where_clause_part, reduce_condition
 from dataclasses import dataclass, field
 
+from ..fa_impl.units import SearchDevParameters
+
 
 @dataclass
 class DataRow:
@@ -28,7 +30,7 @@ class DataRow:
         return self.fact - self.plan
 
     @classmethod
-    def from_dict(cls, row:Dict[str,Any],params:SearchDevParameters)->'DataRow':
+    def from_dict(cls, row:Dict[str,Any],params:'SearchDevParameters')->'DataRow':
         plan_val = row[params.plan_column]
         fact_val = row[params.fact_column]
         dims = {k:v for (k,v) in row.items() if k != params.plan_column and k != params.fact_column}

@@ -2,7 +2,7 @@
 Metadata module for analytical structure management.
 
 This module defines the AnalyticalStructureMetadata class which manages
-a collection of drill-down fa_impl and analytical dimensions, providing
+a collection of drill-down algorithms and analytical dimensions, providing
 methods for validation, serialization, and navigation.
 """
 
@@ -89,13 +89,13 @@ class ValidationReport:
 @dataclass
 class AnalyticalStructureMetadata:
     """
-    Manages a collection of drill-down fa_impl and analytical dimensions.
+    Manages a collection of drill-down algorithms and analytical dimensions.
 
     The AnalyticalStructureMetadata class provides methods for:
-    - Adding and removing fa_impl and dimensions
+    - Adding and removing algorithms and dimensions
     - Serializing to/from JSON
     - Validating the structure
-    - Finding fa_impl and dimensions
+    - Finding algorithms and dimensions
 
     Attributes:
         algorithms: Dictionary mapping algorithm IDs to Algorithm instances.
@@ -154,7 +154,7 @@ class AnalyticalStructureMetadata:
             >>> metadata = AnalyticalStructureMetadata()
             >>> algo = Algorithm(id=1, drill_order=[["segment"]])
             >>> metadata.add_algorithm(algo)
-            >>> 1 in metadata.fa_impl
+            >>> 1 in metadata.algorithms
             True
         """
         if algorithm.id in self.algorithms:
@@ -163,7 +163,7 @@ class AnalyticalStructureMetadata:
 
     def add_algorithms(self, algorithms: Iterable[Algorithm]) -> None:
         """
-        Add multiple fa_impl to the metadata.
+        Add multiple algorithms to the metadata.
 
         Args:
             algorithms: Iterable of Algorithm instances to add.
@@ -178,7 +178,7 @@ class AnalyticalStructureMetadata:
             ...     Algorithm(id=2, drill_order=[["b"]])
             ... ]
             >>> metadata.add_algorithms(algos)
-            >>> len(metadata.fa_impl)
+            >>> len(metadata.algorithms)
             2
         """
         for algo in algorithms:
@@ -202,7 +202,7 @@ class AnalyticalStructureMetadata:
             >>> algo = Algorithm(id=1, drill_order=[["a"]])
             >>> metadata.add_algorithm(algo)
             >>> metadata.remove_algorithm(1)
-            >>> 1 not in metadata.fa_impl
+            >>> 1 not in metadata.algorithms
             True
         """
         if algorithm_id not in self.algorithms:
@@ -338,11 +338,11 @@ class AnalyticalStructureMetadata:
             >>> metadata = AnalyticalStructureMetadata()
             >>> metadata.add_dimension(Dimension(code="a", name="A", column="a_col"))
             >>> json_str = metadata.to_json()
-            >>> '"fa_impl"' in json_str
+            >>> '"algorithms"' in json_str
             True
         """
         result = {
-            "fa_impl": [algo.to_dict() for algo in self.algorithms.values()],
+            "algorithms": [algo.to_dict() for algo in self.algorithms.values()],
             "dimensions": [dim.to_dict() for dim in self.dimensions.values()],
         }
         return json.dumps(result, indent=indent, ensure_ascii=False)
@@ -363,9 +363,9 @@ class AnalyticalStructureMetadata:
             ValueError: If the data is invalid.
 
         Examples:
-            >>> json_str = '{"fa_impl": [], "dimensions": []}'
+            >>> json_str = '{"algorithms": [], "dimensions": []}'
             >>> metadata = AnalyticalStructureMetadata.from_json(json_str)
-            >>> len(metadata.fa_impl)
+            >>> len(metadata.algorithms)
             0
         """
         from libfa2.analyt_struct_metadata.algorithm import Algorithm
@@ -378,11 +378,11 @@ class AnalyticalStructureMetadata:
 
         metadata = cls()
 
-        # Load fa_impl
-        algorithms_data = data.get("fa_impl", [])
+        # Load algorithms
+        algorithms_data = data.get("algorithms", [])
         if algorithms_data:
             if not isinstance(algorithms_data, list):
-                raise ValueError("'fa_impl' must be a list")
+                raise ValueError("'algorithms' must be a list")
             for algo_data in algorithms_data:
                 if not isinstance(algo_data, dict):
                     raise ValueError("Each algorithm must be a dictionary")
@@ -413,7 +413,7 @@ class AnalyticalStructureMetadata:
         - Invalid algorithm IDs
         - Invalid dimension codes
         - Invalid drill_order structure
-        - Empty fa_impl or dimensions
+        - Empty algorithms or dimensions
 
         Returns:
             ValidationReport with results.
@@ -429,7 +429,7 @@ class AnalyticalStructureMetadata:
         """
         errors: list[ValidationError] = []
 
-        # Check for empty fa_impl
+        # Check for empty algorithms
         if len(self.algorithms) == 0:
             errors.append(ValidationError(
                 type=ValidationErrorType.EMPTY_ALGORITHMS,
@@ -557,7 +557,7 @@ class AnalyticalStructureMetadata:
 
         Returns:
             True if other is an AnalyticalStructureMetadata with the same
-            fa_impl and dimensions, False otherwise.
+            algorithms and dimensions, False otherwise.
         """
         if not isinstance(other, AnalyticalStructureMetadata):
             return False
@@ -567,7 +567,7 @@ class AnalyticalStructureMetadata:
         )
 
     def __len__(self) -> int:
-        """Return the total number of fa_impl and dimensions."""
+        """Return the total number of algorithms and dimensions."""
         return len(self.algorithms) + len(self.dimensions)
 
     def __contains__(self, key: int | str) -> bool:
@@ -589,7 +589,7 @@ class AnalyticalStructureMetadata:
     def __repr__(self) -> str:
         """Return a string representation of the AnalyticalStructureMetadata."""
         return (
-            f"AnalyticalStructureMetadata(fa_impl={len(self.algorithms)}, "
+            f"AnalyticalStructureMetadata(algorithms={len(self.algorithms)}, "
             f"dimensions={len(self.dimensions)})"
         )
 

@@ -1,17 +1,23 @@
 import asyncio
 from asyncio import TaskGroup
 
-from .units import DrillComponent, Drill, DeviationAmts, DeviationDetailAmts, SearchDevParameters, SourceParameters
-from ..hier_metadata import Hierarchy, MetricNode
-from ..analyt_struct_metadata import AnalyticalStructureMetadata
+from pygments.style import ansicolors
+
+from .units import DrillComponent, Drill, DeviationAmts, DeviationDetailAmts, SearchDevParameters, SourceParameters, EnumDrillType
+
+from ..hier_metadata import Hierarchy, MetricNode, MetricType
+
+from ..analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm, Dimension
+
 from datetime import date
 from ..data_access import DataAccess
 from ..data_access.aggr import DataRow
 from ..data_access.conditions import ConditionBase, ConditionSet, ConditionOr, reduce_condition, ConditionAnd
 from sdk.core.monadic import Res
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass, field
 from .deviation_calc_params import DeviationCalcParams
+from .search_factors import get_factors
 
 
 
@@ -59,9 +65,9 @@ async def _get_data(
         node:MetricNode,
         current_analyt:ConditionBase = None,
         next_analyt:List[str] = None
-) -> Res[Dict[str,Any]]:
+) -> Res[List[DataRow]]:
 
-    _conditions = _get_conditions_for_hier_node(cp.hier, node, cp.source_params, cp.rep_dt)
+    _conditions = _get_conditions_for_hier_node(cp, node)
     if current_analyt:
         _conditions = ConditionAnd([_conditions, current_analyt])
         _conditions = reduce_condition(_conditions)
@@ -77,8 +83,6 @@ async def _get_data(
         aggr_columns=[cp.search_dev_params.fact_column, cp.search_dev_params.plan_column],
         conditions=_conditions
     )
-
-
 
     return res
 
@@ -150,22 +154,124 @@ async def _get_data(
 #         pass
 
 
+async def make_hier_drill(dc:DrillComponent, cp:DeviationCalcParams, da:DataAccess, tg:TaskGroup):
+    node = dc.hier_ref
 
-def get_factors(dataset: List[DataRow], params:SearchDevParameters)->List[DataRow]:
+    node_analyt_condition_set = None
+    if dc.analyt_struct is not None and len(dc.analyt_struct.keys()) > 0:
+        node_analyt_condition_set = ConditionSet(dc.analyt_struct)
 
-    # 1. sort list
-    dataset.sort(key=lambda x:x.deviation, reverse= (params.sign_negative_impact != 1))
+    components: List[DataRow] = []
+    factors:List[DataRow] = []
+    deviation_detail_amts = DeviationDetailAmts()
 
-    # 2. calc sums
-    _total_neg_fact = 0
-    _total_neg_plan = 0
-    _total_neg_deviation = 0
-    for x in dataset:
-        if not (x.deviation * params.sign_negative_impact > 0): continue
+    if node.type == MetricType.SUM:
+        # Собираем как сумму потомков
 
-        _total_neg_plan = _total_neg_plan + x.plan
-        _total_neg_fact = _total_neg_fact + x.fact
-        _total_neg_deviation = _total_neg_deviation + x.deviation
+        for chld in cp.hier.get_children(node.id):
+            val_res = await _get_data(cp, da, chld, node_analyt_condition_set)
+            if not val_res.ok: continue
+            val_row = val_res.data[0]
+            val_row.dims['node'] = chld
+            components.append(val_row)
+
+        (factors, deviation_detail_amts) = get_factors(components, cp.search_dev_params)
+
+    drill = Drill(
+        drill_type=EnumDrillType.HIER,
+        detail_amts=deviation_detail_amts
+    )
+
+    dc.drills.append(drill)
+
+    for f in factors:
+        chld_dc = DrillComponent(
+            hier_ref=f.dims['chld'],
+            analyt_struct=dc.analyt_struct,
+            parent=drill,
+            amts=DeviationAmts.mk(f.plan, f.fact)
+        )
+
+        tg.create_task(make_next_drill(chld_dc, cp, da, tg))
+
+        drill.components.append(
+            chld_dc
+        )
+
+
+async def make_analyt_drill(dc:DrillComponent, cp:DeviationCalcParams, da:DataAccess, tg:TaskGroup):
+    """
+    Эта ветка должна отрабатывать целиком до конца аналитическую нарезку
+    Предварительно посчитать, нет ли уже чего нарезанного
+    """
+
+
+
+    async def _process_algorithm_step(_dc:DrillComponent, steps:List[List[str]]):
+        current_step, *next_steps = steps
+
+        _as = _dc.analyt_struct
+
+        cond_set = None if len(_as.keys()) == 0 else ConditionSet(_as)
+
+        data_res = await _get_data(
+            cp, da, _dc.hier_ref, cond_set, current_step
+        )
+
+        if not data_res.ok:
+            raise Exception(data_res.err)
+
+        data_set = data_res.data
+
+
+
+
+
+    async def _process_algorithm(_dc:DrillComponent, alg:Algorithm):
+        # Вычисляем шаги, с учетом что у нас уже может быть как то порезано по аналит разрезам
+        current_analytical_slices = _dc.analyt_struct.keys()
+        steps = []
+        for step in alg.drill_order:
+            new_step = [x for x in step if x not in current_analytical_slices]
+            if len(new_step) == 0: continue
+            steps.append(new_step)
+
+        tg.create_task(_process_algorithm_step(_dc, steps))
+
+
+
+    for a in dc.hier_ref.analyt_metadata.algorithms.values():
+        tg.create_task(_process_algorithm(a))
+
+    # node = dc.hier_ref
+    # current_analytical_slices:List[str] = dc.analyt_struct.keys()
+    # for a in node.analyt_metadata.algorithms.values(): # Algorithm
+    #     a.drill_order
+
+
+
+
+
+async def make_next_drill(dc:DrillComponent, cp:DeviationCalcParams, da:DataAccess, tg:TaskGroup):
+    """
+    Пока что действуем в такой парадигме:
+    - Если есть метаданные аналитического разложения - идем в них
+    - Иначе идем в иерархию
+
+    Тем самым у нас в итоге только одна ветка сценариев
+    """
+    node = dc.hier_ref
+    if node.analyt_metadata:
+        tg.create_task(make_analyt_drill(dc, cp, da, tg))
+    else:
+        tg.create_task(make_hier_drill(dc, cp, da, tg))
+
+
+
+
+
+
+
 
 
 
@@ -196,7 +302,9 @@ async def calculate_deviations(
         )
 
 
-    '''Результат верхнего уровня'''
+    '''
+        Результат верхнего уровня
+    '''
     top_lvl_res = await __get_data_shortcut(hier_root)
 
     if not top_lvl_res.ok:
