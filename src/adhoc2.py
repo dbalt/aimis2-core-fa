@@ -273,7 +273,7 @@ def main():
     h.add_node(od_pchod_salsoc)
 
     od_pchod_oth = MetricNode(
-        id=210,
+        id=230,
         code='od_pchod_oth',
         name='Прочее',
         parent=od_pchod.id,

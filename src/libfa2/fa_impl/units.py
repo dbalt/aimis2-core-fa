@@ -43,6 +43,16 @@ class DeviationAmts:
         )
         return res
 
+    @classmethod
+    def mk_with_custom_impact(cls, plan:float, fact:float, custom_impact:float)->'DeviationAmts':
+        res = DeviationAmts(
+            plan,
+            fact,
+            fact - plan,
+            custom_impact
+        )
+        return res
+
 @dataclass
 class DeviationDetailAmts:
     positive_contrib:float = 0
