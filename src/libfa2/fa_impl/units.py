@@ -69,9 +69,9 @@ class Drill:
 
     detail_amts:DeviationDetailAmts = field(default_factory=DeviationDetailAmts)
 
-    analyt_slice: List[str] = field(default_factory=List)
+    analyt_slice: List[str] = field(default_factory=list)
 
-    components:List['DrillComponent'] = field(default_factory=List)
+    components:List['DrillComponent'] = field(default_factory=list)
 
 
 
@@ -80,7 +80,7 @@ class DrillComponent:
 
     hier_ref: MetricNode
 
-    analyt_struct: Dict[str,str] = field(default_factory=Dict)
+    analyt_struct: Dict[str,str] = field(default_factory=dict)
     """ Описывается комбинация {измерение:значение}. 
         Например:
         {
@@ -93,7 +93,7 @@ class DrillComponent:
 
     amts:DeviationAmts = field(default_factory=DeviationAmts)
 
-    drills:List[Drill] = field(default_factory=List)
+    drills:List[Drill] = field(default_factory=list)
 
 
 

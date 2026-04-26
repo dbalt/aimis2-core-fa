@@ -85,9 +85,9 @@ async def _query_data_from_data_access_layer(
         conditions=_conditions
     )
 
-    res.transform_data(lambda l: [DataRow.from_dict(x) for x in l])
+    resx = res.transform_data(lambda l: [DataRow.from_dict(x, cp.search_dev_params) for x in l])
 
-    return res
+    return resx
 
 
 
@@ -117,7 +117,7 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         if not val_res.ok:
             raise Exception(f'Could not retrieve data for node:{node}, err:{val_res.err}')
         val_row = val_res.data[0]
-        val_row.dims['node'] = chld
+        val_row.dims['node'] = node
         return val_row
 
 
@@ -160,8 +160,8 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
     if current_node.type == MetricType.MULTI:
 
         children = deviation_calc_params.hier.get_children(current_node.id)
-        node_ratio = search_first_in_lst_or(children, lambda x:x.componentMultiPartType.RATE)
-        node_base = search_first_in_lst_or(children, lambda x:x.componentMultiPartType.BASE)
+        node_ratio = search_first_in_lst_or(children, lambda x:x.componentMultiPartType == ComponentMultiPartType.RATE)
+        node_base = search_first_in_lst_or(children, lambda x:x.componentMultiPartType == ComponentMultiPartType.BASE)
 
         base_data_row = await _get_data_for_node(node_base)
         ratio_data_row = DataRow(
@@ -179,7 +179,7 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         base_weighted_impact = (base_impact_direct_calc / (ratio_impact_direct_calc + base_impact_direct_calc)) * total_impact
 
         ratio_deviation_amounts = DeviationAmts.mk_with_custom_impact(ratio_data_row.plan, ratio_data_row.fact, ratio_weighted_impact)
-        base_deviation_amounts = DeviationAmts.mk_with_custom_impact(base_data_row.plan, base_data_row.plan, base_weighted_impact)
+        base_deviation_amounts = DeviationAmts.mk_with_custom_impact(base_data_row.plan, base_data_row.fact, base_weighted_impact)
 
         deviation_detail_amts = DeviationDetailAmts(
             positive_contrib=_pos(ratio_weighted_impact) + _pos(base_weighted_impact),

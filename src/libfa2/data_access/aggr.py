@@ -100,7 +100,6 @@ class DataAccess:
         )
 
         res:Res[List[Dict[str,Any]]] =  await self._dg_client.get_data(sql=sql, params=params)
-        res.transform_data(lambda d: [DataRow.from_dict(x, cp.search_dev_params) for x in d])
         return res
 
     def _build_query(
