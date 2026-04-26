@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 
 from ..fa_impl.units import SearchDevParameters
 
+from sdk.core.logging import get_logger
+
 
 @dataclass
 class DataRow:
@@ -54,7 +56,10 @@ class DataAccess:
         Args:
             keydb_client: Redis client for communication with data gate service
         """
+        lgr = get_logger()
+        lgr.debug('DataAccess.__init__ started')
         self._dg_client = GeneralSQLDataGateClientPart(keydb_client)
+        lgr.info('DataAccess initialized')
 
     async def get_aggr_data(
         self,
@@ -92,6 +97,9 @@ class DataAccess:
             ...     })
             ... )
         """
+        lgr = get_logger()
+        lgr.info(f'get_aggr_data started: source={source}, grp_by={grp_by_columns}, aggr={aggr_columns}')
+
         sql, params = self._build_query(
             source=source,
             grp_by_columns=grp_by_columns,
@@ -99,7 +107,16 @@ class DataAccess:
             conditions=conditions
         )
 
-        res:Res[List[Dict[str,Any]]] =  await self._dg_client.get_data(sql=sql, params=params)
+        lgr.debug(f'Executing SQL query: {sql.strip()}, params={params}')
+
+        res:Res[List[Dict[str,Any]]] = await self._dg_client.get_data(sql=sql, params=params)
+
+        if not res.ok:
+            lgr.error(f'get_aggr_data query failed: {res.err}')
+        else:
+            lgr.info(f'get_aggr_data completed: {len(res.data)} row(s) returned')
+            lgr.debug(f'get_aggr_data result: {res.data}')
+
         return res
 
     def _build_query(
@@ -121,6 +138,9 @@ class DataAccess:
         Returns:
             Tuple of (sql_query_string, parameters_dict)
         """
+        lgr = get_logger()
+        lgr.debug(f'_build_query started: source={source}, grp_by={grp_by_columns}, aggr={aggr_columns}')
+
         # Handle None for grp_by_columns
         if grp_by_columns is None:
             grp_by_columns = []
@@ -134,6 +154,8 @@ class DataAccess:
 
         select_clause = ",\n    ".join(select_parts)
 
+        lgr.debug(f'SELECT clause built: {select_clause}')
+
         # Reduce and build WHERE clause
         reduced_condition = reduce_condition(conditions)
         where_sql, params = get_where_clause_part(reduced_condition)
@@ -141,6 +163,8 @@ class DataAccess:
         where_clause = ""
         if where_sql:
             where_clause = f"\nwhere 1=1\n    and {where_sql}"
+
+        lgr.debug(f'WHERE clause built: {where_sql}, params={params}')
 
         # Build GROUP BY clause (only if there are group by columns)
         group_by_clause = ""
@@ -163,4 +187,5 @@ group by
 from {source} t{where_clause}
 """
 
+        lgr.debug(f'Built SQL:\n{sql}')
         return sql, params
