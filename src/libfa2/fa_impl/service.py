@@ -237,7 +237,7 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         # Создаём DrillComponent для каждого значимого фактора и планируем дальнейшее погружение
         for f in factors:
             chld_dc = DrillComponent(
-                hier_ref=f.dims['chld'],
+                hier_ref=f.dims['node'],
                 analyt_struct=current_drill_component.analyt_struct,
                 parent=drill,
                 amts=DeviationAmts.mk(f.plan, f.fact)
@@ -452,7 +452,11 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
         создаёт DrillComponent для каждого фактора, планирует следующий шаг
         или переход к make_next_drill."""
         lgr_step = get_logger()
+        if len(steps_left) == 0:
+            print('yo')
+
         current_step, *next_steps = steps_left
+
 
         lgr_step.debug(f'Processing algorithm step: group_by={current_step}, '
                        f'remaining_steps={len(next_steps)}, node_id={_dc.hier_ref.id}')
@@ -509,15 +513,18 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
         lgr_step.info(f'Algorithm step {current_step} completed: {len(factors)} child components scheduled')
 
 
-    async def _process_algorithm(alg:Algorithm):
+    async def _process_algorithm(alg:Algorithm, an_meta:AnalyticalStructureMetadata):
         """Подготавливает шаги алгоритма, исключая уже выполненные нарезки,
         и запускает первый шаг через _process_algorithm_step."""
         lgr_alg = get_logger()
         current_analytical_slices = current_drill_component.analyt_struct.keys()
         steps = []
+
         for step in alg.drill_order:
+            # Сначала от кодов нужно перейти к столбцам
+            step_columns = [an_meta.get_dimension(x).column for x in step]
             # Оставляем только те колонки шага, по которым ещё не нарезано
-            new_step = [x for x in step if x not in current_analytical_slices]
+            new_step = [x for x in step_columns if x not in current_analytical_slices]
             if len(new_step) == 0: continue
             steps.append(new_step)
 
@@ -525,7 +532,7 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
                      f'(original drill_order length={len(alg.drill_order)})')
         lgr_alg.debug(f'Algorithm steps: {steps}')
 
-        task_group.create_task(_process_algorithm_step(current_drill_component, steps))
+        task_group.create_task(_process_algorithm_step(current_drill_component, steps.copy()))
 
 
     lgr = get_logger()
@@ -537,12 +544,33 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
     lgr.info(f'Scheduling {alg_count} algorithm(s) for node id={current_drill_component.hier_ref.id}')
 
     for a in current_drill_component.hier_ref.analyt_metadata.algorithms.values():
-        task_group.create_task(_process_algorithm(a))
+        task_group.create_task(_process_algorithm(a, current_drill_component.hier_ref.analyt_metadata))
 
 
 # ---------------------------------------------------------------------------
 # Маршрутизатор погружения
 # ---------------------------------------------------------------------------
+
+def check_need_analyt_drill(node:MetricNode, an_str:Dict[str,Any])->bool:
+    anmet = node.analyt_metadata
+
+    if not anmet: return False
+
+    columns_already = set(an_str.keys())
+
+    if len(columns_already) == 0: return True
+
+    for a in anmet.algorithms.values():
+        columns_to_drill = []
+        for st in a.drill_order:
+            for x in st:
+                c = anmet.get_dimension(x).column
+                columns_to_drill.append(c)
+        if columns_already.issubset(columns_to_drill): return False
+
+    return True
+
+
 
 async def make_next_drill(dc:DrillComponent, cp:DeviationCalcParams, da:DataAccess, tg:TaskGroup):
     """
@@ -556,12 +584,19 @@ async def make_next_drill(dc:DrillComponent, cp:DeviationCalcParams, da:DataAcce
     """
     lgr = get_logger()
     node = dc.hier_ref
-    if node.analyt_metadata:
+
+
+
+    if check_need_analyt_drill(node, dc.analyt_struct):
         lgr.info(f'Routing node id={node.id}, name={node.name} to analytical drill')
         tg.create_task(make_analyt_drill(dc, cp, da, tg))
-    else:
+        return
+
+
+    if not node.is_leaf():
         lgr.info(f'Routing node id={node.id}, name={node.name} to hierarchy drill')
         tg.create_task(make_hier_drill(dc, cp, da, tg))
+        return
 
 
 # ---------------------------------------------------------------------------
