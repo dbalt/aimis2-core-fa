@@ -272,6 +272,45 @@ def main():
     )
     h.add_node(od_pchod_salsoc)
 
+    od_pchod_su = MetricNode(
+        id=240,
+        code='od_pchod_su',
+        name='Расчёты за устройства самообслуживания',
+        parent=od_pchod.id,
+        type=MetricType.SUM,
+    )
+    h.add_node(od_pchod_su)
+
+    od_pchod_su_cash = MetricNode(
+        id=250,
+        code='od_pchod_su_cash',
+        name='Взнос/выдача наличных',
+        parent=od_pchod_su.id,
+        query=Query({'code': 'PL_08_38_47'}),
+        analyt_metadata=an_tb,
+    )
+    h.add_node(od_pchod_su_cash)
+
+    od_pchod_su_compusf = MetricNode(
+        id=260,
+        code='od_pchod_su_compusf',
+        name='Компенсация УС СФ',
+        parent=od_pchod_su.id,
+        query=Query({'code': 'PL_08_39_03'}),
+        analyt_metadata=an_tb,
+    )
+    h.add_node(od_pchod_su_compusf)
+
+    od_pchod_su_selfcash = MetricNode(
+        id=270,
+        code='od_pchod_su_selfcash',
+        name='Самоинкассация',
+        parent=od_pchod_su.id,
+        query=Query({'code': 'PL_08_39_38'}),
+        analyt_metadata=an_tb,
+    )
+    h.add_node(od_pchod_su_selfcash)
+
     od_pchod_oth = MetricNode(
         id=230,
         code='od_pchod_oth',
