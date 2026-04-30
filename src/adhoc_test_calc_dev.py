@@ -38,6 +38,24 @@ def make_test_hierarchy()->Hierarchy:
     )
 
 
+    an_seg = AnalyticalStructureMetadata()
+    an_seg.add_algorithm(
+        Algorithm(
+            id = 2,
+            drill_order=[
+                ['segment']
+            ]
+        )
+    )
+    an_seg.add_dimension(
+        Dimension(
+            code = 'segment',
+            name = 'Сегмент',
+            column='segment'
+        )
+    )
+
+
 
     od = MetricNode(
         id=1,
@@ -74,7 +92,7 @@ def make_test_hierarchy()->Hierarchy:
         code='prochie_dohod_kib',
         name='Прочие доходы КИБ',
         parent=od.id,
-        analyt_metadata=an_tb,
+        analyt_metadata=an_seg,
         query=Query({'code': 'prochie_dohod_kib'})
 
     )
