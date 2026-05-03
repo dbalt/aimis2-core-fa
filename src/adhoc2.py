@@ -1,4 +1,3 @@
-from charset_normalizer.cli import query_yes_no
 
 from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query, ComponentMultiPartType, ComponentRatioPartType
 from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm, Dimension
