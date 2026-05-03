@@ -1,5 +1,5 @@
 """
-Модуль calc_deviations.py — ядро факторного анализа отклонений.
+Модуль calc.py — ядро факторного анализа отклонений.
 
 Содержит главную точку входа calculate_deviations() и рекурсивный движок
 пошагового погружения (drill-down) по двум осям:
@@ -482,7 +482,8 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
 
         drill = Drill(
             drill_type=EnumDrillType.ANALYTICAL,
-            detail_amts=dev_det_amts
+            detail_amts=dev_det_amts,
+            analyt_slice=current_step
         )
 
         _dc.drills.append(drill)

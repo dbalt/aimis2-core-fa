@@ -1,11 +1,11 @@
 from libfa2.data_access.aggr import DataRow, DataAccess
 from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query
 from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm, Dimension
-from libfa2.fa_impl.calc_deviations import calculate_deviations,DeviationCalcParams,SourceParameters,SearchDevParameters
+from libfa2.fa_impl.calc import calculate_deviations,DeviationCalcParams,SourceParameters,SearchDevParameters
 from datetime import date
 import asyncio, logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='[%(asctime)s] {%(filename)s:%(lineno)d} %(name)s %(levelname)s - %(message)s',
     datefmt='%H:%M:%S'
 )
@@ -110,6 +110,8 @@ async def get_data_access_client()->DataAccess:
 
 async def test_hier():
     from adhoc2 import mk_hier
+    from libfa2.fa_impl.collect import collect_for_summary
+    import json
     h = mk_hier()
     # h = make_test_hierarchy()
     dal = await get_data_access_client()
@@ -128,7 +130,9 @@ async def test_hier():
     )
 
     res = await calculate_deviations(cp, dal)
-    print(res)
+    fac = collect_for_summary(res)
+    json_str = json.dumps(fac, ensure_ascii=False)
+    print(json_str)
 
 
 

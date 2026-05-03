@@ -22,8 +22,10 @@ class SearchDevParameters:
     # TODO: parameters to filter, if need
 
 
-
-
+def _rnd(x: float) -> float:
+    if abs(x) < 1:
+        return round(x, 4)
+    return round(x, 2)
 
 
 @dataclass
@@ -53,6 +55,15 @@ class DeviationAmts:
         )
         return res
 
+    def as_dict_for_summary(self)->Dict[str,float]:
+        d = {
+            'plan':_rnd(self.plan),
+            'fact':_rnd(self.fact),
+            'deviation':_rnd(self.deviation),
+            'impact_to_top_lvl': _rnd(self.impact),
+        }
+        return d
+
 @dataclass
 class DeviationDetailAmts:
     positive_contrib:float = 0
@@ -61,6 +72,14 @@ class DeviationDetailAmts:
     @property
     def total(self)->float:
         return self.positive_contrib + self.negative_contrib
+
+    def as_dict_for_summary(self)->Dict[str,float]:
+        d = {
+            'positive_contrib': _rnd(self.positive_contrib),
+            'negative_contrib': _rnd(self.negative_contrib),
+            'total': _rnd(self.total),
+        }
+        return d
 
 
 @dataclass
