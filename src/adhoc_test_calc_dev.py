@@ -1,12 +1,12 @@
 from libfa2.data_access.aggr import DataRow, DataAccess
 from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query
 from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm, Dimension
-from libfa2.fa_impl.service import calculate_deviations,DeviationCalcParams,SourceParameters,SearchDevParameters
+from libfa2.fa_impl.calc_deviations import calculate_deviations,DeviationCalcParams,SourceParameters,SearchDevParameters
 from datetime import date
 import asyncio, logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(name)s %(levelname)s - %(message)s',
+    format='[%(asctime)s] {%(filename)s:%(lineno)d} %(name)s %(levelname)s - %(message)s',
     datefmt='%H:%M:%S'
 )
 
@@ -109,12 +109,14 @@ async def get_data_access_client()->DataAccess:
 
 
 async def test_hier():
-    h = make_test_hierarchy()
+    from adhoc2 import mk_hier
+    h = mk_hier()
+    # h = make_test_hierarchy()
     dal = await get_data_access_client()
     cp = DeviationCalcParams(
-        rep_dt=date(2026,1,31),
+        rep_dt=date(2026,2,28),
         source_params= SourceParameters(
-            source_name='missa_bidr.t_aimis_fa__metrics',
+            source_name='missa_bidr.t_aimis_fa__metrics_bsp',
             rep_dt_column='rep_dt'
         ),
         search_dev_params= SearchDevParameters(

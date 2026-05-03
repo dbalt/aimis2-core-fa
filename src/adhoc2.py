@@ -5,7 +5,7 @@ from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm
 
 
 
-def main():
+def mk_hier()->Hierarchy:
     h = Hierarchy()
 
     an_tb = AnalyticalStructureMetadata()
@@ -322,20 +322,32 @@ def main():
     )
     h.add_node(od_pchod_oth)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     print(h.to_json_string())
+
+    return h
+
+
+
+
+
+def main():
+    h = mk_hier()
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

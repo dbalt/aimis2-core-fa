@@ -6,6 +6,7 @@ aggregated SQL queries using the GeneralSQLDataGateClientPart from aimis-sdk.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import List, Dict, Any, Optional
 
 from coredis import Redis as KeyDbClient
@@ -61,6 +62,9 @@ class DataAccess:
         self._dg_client = GeneralSQLDataGateClientPart(keydb_client)
         lgr.info('DataAccess initialized')
 
+
+        # self._count = 0
+
     async def get_aggr_data(
         self,
         source: str,
@@ -97,6 +101,10 @@ class DataAccess:
             ...     })
             ... )
         """
+        # self._count = self._count + 1
+        # cnt = self._count
+        # print(f'Start REQ #{cnt}')
+
         lgr = get_logger()
         lgr.info(f'get_aggr_data started: source={source}, grp_by={grp_by_columns}, aggr={aggr_columns}')
 
@@ -111,11 +119,16 @@ class DataAccess:
 
         res:Res[List[Dict[str,Any]]] = await self._dg_client.get_data(sql=sql, params=params)
 
+
+
         if not res.ok:
             lgr.error(f'get_aggr_data query failed: {res.err}')
         else:
             lgr.info(f'get_aggr_data completed: {len(res.data)} row(s) returned')
             lgr.debug(f'get_aggr_data result: {res.data}')
+
+
+        # print(f'Finish REQ #{cnt}')
 
         return res
 

@@ -1,5 +1,5 @@
 """
-Модуль service.py — ядро факторного анализа отклонений.
+Модуль calc_deviations.py — ядро факторного анализа отклонений.
 
 Содержит главную точку входа calculate_deviations() и рекурсивный движок
 пошагового погружения (drill-down) по двум осям:
@@ -452,8 +452,6 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
         создаёт DrillComponent для каждого фактора, планирует следующий шаг
         или переход к make_next_drill."""
         lgr_step = get_logger()
-        if len(steps_left) == 0:
-            print('yo')
 
         current_step, *next_steps = steps_left
 
@@ -552,11 +550,12 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
 # ---------------------------------------------------------------------------
 
 def check_need_analyt_drill(node:MetricNode, an_str:Dict[str,Any])->bool:
+
     anmet = node.analyt_metadata
 
     if not anmet: return False
 
-    columns_already = set(an_str.keys())
+    columns_already = an_str.keys()
 
     if len(columns_already) == 0: return True
 
@@ -566,7 +565,8 @@ def check_need_analyt_drill(node:MetricNode, an_str:Dict[str,Any])->bool:
             for x in st:
                 c = anmet.get_dimension(x).column
                 columns_to_drill.append(c)
-        if columns_already.issubset(columns_to_drill): return False
+        if set(columns_to_drill).issubset(columns_already): return False
+        # if columns_already.issubset(columns_to_drill): return False
 
     return True
 
