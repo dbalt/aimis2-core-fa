@@ -1,5 +1,9 @@
+from watchfiles import awatch
+
 from libfa2.data_access.aggr import DataRow, DataAccessDataGate, DataAccess, DataAccessDbWrapper
 from libfa2.data_access.dbwrapper import DbWrapper
+from libfa2.fa_impl.summarize import summarize
+from sdk.giga.client import GigaChatClientPartV2
 import os
 
 from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query
@@ -103,13 +107,22 @@ def make_test_hierarchy()->Hierarchy:
 
     return h
 
+async def get_llm_client()->GigaChatClientPartV2:
+    kc = await _instantiate_keydb()
+    ggc = GigaChatClientPartV2(kc)
+    return ggc
 
+async def get_data_access_client_aimis()->DataAccess:
+    kc = await _instantiate_keydb()
+    da = DataAccessDataGate(kc)
+    return da
 
 async def get_data_access_client()->DataAccess:
-    # kc = await _instantiate_keydb()
-    # da = DataAccessDataGate(kc)
-    # return da
+    res = await get_data_access_client_direct_click()
+    return res
 
+
+async def get_data_access_client_direct_click()->DataAccess:
     from asynch import Connection
     async def _dbw_gen():
         conn = Connection(
@@ -156,6 +169,14 @@ async def test_hier():
     fac = collect_for_summary(res)
     json_str = json.dumps(fac, ensure_ascii=False)
     print(json_str)
+
+    llm_client = await get_llm_client()
+    summary = await summarize(fac, llm_client, 'GigaChat-3-Ultra')
+
+    if summary.ok:
+        print(summary.data)
+    else:
+        print(f'ERROR: {summary.err}')
 
 
 

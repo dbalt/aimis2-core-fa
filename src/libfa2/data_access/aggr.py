@@ -215,7 +215,7 @@ class DataAccessDataGate(DataAccess):
         """
         lgr = get_logger()
         lgr.debug('DataAccessDataGate.__init__ started')
-        self._dg_client = GeneralSQLDataGateClientPart(keydb_client)
+        self._keydb_client = keydb_client
         lgr.info('DataAccessDataGate initialized')
 
     async def _get_data(
@@ -223,7 +223,8 @@ class DataAccessDataGate(DataAccess):
         sql: str,
         params: Dict[str, Any]
     ) -> Res[List[Dict[str, Any]]]:
-        return await self._dg_client.get_data(sql=sql, params=params)
+        dgc = GeneralSQLDataGateClientPart(self._keydb_client)
+        return await dgc.get_data(sql=sql, params=params)
 
 
 class DataAccessDbWrapper(DataAccess):
