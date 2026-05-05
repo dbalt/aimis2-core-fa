@@ -1,4 +1,7 @@
-from libfa2.data_access.aggr import DataRow, DataAccess
+from libfa2.data_access.aggr import DataRow, DataAccessDataGate, DataAccess, DataAccessDbWrapper
+from libfa2.data_access.dbwrapper import DbWrapper
+import os
+
 from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query
 from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm, Dimension
 from libfa2.fa_impl.calc import calculate_deviations,DeviationCalcParams,SourceParameters,SearchDevParameters
@@ -103,9 +106,29 @@ def make_test_hierarchy()->Hierarchy:
 
 
 async def get_data_access_client()->DataAccess:
-    kc = await _instantiate_keydb()
-    da = DataAccess(kc)
-    return da
+    # kc = await _instantiate_keydb()
+    # da = DataAccessDataGate(kc)
+    # return da
+
+    from asynch import Connection
+    async def _dbw_gen():
+        conn = Connection(
+            None,
+            os.environ.get('CLICKHOUSE_USER'),
+            os.environ.get('CLICKHOUSE_PASSWORD'),
+            os.environ.get('CLICKHOUSE_HOST'),
+            database=os.environ.get('CLICKHOUSE_DB'),
+            port=os.environ.get('CLICKHOUSE_PORT', 9440),
+            secure=bool(os.environ.get('CLICKHOUSE_SECURE', True)),
+            verify=bool(os.environ.get('CLICKHOUSE_VERIFY', False))
+        )
+        await conn.connect()
+
+        dbw = DbWrapper(conn, tp = 'ch')
+        return dbw
+
+    dal = DataAccessDbWrapper(_dbw_gen)
+    return dal
 
 
 async def test_hier():
@@ -137,7 +160,11 @@ async def test_hier():
 
 
 def main():
-    import asyncio
+    import asyncio, os
+    os.environ['CLICKHOUSE_HOST'] = os.environ.get('CLICKHOUSE_HOST', 'tklis-mis300051.vm.mos.cloud.sbrf.ru')
+    os.environ['CLICKHOUSE_USER'] = os.environ.get('CLICKHOUSE_USER', 'missa_bidr')
+    os.environ['CLICKHOUSE_PASSWORD'] = os.environ.get('CLICKHOUSE_PASSWORD', 'P@$$w0rdbidr')
+    os.environ['CLICKHOUSE_DB'] = os.environ.get('CLICKHOUSE_DB', 'missa_bidr')
     asyncio.run(test_hier())
 
 

@@ -1,12 +1,13 @@
 """
 Data access layer for aggregated SQL queries.
 
-This module provides a high-level interface for constructing and executing
-aggregated SQL queries using the GeneralSQLDataGateClientPart from aimis-sdk.
+This module provides an abstract base class DataAccess with two implementations:
+- DataAccessDataGate: uses GeneralSQLDataGateClientPart from aimis-sdk (via KeyDB/Redis)
+- DataAccessDbWrapper: uses DbWrapper for direct database connections
 """
 from __future__ import annotations
 
-import asyncio
+from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 
 from coredis import Redis as KeyDbClient
@@ -15,6 +16,7 @@ from sdk.datagate.dg_client import GeneralSQLDataGateClientPart
 from sdk.core.monadic import Res
 
 from .conditions import ConditionBase, get_where_clause_part, reduce_condition
+from .dbwrapper import DbWrapper
 from dataclasses import dataclass, field
 
 from ..fa_impl.units import SearchDevParameters
@@ -41,29 +43,31 @@ class DataRow:
         return it
 
 
-
-class DataAccess:
+class DataAccess(ABC):
     """
-    Data access layer for executing aggregated SQL queries.
+    Abstract base class for data access layer.
 
-    This class wraps GeneralSQLDataGateClientPart and provides a convenient
-    interface for constructing SELECT queries with GROUP BY and SUM aggregation.
+    Provides shared logic for building aggregated SQL queries and delegates
+    the actual data fetching to subclasses via the _get_data method.
     """
 
-    def __init__(self, keydb_client: KeyDbClient):
+    @abstractmethod
+    async def _get_data(
+        self,
+        sql: str,
+        params: Dict[str, Any]
+    ) -> Res[List[Dict[str, Any]]]:
         """
-        Initialize DataAccess with a Redis client.
+        Execute a SQL query and return the result.
 
         Args:
-            keydb_client: Redis client for communication with data gate service
+            sql: SQL query string
+            params: Query parameters dictionary
+
+        Returns:
+            Res[List[Dict[str, Any]]]: Result containing list of row dicts, or an error.
         """
-        lgr = get_logger()
-        lgr.debug('DataAccess.__init__ started')
-        self._dg_client = GeneralSQLDataGateClientPart(keydb_client)
-        lgr.info('DataAccess initialized')
-
-
-        # self._count = 0
+        ...
 
     async def get_aggr_data(
         self,
@@ -101,10 +105,6 @@ class DataAccess:
             ...     })
             ... )
         """
-        # self._count = self._count + 1
-        # cnt = self._count
-        # print(f'Start REQ #{cnt}')
-
         lgr = get_logger()
         lgr.info(f'get_aggr_data started: source={source}, grp_by={grp_by_columns}, aggr={aggr_columns}')
 
@@ -117,18 +117,13 @@ class DataAccess:
 
         lgr.debug(f'Executing SQL query: {sql.strip()}, params={params}')
 
-        res:Res[List[Dict[str,Any]]] = await self._dg_client.get_data(sql=sql, params=params)
-
-
+        res: Res[List[Dict[str, Any]]] = await self._get_data(sql=sql, params=params)
 
         if not res.ok:
             lgr.error(f'get_aggr_data query failed: {res.err}')
         else:
             lgr.info(f'get_aggr_data completed: {len(res.data)} row(s) returned')
             lgr.debug(f'get_aggr_data result: {res.data}')
-
-
-        # print(f'Finish REQ #{cnt}')
 
         return res
 
@@ -202,3 +197,64 @@ from {source} t{where_clause}
 
         lgr.debug(f'Built SQL:\n{sql}')
         return sql, params
+
+
+class DataAccessDataGate(DataAccess):
+    """
+    Data access implementation using GeneralSQLDataGateClientPart.
+
+    Communicates with the data gate service via KeyDB/Redis pub/sub.
+    """
+
+    def __init__(self, keydb_client: KeyDbClient):
+        """
+        Initialize DataAccessDataGate with a Redis client.
+
+        Args:
+            keydb_client: Redis client for communication with data gate service
+        """
+        lgr = get_logger()
+        lgr.debug('DataAccessDataGate.__init__ started')
+        self._dg_client = GeneralSQLDataGateClientPart(keydb_client)
+        lgr.info('DataAccessDataGate initialized')
+
+    async def _get_data(
+        self,
+        sql: str,
+        params: Dict[str, Any]
+    ) -> Res[List[Dict[str, Any]]]:
+        return await self._dg_client.get_data(sql=sql, params=params)
+
+
+class DataAccessDbWrapper(DataAccess):
+    """
+    Data access implementation using DbWrapper for direct database connections.
+
+    Collects results from DbWrapper's async iterator into a list.
+    """
+
+    def __init__(self, db_wrapper_gen):
+        """
+        Initialize DataAccessDbWrapper with a DbWrapper generator.
+
+        Args:
+            db_wrapper: DbWrapper generator instance with an active database connection
+        """
+        lgr = get_logger()
+        lgr.debug('DataAccessDbWrapper.__init__ started')
+        self._db_gen = db_wrapper_gen
+        lgr.info('DataAccessDbWrapper initialized')
+
+    async def _get_data(
+        self,
+        sql: str,
+        params: Dict[str, Any]
+    ) -> Res[List[Dict[str, Any]]]:
+        try:
+            rows = []
+            dbw = await self._db_gen()
+            async for row in dbw.query(sql, params):
+                rows.append(row)
+            return Res.result(rows)
+        except Exception as e:
+            return Res.error(str(e))
