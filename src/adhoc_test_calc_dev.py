@@ -1,8 +1,7 @@
-from watchfiles import awatch
 
 from libfa2.data_access.aggr import DataRow, DataAccessDataGate, DataAccess, DataAccessDbWrapper
 from libfa2.data_access.dbwrapper import DbWrapper
-from libfa2.fa_impl.summarize import build_deviations_visualization_table, summarize_results
+from libfa2.fa_impl.summarize import summarize
 from sdk.giga.client import GigaChatClientPartV2
 import os
 
@@ -171,38 +170,23 @@ async def test_hier():
     json_str = json.dumps(fac, ensure_ascii=False)
     print(json_str)
 
-    llm_model = 'GigaChat-3-Ultra'
-
-    llm_client1 = await get_llm_client()
-    llm_client2 = await get_llm_client()
-
 
     # [summary, table] = await asyncio.gather(
     #     summarize_results(fac.copy(), llm_client1, llm_model),
     #     build_deviations_visualization_table(fac.copy(), llm_client2, llm_model)
     # )
 
-    task_results = []
-    async with asyncio.TaskGroup() as tg:
-        task_results.append(tg.create_task(summarize_results(fac.copy(), llm_client1, 'GigaChat-3-Ultra')))
-        task_results.append(tg.create_task(build_deviations_visualization_table(fac.copy(), llm_client2, 'GigaChat-2-Max')))
+    summary_res = await summarize(fac, get_llm_client)
 
-    task_results = [x.result() for x in task_results]
-    [summary, table] = task_results
 
-    if not (summary.ok and table.ok):
-        print(f'Summary: {summary}, Table: {table}')
+    if not summary_res.ok:
+        print(f'Summary err: {summary_res.err}')
         return
 
 
-    summary_text = summary.data
-    table_text = table.data
+    summary_text = summary_res.data
 
-    total_text = f'''{summary_text}
-
-{table_text}'''
-
-    print(total_text)
+    print(summary_text)
 
 
 

@@ -4,6 +4,7 @@ from sdk.giga.iface import MsgBase, AssistantMsg
 from sdk.core.monadic import Res
 
 from typing import Dict, List
+import asyncio
 
 import json
 
@@ -294,3 +295,44 @@ JSON имеет рекурсивную структуру. Каждый узел
 
     res = await _base_llm_processing_function(sp, data, llm_client, llm_model)
     return res
+
+
+
+async def summarize(data:Dict, llm_client_gen_fn)->Res[str]:
+    tsks = []
+    async with asyncio.TaskGroup() as tg:
+        tsks.append(
+            tg.create_task(
+                summarize_results(
+                    data,
+                    await llm_client_gen_fn(),
+                    'GigaChat-3-Ultra'
+                )
+            )
+        )
+
+        tsks.append(
+            tg.create_task(
+                build_deviations_visualization_table(
+                    data,
+                    await llm_client_gen_fn(),
+                    'GigaChat-2-Max'
+                )
+            )
+        )
+
+    tsks_results:List[Res[str]] = [x.result() for x in tsks]
+    [summary_res, table_res] = tsks_results
+
+    if not summary_res.ok:
+        return Res.mk_error(f'Failed build summary. err: {summary_res.err}')
+
+    if not table_res.ok:
+        return Res.mk_error(f'Failed build deviations detailed table. err: {table_res.err}')
+
+    total_summary = f'''{summary_res.data}
+
+
+{table_res.data}'''
+
+    return Res.mk_result(total_summary)
