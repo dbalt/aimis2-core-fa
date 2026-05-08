@@ -8,7 +8,7 @@ MetricNode представляет собой отдельный узел в и
 
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
-from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType
+from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType, MultipartDecompositionType
 from .query import Query
 
 if TYPE_CHECKING:
@@ -83,6 +83,9 @@ class MetricNode:
     #: Опциональные метаданные разложения по аналитическим разрезам
     analyt_metadata: Optional["AnalyticalStructureMetadata"] = None
 
+    #: Тип декомпозиции для показателя типа MULTI (обязателен при type=MULTI)
+    mp_decomp_tp: Optional[MultipartDecompositionType] = None
+
     def is_root(self) -> bool:
         """
         Проверить, является ли узел корневым.
@@ -149,6 +152,8 @@ class MetricNode:
         if self.analyt_metadata is not None:
             import json
             result["analyt_metadata"] = json.loads(self.analyt_metadata.to_json())
+        if self.mp_decomp_tp is not None:
+            result["mp_decomp_tp"] = self.mp_decomp_tp.value
 
         return result
 
@@ -194,6 +199,9 @@ class MetricNode:
             import json
             # AnalyticalStructureMetadata сериализуется как {fa_impl: [...], dimensions: [...]}
             result["analyt_metadata"] = json.loads(self.analyt_metadata.to_json())
+        # mp_decomp_tp включается только при type=MULTI
+        if self.mp_decomp_tp is not None and self.type == MetricType.MULTI:
+            result["mp_decomp_tp"] = self.mp_decomp_tp.value
 
         return result
 
@@ -278,6 +286,14 @@ class MetricNode:
             import json
             analyt_metadata = AnalyticalStructureMetadata.from_json(json.dumps(data["analyt_metadata"]))
 
+        # Обработка mp_decomp_tp (читается только при type=multi)
+        mp_decomp_tp = None
+        if metric_type == MetricType.MULTI and "mp_decomp_tp" in data and data["mp_decomp_tp"] is not None:
+            try:
+                mp_decomp_tp = MultipartDecompositionType(data["mp_decomp_tp"])
+            except ValueError:
+                raise ValueError(f"Неверное значение 'mp_decomp_tp': {data['mp_decomp_tp']}")
+
         return cls(
             id=node_id,
             code=code,
@@ -288,6 +304,7 @@ class MetricNode:
             componentMultiPartType=component_multi_part_type,
             componentRatioPartType=component_ratio_part_type,
             analyt_metadata=analyt_metadata,
+            mp_decomp_tp=mp_decomp_tp,
         )
 
     @classmethod
@@ -352,6 +369,9 @@ class MetricNode:
             # Узел типа MULTI обязан иметь query
             if not self.has_query():
                 errors.append(f"Узел типа MULTI (id={self.id}, code={self.code}) должен иметь query")
+            # Узел типа MULTI обязан иметь mp_decomp_tp
+            if self.mp_decomp_tp is None:
+                errors.append(f"Узел типа MULTI (id={self.id}, code={self.code}) должен иметь mp_decomp_tp")
         elif self.type == MetricType.RATIO:
             # Узел типа RATIO обычно не имеет query (значение вычисляется)
             pass
@@ -396,7 +416,8 @@ class MetricNode:
             self.query == other.query and
             self.componentMultiPartType == other.componentMultiPartType and
             self.componentRatioPartType == other.componentRatioPartType and
-            self.analyt_metadata == other.analyt_metadata
+            self.analyt_metadata == other.analyt_metadata and
+            self.mp_decomp_tp == other.mp_decomp_tp
         )
 
     def __hash__(self) -> int:
@@ -410,5 +431,6 @@ class MetricNode:
             tuple(sorted(self.query.items())) if self.query else None,
             self.componentMultiPartType,
             self.componentRatioPartType,
-            hash(str(self.analyt_metadata)) if self.analyt_metadata else None
+            hash(str(self.analyt_metadata)) if self.analyt_metadata else None,
+            self.mp_decomp_tp
         ))

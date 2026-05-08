@@ -21,6 +21,7 @@ from libfa2.hier_metadata import (
     MetricType,
     ComponentMultiPartType,
     ComponentRatioPartType,
+    MultipartDecompositionType,
 )
 from libfa2.analyt_struct_metadata import (
     AnalyticalStructureMetadata,
@@ -348,7 +349,8 @@ class TestMetricNode:
 
     def test_validate_multi_without_query(self):
         """Ошибка при узле типа MULTI без query."""
-        node = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI)
+        node = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI,
+                         mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
         errors = node.validate()
         assert len(errors) > 0
         assert any("должен иметь query" in e for e in errors)
@@ -602,7 +604,8 @@ class TestHierarchy:
         """Получение листовых узлов."""
         hierarchy = Hierarchy()
         root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
-        child1 = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        child1 = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
+                           mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
         leaf1 = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
                           componentMultiPartType=ComponentMultiPartType.RATE,
                           query=Query({"a": 1}))
@@ -623,7 +626,8 @@ class TestHierarchy:
         """Получение всех потомков."""
         hierarchy = Hierarchy()
         root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
-        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
+                          mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
         leaf1 = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
                           componentMultiPartType=ComponentMultiPartType.RATE,
                           query=Query({"a": 1}))
@@ -645,7 +649,8 @@ class TestHierarchy:
         """Получение предков."""
         hierarchy = Hierarchy()
         root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
-        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
+                          mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
         leaf = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
                          componentMultiPartType=ComponentMultiPartType.RATE,
                          query=Query({"a": 1}))
@@ -662,7 +667,8 @@ class TestHierarchy:
         """Получение пути от корня к узлу."""
         hierarchy = Hierarchy()
         root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
-        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100)
+        child = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
+                          mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
         leaf = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
                          componentMultiPartType=ComponentMultiPartType.RATE,
                          query=Query({"a": 1}))
@@ -780,7 +786,7 @@ class TestHierarchy:
         hierarchy = Hierarchy()
         root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
         multi = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
-                         query=Query({"a": 1}))
+                         query=Query({"a": 1}), mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
         base = MetricNode(id=202, code="BASE", name="Объем", parent=101,
                          componentMultiPartType=ComponentMultiPartType.BASE,
                          query=Query({"a": 1}))
@@ -796,7 +802,7 @@ class TestHierarchy:
         hierarchy = Hierarchy()
         root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
         multi = MetricNode(id=101, code="INT_INC", name="Процентный доход", type=MetricType.MULTI, parent=100,
-                         query=Query({"a": 1}))
+                         query=Query({"a": 1}), mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
         rate = MetricNode(id=201, code="RATE", name="Ставка", parent=101,
                          componentMultiPartType=ComponentMultiPartType.RATE,
                          query=Query({"a": 1}))
@@ -889,7 +895,8 @@ class TestHierarchy:
             name="Процентный доход",
             type=MetricType.MULTI,
             parent=100,
-            query=Query({"metricType": "interest_income"})
+            query=Query({"metricType": "interest_income"}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
         )
         hierarchy.add_node(int_inc)
 
@@ -922,7 +929,8 @@ class TestHierarchy:
             name="Процентный расход",
             type=MetricType.MULTI,
             parent=100,
-            query=Query({"metricType": "interest_expense"})
+            query=Query({"metricType": "interest_expense"}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
         )
         hierarchy.add_node(int_exp)
 
@@ -1243,3 +1251,266 @@ class TestEnums:
         assert isinstance(MetricType.SUM, str)
         assert isinstance(ComponentMultiPartType.RATE, str)
         assert isinstance(ComponentRatioPartType.NUMERATOR, str)
+        assert isinstance(MultipartDecompositionType.INTEGRAL, str)
+
+    def test_multipart_decomposition_type_values(self):
+        """Значения MultipartDecompositionType."""
+        assert MultipartDecompositionType.DIRECT_BASE.value == "DirectBase"
+        assert MultipartDecompositionType.DIRECT_RATE.value == "DirectRate"
+        assert MultipartDecompositionType.INTEGRAL.value == "Integral"
+        assert MultipartDecompositionType.AVERAGE_WEIGHTED.value == "AverageWeighted"
+
+    def test_multipart_decomposition_type_from_string(self):
+        """Создание MultipartDecompositionType из строки."""
+        assert MultipartDecompositionType("DirectBase") == MultipartDecompositionType.DIRECT_BASE
+        assert MultipartDecompositionType("DirectRate") == MultipartDecompositionType.DIRECT_RATE
+        assert MultipartDecompositionType("Integral") == MultipartDecompositionType.INTEGRAL
+        assert MultipartDecompositionType("AverageWeighted") == MultipartDecompositionType.AVERAGE_WEIGHTED
+
+    def test_multipart_decomposition_type_invalid_string(self):
+        """Ошибка при неверной строке."""
+        with pytest.raises(ValueError):
+            MultipartDecompositionType("invalid")
+
+
+# =============================================================================
+# Tests for mp_decomp_tp field
+# =============================================================================
+
+class TestMultipartDecompositionType:
+    """Тесты для поля mp_decomp_tp (multipart decomposition type)."""
+
+    # --- MetricNode-level tests ---
+
+    def test_mp_decomp_tp_default_none(self):
+        """По умолчанию mp_decomp_tp = None."""
+        node = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        assert node.mp_decomp_tp is None
+
+    def test_mp_decomp_tp_set_on_multi(self):
+        """Установка mp_decomp_tp на MULTI-узле."""
+        node = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        assert node.mp_decomp_tp == MultipartDecompositionType.INTEGRAL
+
+    def test_validate_multi_without_mp_decomp_tp(self):
+        """Ошибка при MULTI-узле без mp_decomp_tp."""
+        node = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1})
+        )
+        errors = node.validate()
+        assert any("mp_decomp_tp" in e for e in errors)
+
+    def test_validate_multi_with_mp_decomp_tp_valid(self):
+        """MULTI-узел с mp_decomp_tp валиден."""
+        node = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.DIRECT_BASE
+        )
+        errors = node.validate()
+        assert not any("mp_decomp_tp" in e for e in errors)
+
+    def test_validate_sum_ignores_mp_decomp_tp(self):
+        """SUM-узел игнорирует mp_decomp_tp при валидации."""
+        node = MetricNode(
+            id=100, code="NII", name="ЧПД",
+            type=MetricType.SUM,
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        errors = node.validate()
+        # На уровне MetricNode mp_decomp_tp на SUM не вызывает ошибку
+        assert not any("mp_decomp_tp" in e for e in errors)
+
+    # --- Serialization / Deserialization ---
+
+    def test_to_dict_with_mp_decomp_tp(self):
+        """to_dict() включает mp_decomp_tp."""
+        node = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        d = node.to_dict()
+        assert d["mp_decomp_tp"] == "Integral"
+
+    def test_to_dict_without_mp_decomp_tp(self):
+        """to_dict() не включает mp_decomp_tp, если он None."""
+        node = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM)
+        d = node.to_dict()
+        assert "mp_decomp_tp" not in d
+
+    def test_to_json_includes_mp_decomp_tp_for_multi(self):
+        """to_json() включает mp_decomp_tp для MULTI-узла."""
+        node = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.AVERAGE_WEIGHTED
+        )
+        d = node.to_json()
+        assert d["mp_decomp_tp"] == "AverageWeighted"
+
+    def test_to_json_excludes_mp_decomp_tp_for_non_multi(self):
+        """to_json() исключает mp_decomp_tp для не-MULTI узлов."""
+        node = MetricNode(
+            id=100, code="NII", name="ЧПД",
+            type=MetricType.SUM,
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        d = node.to_json()
+        assert "mp_decomp_tp" not in d
+
+    def test_to_json_excludes_mp_decomp_tp_when_none(self):
+        """to_json() исключает mp_decomp_tp, если он None."""
+        node = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1})
+        )
+        d = node.to_json()
+        assert "mp_decomp_tp" not in d
+
+    def test_from_dict_with_mp_decomp_tp(self):
+        """from_dict() корректно десериализует mp_decomp_tp для MULTI."""
+        d = {
+            "id": 101,
+            "code": "INT_INC",
+            "name": "Процентный доход",
+            "type": "multi",
+            "query": {"a": 1},
+            "mp_decomp_tp": "Integral"
+        }
+        node = MetricNode.from_dict(d)
+        assert node.mp_decomp_tp == MultipartDecompositionType.INTEGRAL
+
+    def test_from_dict_ignores_mp_decomp_tp_for_non_multi(self):
+        """from_dict() игнорирует mp_decomp_tp для не-MULTI."""
+        d = {
+            "id": 100,
+            "code": "NII",
+            "name": "ЧПД",
+            "type": "sum",
+            "mp_decomp_tp": "Integral"
+        }
+        node = MetricNode.from_dict(d)
+        assert node.mp_decomp_tp is None
+
+    def test_from_dict_mp_decomp_tp_invalid_value(self):
+        """Ошибка при неверном значении mp_decomp_tp."""
+        d = {
+            "id": 101,
+            "code": "INT_INC",
+            "name": "Процентный доход",
+            "type": "multi",
+            "query": {"a": 1},
+            "mp_decomp_tp": "InvalidType"
+        }
+        with pytest.raises(ValueError, match="Неверное значение 'mp_decomp_tp'"):
+            MetricNode.from_dict(d)
+
+    def test_from_dict_without_mp_decomp_tp_for_multi(self):
+        """from_dict() дает mp_decomp_tp=None для MULTI без поля."""
+        d = {
+            "id": 101,
+            "code": "INT_INC",
+            "name": "Процентный доход",
+            "type": "multi",
+            "query": {"a": 1}
+        }
+        node = MetricNode.from_dict(d)
+        assert node.mp_decomp_tp is None
+
+    # --- Equality and hash ---
+
+    def test_equality_with_mp_decomp_tp(self):
+        """Равенство узлов с mp_decomp_tp."""
+        n1 = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        n2 = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        n3 = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.DIRECT_BASE
+        )
+        assert n1 == n2
+        assert n1 != n3
+
+    def test_hash_with_mp_decomp_tp(self):
+        """Хеш узлов с одинаковым mp_decomp_tp."""
+        n1 = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        n2 = MetricNode(
+            id=101, code="INT_INC", name="Процентный доход",
+            type=MetricType.MULTI,
+            query=Query({"a": 1}),
+            mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+        )
+        assert hash(n1) == hash(n2)
+
+    # --- Hierarchy-level validation ---
+
+    def test_hierarchy_validate_mp_decomp_tp_on_non_multi(self):
+        """Ошибка в иерархии при mp_decomp_tp на не-MULTI узле."""
+        hierarchy = Hierarchy()
+        root = MetricNode(id=100, code="NII", name="ЧПД", type=MetricType.SUM,
+                         mp_decomp_tp=MultipartDecompositionType.INTEGRAL)
+        hierarchy.add_node(root)
+        errors = hierarchy.validate()
+        assert any("mp_decomp_tp" in e and "MULTI" in e for e in errors)
+
+    def test_hierarchy_validate_mp_decomp_tp_on_multi_ok(self):
+        """Корректная иерархия с mp_decomp_tp на MULTI-узлах."""
+        hierarchy = TestHierarchy()._create_valid_nii_hierarchy()
+        errors = hierarchy.validate()
+        assert not any("mp_decomp_tp" in e for e in errors)
+
+    # --- Serialization cycle ---
+
+    def test_roundtrip_mp_decomp_tp(self):
+        """Полный цикл сериализации/десериализации с mp_decomp_tp."""
+        hierarchy = TestHierarchy()._create_valid_nii_hierarchy()
+        json_str = hierarchy.to_json_string()
+        restored = Hierarchy.from_json_string(json_str)
+
+        for original_node in hierarchy:
+            restored_node = restored.get_node(original_node.id)
+            assert restored_node is not None
+            assert restored_node.mp_decomp_tp == original_node.mp_decomp_tp
+
+        assert restored.is_valid()
+
+    def test_all_mp_decomp_tp_values(self):
+        """Проверка всех значений mp_decomp_tp в цикле сериализации."""
+        for decomp_type in MultipartDecompositionType:
+            node = MetricNode(
+                id=101, code="TEST", name="Test",
+                type=MetricType.MULTI,
+                query=Query({"a": 1}),
+                mp_decomp_tp=decomp_type
+            )
+            d = node.to_json()
+            restored = MetricNode.from_dict(d)
+            assert restored.mp_decomp_tp == decomp_type
