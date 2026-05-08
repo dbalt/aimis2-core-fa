@@ -24,7 +24,7 @@ class SearchDevParameters:
 
 def _rnd(x: float) -> float:
     if abs(x) < 1:
-        return round(x, 4)
+        return round(x, 8)
     return round(x, 2)
 
 
