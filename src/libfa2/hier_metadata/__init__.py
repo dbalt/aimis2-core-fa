@@ -49,7 +49,7 @@ Enum классы для строковых констант:
 from .hierarchy import Hierarchy
 from .metric_node import MetricNode
 from .query import Query
-from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType
+from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType, MultipartDecompositionType
 
 __all__ = [
     "Hierarchy",
@@ -58,6 +58,7 @@ __all__ = [
     "MetricType",
     "ComponentMultiPartType",
     "ComponentRatioPartType",
+    "MultipartDecompositionType",
 ]
 
 __version__ = "1.0.0"

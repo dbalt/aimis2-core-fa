@@ -42,6 +42,30 @@ class ComponentMultiPartType(str, Enum):
     BASE = "base"
 
 
+class MultipartDecompositionType(str, Enum):
+    """
+    Тип разложения для показателя типа MULTI.
+
+    Определяет алгоритм декомпозиции мультипликативного показателя:
+    - DirectBase: прямое разложение по базе
+    - DirectRate: прямое разложение по ставке
+    - Integral: интегральный метод разложения
+    - AverageWeighted: метод средневзвешенного разложения
+    """
+
+    #: Прямое разложение по базе
+    DIRECT_BASE = "DirectBase"
+
+    #: Прямое разложение по ставке
+    DIRECT_RATE = "DirectRate"
+
+    #: Интегральный метод разложения
+    INTEGRAL = "Integral"
+
+    #: Метод средневзвешенного разложения
+    AVERAGE_WEIGHTED = "AverageWeighted"
+
+
 class ComponentRatioPartType(str, Enum):
     """
     Тип компонента-отношения в показателе типа RATIO.

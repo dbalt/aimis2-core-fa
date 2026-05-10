@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Set
 import json
 
 from .metric_node import MetricNode
-from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType
+from .enums import MetricType, ComponentMultiPartType, ComponentRatioPartType, MultipartDecompositionType
 from .query import Query
 
 
@@ -458,6 +458,11 @@ class Hierarchy:
                 if parent is None or parent.type != MetricType.RATIO:
                     parent_info = f"parent={node.parent}" if parent is None else f"{parent.code} (type={parent.type.value})"
                     errors.append(f"Узел {node.code} (id={node.id}) имеет componentRatioPartType, но его родитель {parent_info} не имеет type=RATIO")
+
+        # Проверка mp_decomp_tp - должен быть установлен только для узлов типа MULTI
+        for node in self.nodes.values():
+            if node.mp_decomp_tp is not None and node.type != MetricType.MULTI:
+                errors.append(f"Узел {node.code} (id={node.id}) имеет mp_decomp_tp, но его type={node.type.value if node.type else None}, а должен быть MULTI")
 
         # Проверка на циклические ссылки
         visited = set()
