@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from ..hier_metadata import MetricNode
 from typing import List, Dict
@@ -13,6 +14,38 @@ class SourceParameters:
     source_name:str = ''
     rep_dt_column:str = 'rep_dt'
 
+    def to_dict(self) -> dict:
+        return {
+            "source_name": self.source_name,
+            "rep_dt_column": self.rep_dt_column,
+        }
+
+    def to_json(self) -> dict:
+        result = {}
+        if self.source_name:
+            result["source_name"] = self.source_name
+        if self.rep_dt_column:
+            result["rep_dt_column"] = self.rep_dt_column
+        return result
+
+    def to_json_str(self) -> str:
+        return json.dumps(self.to_json(), ensure_ascii=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "SourceParameters":
+        return cls(
+            source_name=data.get("source_name", ""),
+            rep_dt_column=data.get("rep_dt_column", "rep_dt"),
+        )
+
+    @classmethod
+    def from_json(cls, data: dict) -> "SourceParameters":
+        return cls.from_dict(data)
+
+    @classmethod
+    def from_json_str(cls, json_str: str) -> "SourceParameters":
+        return cls.from_json(json.loads(json_str))
+
 
 @dataclass
 class SearchDevParameters:
@@ -20,6 +53,42 @@ class SearchDevParameters:
     fact_column:str
     sign_negative_impact:int = -1
     # TODO: parameters to filter, if need
+
+    def to_dict(self) -> dict:
+        return {
+            "plan_column": self.plan_column,
+            "fact_column": self.fact_column,
+            "sign_negative_impact": self.sign_negative_impact,
+        }
+
+    def to_json(self) -> dict:
+        result = {}
+        if self.plan_column:
+            result["plan_column"] = self.plan_column
+        if self.fact_column:
+            result["fact_column"] = self.fact_column
+        if self.sign_negative_impact is not None:
+            result["sign_negative_impact"] = self.sign_negative_impact
+        return result
+
+    def to_json_str(self) -> str:
+        return json.dumps(self.to_json(), ensure_ascii=False)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "SearchDevParameters":
+        return cls(
+            plan_column=data["plan_column"],
+            fact_column=data["fact_column"],
+            sign_negative_impact=data.get("sign_negative_impact", -1),
+        )
+
+    @classmethod
+    def from_json(cls, data: dict) -> "SearchDevParameters":
+        return cls.from_dict(data)
+
+    @classmethod
+    def from_json_str(cls, json_str: str) -> "SearchDevParameters":
+        return cls.from_json(json.loads(json_str))
 
 
 def _rnd(x: float) -> float:
