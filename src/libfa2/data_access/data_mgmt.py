@@ -112,6 +112,21 @@ class DataMgmt(ABC):
             lgr.info(f'delete_results completed: code={code}, dt={dt}')
         return res
 
+    async def delete_results_for_dt(self, dt: date) -> Res[None]:
+        """Delete all results for a given date."""
+        lgr = get_logger()
+        lgr.info(f'delete_results_for_dt: dt={dt}')
+
+        sql = f"delete from {self._results_table} where dt = %(dt)s"
+        lgr.debug(f'SQL: {sql}, params: dt={dt}')
+
+        res = await self._exec(sql, {'dt': dt})
+        if not res.ok:
+            lgr.exception(f'delete_results_for_dt failed: {res.err}')
+        else:
+            lgr.info(f'delete_results_for_dt completed: dt={dt}')
+        return res
+
     async def save_results(self, code: str, dt: date, data: str, summary: str) -> Res[None]:
         """Insert results row."""
         lgr = get_logger()

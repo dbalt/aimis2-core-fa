@@ -188,6 +188,35 @@ class TestDeleteResults:
         assert mock_dg.calls[0]['params'] == {'code': 'CODE1', 'dt': dt}
 
 
+class TestDeleteResultsForDt:
+
+    def test_delete_results_for_dt_sends_correct_sql(self):
+        mock_dg = MockDGClient()
+        mock_dg.set_response(Res.result([]))
+        dm = _make_dm(mock_dg)
+        dt = date(2026, 5, 11)
+
+        with _patch_dg(mock_dg):
+            res = run_async(dm.delete_results_for_dt(dt))
+
+        assert res.ok
+        assert 'delete from' in mock_dg.calls[0]['sql'].lower()
+        assert 'missa_aimis.t_aimis__fa__results' in mock_dg.calls[0]['sql']
+        assert 'code' not in mock_dg.calls[0]['sql'].lower().split('where')[1]
+        assert mock_dg.calls[0]['params'] == {'dt': dt}
+
+    def test_delete_results_for_dt_error(self):
+        mock_dg = MockDGClient()
+        mock_dg.set_response(Res.error('connection failed'))
+        dm = _make_dm(mock_dg)
+
+        with _patch_dg(mock_dg):
+            res = run_async(dm.delete_results_for_dt(date(2026, 5, 11)))
+
+        assert not res.ok
+        assert 'connection failed' in res.err
+
+
 class TestSaveResults:
 
     def test_save_results_inserts_row(self):
