@@ -7,6 +7,7 @@ without a real KeyDB/DataGate connection.
 
 import pytest
 import asyncio
+import json
 from datetime import date
 from unittest.mock import MagicMock, patch
 
@@ -97,7 +98,7 @@ class TestSaveMetadata:
         dm = _make_dm(mock_dg)
 
         with _patch_dg(mock_dg):
-            res = run_async(dm.save_metadata('TEST_CODE', '{"key": "value"}'))
+            res = run_async(dm.save_metadata('TEST_CODE', {'key': 'value'}))
 
         assert res.ok
         assert len(mock_dg.calls) == 2
@@ -106,7 +107,7 @@ class TestSaveMetadata:
         assert 'delete from' in mock_dg.calls[0]['sql'].lower()
         assert mock_dg.calls[0]['params'] == {'code': 'TEST_CODE'}
 
-        # Second call: INSERT
+        # Second call: INSERT — data serialized to JSON
         assert 'insert into' in mock_dg.calls[1]['sql'].lower()
         assert mock_dg.calls[1]['params'] == {'code': 'TEST_CODE', 'metadata': '{"key": "value"}'}
 
@@ -125,7 +126,7 @@ class TestSaveMetadata:
         dm = _make_dm(mock_dg)
 
         with _patch_dg(mock_dg):
-            res = run_async(dm.save_metadata('TEST_CODE', 'data'))
+            res = run_async(dm.save_metadata('TEST_CODE', {'x': 1}))
 
         assert not res.ok
         assert 'insert failed' in res.err
@@ -142,7 +143,7 @@ class TestGetMetadata:
             res = run_async(dm.get_metadata('TEST_CODE'))
 
         assert res.ok
-        assert res.data == '{"key": "val"}'
+        assert res.data == {'key': 'val'}
         assert 'select' in mock_dg.calls[0]['sql'].lower()
         assert mock_dg.calls[0]['params'] == {'code': 'TEST_CODE'}
 
@@ -226,11 +227,12 @@ class TestSaveResults:
         dt = date(2026, 5, 11)
 
         with _patch_dg(mock_dg):
-            res = run_async(dm.save_results('CODE1', dt, '{"result": 42}', 'summary text'))
+            res = run_async(dm.save_results('CODE1', dt, {'result': 42}, 'summary text'))
 
         assert res.ok
         assert len(mock_dg.calls) == 1
         assert 'insert into' in mock_dg.calls[0]['sql'].lower()
+        # data dict is serialized to JSON
         assert mock_dg.calls[0]['params'] == {
             'code': 'CODE1', 'dt': dt,
             'data': '{"result": 42}', 'summary': 'summary text',
@@ -249,7 +251,8 @@ class TestGetResults:
             res = run_async(dm.get_results('CODE1', dt))
 
         assert res.ok
-        assert res.data == ('{"x":1}', 'sum')
+        # data is deserialized from JSON string to dict
+        assert res.data == ({'x': 1}, 'sum')
 
     def test_get_results_not_found(self):
         mock_dg = MockDGClient()
@@ -368,4 +371,4 @@ class TestDbWrapperImplementation:
 
         res = run_async(dm.get_results('CODE', dt))
         assert res.ok
-        assert res.data == ('{"res":1}', 'test_summary')
+        assert res.data == ({'res': 1}, 'test_summary')

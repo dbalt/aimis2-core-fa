@@ -32,9 +32,9 @@ order by code
 
 - `async def delete_results(self, code:str, dt:date)` - удаляет из t_aimis__fa__results по code и rep_dt
 
-- `async def save_results(self, code:str, dt:date, data:str, summary:str)` -  сохраняет результаты в таблицу t_aimis__fa__results
+- `async def save_results(self, code:str, dt:date, data:Dict, summary:str)` -  сохраняет результаты в таблицу t_aimis__fa__results
 
-- `async def get_results(self, code:str, dt:date)->Tuple[str,str]` - достает 
+- `async def get_results(self, code:str, dt:date)->Tuple[Dict,str]` - достает 
 
 
 ВАЖНО!!!:

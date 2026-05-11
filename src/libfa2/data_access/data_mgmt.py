@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import date
 from typing import Tuple, Callable, Awaitable, Dict, Any, List
+import json
 
 from coredis import Redis as KeyDbClient
 
@@ -55,11 +56,13 @@ class DataMgmt(ABC):
             lgr.info(f'delete_metadata completed: code={code}')
         return res
 
-    async def save_metadata(self, code: str, data: str) -> Res[None]:
+    async def save_metadata(self, code: str, data: Dict[str, Any]) -> Res[None]:
         """Upsert metadata: delete existing row then insert new one."""
         lgr = get_logger()
         lgr.info(f'save_metadata: code={code}')
-        lgr.debug(f'save_metadata data length={len(data)}')
+
+        data_str = json.dumps(data, ensure_ascii=False)
+        lgr.debug(f'save_metadata data length={len(data_str)}')
 
         del_res = await self.delete_metadata(code)
         if not del_res.ok:
@@ -68,15 +71,15 @@ class DataMgmt(ABC):
         sql = f"insert into {self._metadata_table} (code, metadata) values (%(code)s, %(metadata)s)"
         lgr.debug(f'SQL: {sql}')
 
-        res = await self._exec(sql, {'code': code, 'metadata': data})
+        res = await self._exec(sql, {'code': code, 'metadata': data_str})
         if not res.ok:
             lgr.exception(f'save_metadata failed: {res.err}')
         else:
             lgr.info(f'save_metadata completed: code={code}')
         return res
 
-    async def get_metadata(self, code: str) -> Res[str]:
-        """Retrieve metadata string by code."""
+    async def get_metadata(self, code: str) -> Res[Dict[str, Any]]:
+        """Retrieve metadata dict by code."""
         lgr = get_logger()
         lgr.info(f'get_metadata: code={code}')
 
@@ -93,9 +96,10 @@ class DataMgmt(ABC):
             lgr.warning(f'get_metadata: no row found for code={code}')
             return Res.error(f'No metadata found for code={code}')
 
-        lgr.info(f'get_metadata completed: code={code}, data_len={len(rows[0]["metadata"])}')
-        lgr.debug(f'get_metadata result: {rows[0]["metadata"]}')
-        return Res.result(rows[0]['metadata'])
+        data_str = rows[0]['metadata']
+        lgr.info(f'get_metadata completed: code={code}, data_len={len(data_str)}')
+        lgr.debug(f'get_metadata result: {data_str}')
+        return Res.result(json.loads(data_str))
 
     async def delete_results(self, code: str, dt: date) -> Res[None]:
         """Delete results row by code and date."""
@@ -127,11 +131,13 @@ class DataMgmt(ABC):
             lgr.info(f'delete_results_for_dt completed: dt={dt}')
         return res
 
-    async def save_results(self, code: str, dt: date, data: str, summary: str) -> Res[None]:
+    async def save_results(self, code: str, dt: date, data: Dict[str, Any], summary: str) -> Res[None]:
         """Insert results row."""
         lgr = get_logger()
         lgr.info(f'save_results: code={code}, dt={dt}')
-        lgr.debug(f'save_results data_len={len(data)}, summary_len={len(summary)}')
+
+        data_str = json.dumps(data, ensure_ascii=False)
+        lgr.debug(f'save_results data_len={len(data_str)}, summary_len={len(summary)}')
 
         sql = (
             f"insert into {self._results_table} (code, dt, data, summary) "
@@ -139,15 +145,15 @@ class DataMgmt(ABC):
         )
         lgr.debug(f'SQL: {sql}')
 
-        res = await self._exec(sql, {'code': code, 'dt': dt, 'data': data, 'summary': summary})
+        res = await self._exec(sql, {'code': code, 'dt': dt, 'data': data_str, 'summary': summary})
         if not res.ok:
             lgr.exception(f'save_results failed: {res.err}')
         else:
             lgr.info(f'save_results completed: code={code}, dt={dt}')
         return res
 
-    async def get_results(self, code: str, dt: date) -> Res[Tuple[str, str]]:
-        """Retrieve results (data, summary) by code and date."""
+    async def get_results(self, code: str, dt: date) -> Res[Tuple[Dict[str, Any], str]]:
+        """Retrieve results (data dict, summary) by code and date."""
         lgr = get_logger()
         lgr.info(f'get_results: code={code}, dt={dt}')
 
@@ -167,7 +173,7 @@ class DataMgmt(ABC):
         row = rows[0]
         lgr.info(f'get_results completed: code={code}, dt={dt}')
         lgr.debug(f'get_results data_len={len(row["data"])}, summary_len={len(row["summary"])}')
-        return Res.result((row['data'], row['summary']))
+        return Res.result((json.loads(row['data']), row['summary']))
 
 
 class DataMgmtDataGate(DataMgmt):
