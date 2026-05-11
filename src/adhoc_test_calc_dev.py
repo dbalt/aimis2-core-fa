@@ -152,6 +152,7 @@ async def test_hier():
     # h = make_test_hierarchy()
     dal = await get_data_access_client()
     cp = DeviationCalcParams(
+        code = 'tst',
         rep_dt=date(2026,2,28),
         source_params= SourceParameters(
             source_name='missa_bidr.t_aimis_fa__metrics_bsp',

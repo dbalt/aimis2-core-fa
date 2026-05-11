@@ -299,30 +299,43 @@ JSON имеет рекурсивную структуру. Каждый узел
 
 
 async def summarize(data:Dict, llm_client_gen_fn)->Res[str]:
-    tsks = []
-    async with asyncio.TaskGroup() as tg:
-        tsks.append(
-            tg.create_task(
-                summarize_results(
-                    data,
-                    await llm_client_gen_fn(),
-                    'GigaChat-3-Ultra'
-                )
-            )
-        )
+    # tsks = []
+    # async with asyncio.TaskGroup() as tg:
+    #     tsks.append(
+    #         tg.create_task(
+    #             summarize_results(
+    #                 data,
+    #                 await llm_client_gen_fn(),
+    #                 'GigaChat-2-Max'
+    #             )
+    #         )
+    #     )
+    #
+    #     tsks.append(
+    #         tg.create_task(
+    #             build_deviations_visualization_table(
+    #                 data,
+    #                 await llm_client_gen_fn(),
+    #                 'GigaChat-2-Max'
+    #             )
+    #         )
+    #     )
+    #
+    # tsks_results:List[Res[str]] = [x.result() for x in tsks]
+    # [summary_res, table_res] = tsks_results
 
-        tsks.append(
-            tg.create_task(
-                build_deviations_visualization_table(
-                    data,
-                    await llm_client_gen_fn(),
-                    'GigaChat-2-Max'
-                )
-            )
-        )
 
-    tsks_results:List[Res[str]] = [x.result() for x in tsks]
-    [summary_res, table_res] = tsks_results
+    summary_res = await summarize_results(
+        data,
+        await llm_client_gen_fn(),
+        'GigaChat-2-Max'
+    )
+
+    table_res = await build_deviations_visualization_table(
+        data,
+        await llm_client_gen_fn(),
+        'GigaChat-2-Max'
+    )
 
     if not summary_res.ok:
         return Res.mk_error(f'Failed build summary. err: {summary_res.err}')
