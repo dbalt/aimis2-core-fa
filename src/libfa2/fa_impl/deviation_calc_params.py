@@ -9,6 +9,7 @@ from ..analyt_struct_metadata import AnalyticalStructureMetadata
 @dataclass
 class DeviationCalcParams:
     code:str|None
+    rep_dt:date|None
     source_params:SourceParameters
     search_dev_params:SearchDevParameters
     hier:Hierarchy
@@ -16,6 +17,7 @@ class DeviationCalcParams:
     def to_dict(self) -> dict:
         return {
             "code": self.code,
+            "rep_dt": self.rep_dt.isoformat() if self.rep_dt else None,
             "source_params": self.source_params.to_dict(),
             "search_dev_params": self.search_dev_params.to_dict(),
             "hier": self.hier.to_json(include_empty_fields=True),
@@ -25,6 +27,8 @@ class DeviationCalcParams:
         result = {}
         if self.code is not None:
             result["code"] = self.code
+        if self.rep_dt is not None:
+            result["rep_dt"] = self.rep_dt.isoformat()
         result["source_params"] = self.source_params.to_json()
         result["search_dev_params"] = self.search_dev_params.to_json()
         result["hier"] = self.hier.to_json()
@@ -37,6 +41,7 @@ class DeviationCalcParams:
     def from_dict(cls, data: dict) -> "DeviationCalcParams":
         return cls(
             code = data.get('code'),
+            rep_dt=date.fromisoformat(data["rep_dt"]) if isinstance(data["rep_dt"], str) else data["rep_dt"],
             source_params=SourceParameters.from_dict(data["source_params"]),
             search_dev_params=SearchDevParameters.from_dict(data["search_dev_params"]),
             hier=Hierarchy.from_json(data["hier"]),
