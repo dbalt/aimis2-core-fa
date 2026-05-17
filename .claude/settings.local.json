@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/baltakov-df/source/repo/aimis-sdk -path \"*/sdk/core/logging*\" 2>/dev/null | head -5)",
+      "Read(//Users/baltakov-df/source/repo/aimis-sdk/**)"
+    ]
+  }
+}

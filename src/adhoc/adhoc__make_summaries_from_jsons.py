@@ -11,7 +11,7 @@ import json
 def get_tmp_path()->str:
     from pathlib import Path
     p = Path(__file__).parent
-    return FileTools.path_concat(str(p.resolve()), 'tmp')
+    return FileTools.path_concat(str(p.resolve()), '../tmp')
 
 
 async def main():

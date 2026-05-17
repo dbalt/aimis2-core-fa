@@ -28,7 +28,7 @@ from asyncio import TaskGroup
 
 from .units import DrillComponent, Drill, DeviationAmts, DeviationDetailAmts, SearchDevParameters, SourceParameters, EnumDrillType
 
-from ..hier_metadata import Hierarchy, MetricNode, MetricType, ComponentMultiPartType, ComponentRatioPartType
+from ..hier_metadata import Hierarchy, MetricNode, MetricType, ComponentMultiPartType, ComponentRatioPartType, MultipartDecompositionType
 
 from ..analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm, Dimension
 
@@ -248,6 +248,36 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
 
         return
 
+    def _calc_parts_impact(base_impact_direct_calc: float, ratio_impact_direct_calc: float, total_impact: float,
+                                 calc_meth: MultipartDecompositionType) -> Tuple[float, float]:
+        if calc_meth is None:
+            calc_meth = MultipartDecompositionType.AVERAGE_WEIGHTED
+
+        _sum = ratio_impact_direct_calc + base_impact_direct_calc
+
+        if calc_meth == MultipartDecompositionType.AVERAGE_WEIGHTED:
+            r = (ratio_impact_direct_calc / _sum) * total_impact
+            b = (base_impact_direct_calc / _sum) * total_impact
+            return (r, b)
+
+        if calc_meth == MultipartDecompositionType.INTEGRAL:
+            delta = total_impact - _sum
+            r = ratio_impact_direct_calc + delta / 2;
+            b = base_impact_direct_calc + delta / 2;
+            return (r, b)
+
+        if calc_meth == MultipartDecompositionType.DIRECT_BASE:
+            r = total_impact - base_impact_direct_calc
+            b = base_impact_direct_calc
+            return (r, b)
+
+        if calc_meth == MultipartDecompositionType.DIRECT_RATE:
+            r = ratio_impact_direct_calc
+            b = total_impact - ratio_impact_direct_calc
+            return (r, b)
+
+        raise Exception('should never reach this point!')
+
 
     # ----- MULTI: компоненты-множители (метод цепных подстановок) -----
     if current_node.type == MetricType.MULTI:
@@ -281,18 +311,21 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
 
         lgr.debug(f'MULTI direct impacts: ratio={ratio_impact_direct_calc}, base={base_impact_direct_calc}, total={total_impact}')
 
-        # Пропорциональное распределение фактического отклонения между факторами
-        ratio_weighted_impact = (ratio_impact_direct_calc / (ratio_impact_direct_calc + base_impact_direct_calc)) * total_impact
-        base_weighted_impact = (base_impact_direct_calc / (ratio_impact_direct_calc + base_impact_direct_calc)) * total_impact
+        (ratio_impact, base_impact) = _calc_parts_impact(
+            ratio_impact_direct_calc,
+            base_impact_direct_calc,
+            total_impact,
+            current_node.mp_decomp_tp
+        )
 
-        lgr.debug(f'MULTI weighted impacts: ratio={ratio_weighted_impact}, base={base_weighted_impact}')
+        lgr.debug(f'MULTI final impacts: ratio={ratio_impact}, base={base_impact}, calculation metod: {current_node.mp_decomp_tp}')
 
-        ratio_deviation_amounts = DeviationAmts.mk_with_custom_impact(ratio_data_row.plan, ratio_data_row.fact, ratio_weighted_impact)
-        base_deviation_amounts = DeviationAmts.mk_with_custom_impact(base_data_row.plan, base_data_row.fact, base_weighted_impact)
+        ratio_deviation_amounts = DeviationAmts.mk_with_custom_impact(ratio_data_row.plan, ratio_data_row.fact, ratio_impact)
+        base_deviation_amounts = DeviationAmts.mk_with_custom_impact(base_data_row.plan, base_data_row.fact, base_impact)
 
         deviation_detail_amts = DeviationDetailAmts(
-            positive_contrib=_pos(ratio_weighted_impact) + _pos(base_weighted_impact),
-            negative_contrib=_neg(ratio_weighted_impact) + _neg(base_weighted_impact)
+            positive_contrib=_pos(ratio_impact) + _pos(base_impact),
+            negative_contrib=_neg(ratio_impact) + _neg(base_impact)
         )
 
         drill = Drill(
@@ -371,11 +404,14 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
 
         lgr.debug(f'RATIO direct impacts: numerator={numerator_impact_direct_calc:.6f}, denominator={denominator_impact_direct_calc:.6f}')
 
-        # Пропорциональное распределение итогового отклонения
-        numerator_impact_weighted = numerator_impact_direct_calc * current_drill_component.amts.impact /(numerator_impact_direct_calc + denominator_impact_direct_calc)
-        denominator_impact_weighted = denominator_impact_direct_calc * current_drill_component.amts.impact /(numerator_impact_direct_calc + denominator_impact_direct_calc)
+        (numerator_impact_weighted, denominator_impact_weighted) = _calc_parts_impact(
+            numerator_impact_direct_calc,
+            denominator_impact_direct_calc,
+            current_drill_component.amts.impact,
+            current_node.mp_decomp_tp
+        )
 
-        lgr.debug(f'RATIO weighted impacts: numerator={numerator_impact_weighted:.6f}, denominator={denominator_impact_weighted:.6f}')
+        lgr.debug(f'RATIO final impacts: numerator={numerator_impact_weighted:.6f}, denominator={denominator_impact_weighted:.6f}, calculation method: {current_node.mp_decomp_tp}')
 
         numerator_deviation_amounts = DeviationAmts.mk_with_custom_impact(numerator_data_row.plan, numerator_data_row.fact, numerator_impact_weighted)
         denominator_deviation_amounts = DeviationAmts.mk_with_custom_impact(denominator_data_row.plan, denominator_data_row.fact, denominator_impact_weighted)
