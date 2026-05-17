@@ -21,6 +21,9 @@ class DeviationCalcMetadata:
 
     # ---- serialization: dict ----
 
+    def hiers_count(self)->int:
+        return len(self.hier_lst)
+
     def to_dict(self) -> dict:
         return {
             "code": self.code,

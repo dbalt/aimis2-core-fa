@@ -7,13 +7,12 @@ from sdk.core.monadic import Res
 from sdk.core.logging import get_logger
 from typing import Dict, AsyncIterable
 
-from libfa2.data_access.data_mgmt import DataMgmt
-from libfa2.data_access.aggr import DataAccess
-from libfa2.fa_impl.deviation_calc_params import DeviationCalcParams
-from libfa2.fa_impl.calc import calculate_deviations
-from libfa2.fa_impl.collect import collect_for_summary
-from libfa2.fa_impl.summarize import summarize
-from libfa2.enums import FaServerAction
+from .data_access.data_mgmt import DataMgmt
+from .data_access.aggr import DataAccess
+from .fa_impl.deviation_calc_metadata import DeviationCalcMetadata
+from .fa_impl.all_together import calculate_and_summarize_deviation
+
+from .enums import FaServerAction
 
 FA_PROTOCOL = 'fa2026'
 
@@ -94,26 +93,24 @@ class FaServerImpl(BaseAppServerPart):
         lgr.debug(f'Metadata loaded for code={code}')
 
         # Step 3: deserialize params and set report date
-        calc_params = DeviationCalcParams.from_dict(metadata_res.data)
-        calc_params.rep_dt = dt
-        lgr.info(f'Deserialized calc_params for code={code}, rep_dt set to {dt}')
+        calc_metadata = DeviationCalcMetadata.from_dict(metadata_res.data)
 
-        # Step 4: calculate deviations
         lgr.info(f'Starting deviation calculation: code={code}, dt={dt}')
-        drill_component = await calculate_deviations(calc_params, self._data_access)
-        lgr.info(f'Deviation calculation completed: code={code}, dt={dt}')
 
-        # Step 5: collect data for summary
-        data = collect_for_summary(drill_component)
-        lgr.debug(f'Collected data for summary, keys={list(data.keys())}')
+        tpl_res = await calculate_and_summarize_deviation(
+            code,
+            dt,
+            calc_metadata,
+            self._data_access,
+            self._llm_client_gen_fn
+        )
 
-        # Step 6: generate summary via LLM
-        lgr.info(f'Starting summarization: code={code}, dt={dt}')
-        summary_res = await summarize(data, self._llm_client_gen_fn)
-        if not summary_res.ok:
-            lgr.exception(f'Summarization failed: code={code}, dt={dt}: {summary_res.err}')
-            raise Exception(f'Summarization failed: {summary_res.err}')
-        summary = summary_res.data
+        if not tpl_res.ok:
+            lgr.exception(f'Summarization failed: code={code}, dt={dt}: {tpl_res.err}')
+            raise Exception(f'Summarization failed: {tpl_res.err}')
+
+        (data, summary) = tpl_res.data
+
         lgr.info(f'Summarization completed: code={code}, dt={dt}, summary length={len(summary)}')
 
         # Step 7: persist results (best-effort)

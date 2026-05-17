@@ -22,7 +22,7 @@ async def run():
     tbl_results = get_conf('configs.fa2026.tables.results')
     dm = DataMgmtDataGate(kc, tbl_metadata, tbl_results)
 
-    def get_llm_client():
+    async def get_llm_client():
         return GigaChatClientPartV2(kc)
 
     server = FaServerImpl(
