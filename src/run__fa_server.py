@@ -4,6 +4,7 @@ from libfa2.data_access.aggr import DataAccessDataGate
 from sdk.tools.settings import env__init_keydb_instance
 from sdk.giga.client import GigaChatClientPartV2
 from sdk.core.logging import get_logger
+from sdk.tools.settings import get_conf
 
 import logging
 logging.basicConfig(
@@ -16,11 +17,13 @@ async def run():
     lgr = get_logger()
     kc = await env__init_keydb_instance()
     da = DataAccessDataGate(kc)
-    dm = DataMgmtDataGate(kc, 'missa_aimis.t_aimis__fa__metadata', 'missa_aimis.t_aimis__fa__results') #TODO: rewrite to init from configmap
+
+    tbl_metadata = get_conf('configs.fa2026.tables.metadata')
+    tbl_results = get_conf('configs.fa2026.tables.results')
+    dm = DataMgmtDataGate(kc, tbl_metadata, tbl_results)
 
     def get_llm_client():
         return GigaChatClientPartV2(kc)
-
 
     server = FaServerImpl(
         kc,
