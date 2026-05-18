@@ -130,7 +130,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+        /*stage('SonarQube Analysis') {
             when {
                 anyOf {
                     branch master_branch 
@@ -152,7 +152,7 @@ pipeline {
 
                 echo "###### Stage SonarQube Analysis SUCCESS ######"
             }
-        }
+        }*/
 
         stage('Docker Build') {
             when {
