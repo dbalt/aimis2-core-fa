@@ -94,6 +94,9 @@ ENV/
 .settings
 .classpath
 .idea
+.gigacode
+.gigaide
+.vscode
 
 ######################
 # Node               #
