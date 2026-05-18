@@ -1,0 +1,25 @@
+### Настройки DevSecOps ###
+### Общая информация о командах ###
+team:
+  - {
+      mus_code: "00F20010",
+      mus_name: "Инфосервисы КЮЛ и бизнес-аналитика",
+      mus_po_mail: "Chelmakin.E.Ale@sberbank.ru;RGGulyanov@sberbank.ru",
+    }
+app:
+  sm_id: "8409038"
+  sm_name: "ФП AI MIS"
+
+domain: DELTA
+
+### Настройки SAST Checkmarx ###
+sast_cx:
+  jira_area: "AIMIS"
+  masks: ""
+  preset_id: "100012"
+  wait_qg: "2"
+  debug: false
+    
+### Настройки OSS
+oss:
+  excludes: ""
