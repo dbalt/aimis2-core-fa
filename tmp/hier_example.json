@@ -1,0 +1,136 @@
+{
+    "nodes": [
+        {
+            "id": 1,
+            "code": "od",
+            "name": "ОД до резервов",
+            "type": "sum",
+            "analyt_metadata": {
+                "algorithms": [
+                    {
+                        "id": 1,
+                        "drill_order": [
+                            [
+                                "channel"
+                            ]
+                        ]
+                    }
+                ],
+                "dimensions": [
+                    {
+                        "code": "channel",
+                        "name": "Канал",
+                        "column": "channel"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "code": "od_chpd",
+            "name": "Чистый процентный доход",
+            "type": "sum",
+            "parent": 1
+        },
+        {
+            "id": 3,
+            "code": "od_chkd",
+            "name": "Чистый комиссионный доход",
+            "parent": 1,
+            "query": {
+                "code": "R_04"
+            }
+        },
+        {
+            "id": 4,
+            "code": "od_pchod",
+            "name": "Прочие чистые операционные доходы",
+            "type": "sum",
+            "parent": 1
+        },
+        {
+            "id": 50,
+            "code": "od_chpd_cash",
+            "name": "Денежные средства",
+            "parent": 2,
+            "query": {
+                "code": "PL_11_31_11"
+            },
+            "analyt_metadata": {
+                "algorithms": [
+                    {
+                        "id": 1,
+                        "drill_order": [
+                            [
+                                "tb"
+                            ]
+                        ]
+                    }
+                ],
+                "dimensions": [
+                    {
+                        "code": "tb",
+                        "name": "Террбанк",
+                        "column": "tb_name"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 60,
+            "code": "od_chpd_preq",
+            "name": "Основные средства",
+            "parent": 2,
+            "query": {
+                "code": "R_11_31_14"
+            },
+            "analyt_metadata": {
+                "algorithms": [
+                    {
+                        "id": 1,
+                        "drill_order": [
+                            [
+                                "tb"
+                            ]
+                        ]
+                    }
+                ],
+                "dimensions": [
+                    {
+                        "code": "tb",
+                        "name": "Террбанк",
+                        "column": "tb_name"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 70,
+            "code": "od_chpd_eqtdzo",
+            "name": "Фондирование капитала и вложения в ДЗО",
+            "parent": 2,
+            "query": {
+                "code": "_HZ_"
+            },
+            "analyt_metadata": {
+                "algorithms": [
+                    {
+                        "id": 1,
+                        "drill_order": [
+                            [
+                                "tb"
+                            ]
+                        ]
+                    }
+                ],
+                "dimensions": [
+                    {
+                        "code": "tb",
+                        "name": "Террбанк",
+                        "column": "tb_name"
+                    }
+                ]
+            }
+        }
+    ]
+}

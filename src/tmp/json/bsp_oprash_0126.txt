@@ -1,0 +1,62 @@
+{
+	"hieararchy_node": "Операционные расходы",
+	"amounts": {
+		"plan": -22265198936.45,
+		"fact": -22054159629.2,
+		"deviation": 211039307.25,
+		"impact_to_top_lvl": 211039307.25
+	},
+	"details": {
+		"type": "Детализация по: [Канал]",
+		"deviation_amounts": {
+			"positive_contrib": 216661741.66,
+			"negative_contrib": -5622434.41,
+			"total": 211039307.25
+		},
+		"top_factors": [
+			{
+				"hieararchy_node": "Операционные расходы",
+				"analytic_slice": {
+					"Канал": "Прочее"
+				},
+				"amounts": {
+					"plan": -24950453.92,
+					"fact": -30572888.33,
+					"deviation": -5622434.41,
+					"impact_to_top_lvl": -5622434.41
+				},
+				"details": {
+					"type": "Детализация по: [Тербанк]",
+					"deviation_amounts": {
+						"positive_contrib": 0.0,
+						"negative_contrib": -5622434.41,
+						"total": -5622434.41
+					},
+					"top_factors": [
+						{
+							"hieararchy_node": "Операционные расходы",
+							"analytic_slice": {
+								"Тербанк": null
+							},
+							"amounts": {
+								"plan": -24950453.92,
+								"fact": -30572888.33,
+								"deviation": -5622434.41,
+								"impact_to_top_lvl": -5622434.41
+							},
+							"details": {
+								"type": "Детализация по: [Канал]",
+								"deviation_amounts": {
+									"positive_contrib": 0.0,
+									"negative_contrib": 0.0,
+									"total": 0.0
+								},
+								"top_factors": []
+							}
+						}
+					]
+				}
+			}
+		]
+	}
+}
