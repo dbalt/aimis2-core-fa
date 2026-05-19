@@ -17,14 +17,14 @@ RUN microdnf install -y gcc gcc-c++ libffi-devel zlib-devel libjpeg-turbo-devel 
     && python3.12 -m pip install patchelf nuitka --index-url=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple --trusted-host=sberosc.sigma.sbrf.ru \
     && python3.12 -m pip install --no-cache-dir -r /tmp_bld/requirements.txt --index-url=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple --trusted-host=sberosc.sigma.sbrf.ru \
     && python3.12 -m nuitka \
-        --standalone \        
+        --standalone \
         --output-dir=/app \
         --output-filename=run_fa_server.bin \
-        --remove-output \        
+        --remove-output \
         --include-package=coredis \
         --include-package=pandas \
         --include-package=numpy \
-        /tmp_bld/src/run_fa_server.py \
+        /tmp_bld/src/run__fa_server.py \
     && rm -rf /tmp_bld \
     && mv /app/run_fa_server.dist /app/cake \
     && rm -rf /usr/bin/python3.6 \
