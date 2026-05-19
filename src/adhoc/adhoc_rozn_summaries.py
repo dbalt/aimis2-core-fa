@@ -15,7 +15,8 @@ async def get_and_save_rozn_summaries():
 
     dates = (
         date(2026, 1, 31),
-        date(2026, 2, 28)
+        date(2026, 2, 28),
+        date(2025, 5, 31),
     )
 
     kc = await env__init_keydb_instance()

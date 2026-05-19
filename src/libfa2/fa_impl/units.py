@@ -54,6 +54,11 @@ class SearchDevParameters:
     sign_negative_impact:int = -1
     # TODO: parameters to filter, if need
 
+    def is_negative(self, deviation:float):
+        if self.sign_negative_impact == -1:
+            return deviation < 0
+        return deviation > 0
+
     def to_dict(self) -> dict:
         return {
             "plan_column": self.plan_column,

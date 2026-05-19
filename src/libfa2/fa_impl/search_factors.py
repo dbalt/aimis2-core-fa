@@ -15,6 +15,7 @@ def _is_negative(deviation: float, sign_negative_impact: int) -> bool:
 def get_factors(
     data_set: List[DataRow], 
     params: SearchDevParameters,
+    flg_all:bool = False
 ) -> Tuple[List[DataRow], DeviationDetailAmts]:
     """
     Разбивает итоговое отклонение data_set на позитивную и негативную
@@ -43,6 +44,10 @@ def get_factors(
         positive_contrib=positive_contrib,
         negative_contrib=negative_contrib,
     )
+
+    if flg_all:
+        ret_lst = [x for x in data_set if x.deviation != 0]
+        return ret_lst, detail
 
     # --- Pareto selection ---------------------------------------------------
     total_neg_abs = sum(abs(r.deviation) for r in negative_rows)
