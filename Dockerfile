@@ -26,7 +26,7 @@ RUN microdnf install -y gcc gcc-c++ libffi-devel zlib-devel libjpeg-turbo-devel 
         --include-package=numpy \
         /tmp_bld/src/run__fa_server.py \
     && rm -rf /tmp_bld \
-    && mv /app/run_fa_server.dist /app/cake \
+    && mv /app/run__fa_server.dist /app/cake \
     && rm -rf /usr/bin/python3.6 \
     && rm -rf /usr/bin/python3.12 \
     && rm -rf /usr/lib/python3.6/site-packages \
