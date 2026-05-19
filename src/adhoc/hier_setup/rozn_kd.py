@@ -1,4 +1,4 @@
-from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query, ComponentMultiPartType, ComponentRatioPartType
+from libfa2.hier_metadata import Hierarchy, MetricNode, MetricType, Query, ComponentMultiPartType, ComponentRatioPartType, MultipartDecompositionType
 from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata, Algorithm, Dimension
 from libfa2.fa_impl.deviation_calc_metadata import DeviationCalcMetadata, SearchDevParameters, SourceParameters
 from typing import Dict, List, Tuple
@@ -37,7 +37,9 @@ def _mk_hier1()->Hierarchy:
         name = 'Комиссионный доход',
         query=Query({'code':'kd_rozn', 'terr_level':'СБ'}),
         analyt_metadata=an,
-        type=MetricType.MULTI
+        type=MetricType.MULTI,
+        mp_decomp_tp=MultipartDecompositionType.INTEGRAL
+
     )
     h.add_node(kd)
 
@@ -58,7 +60,8 @@ def _mk_hier1()->Hierarchy:
         componentMultiPartType=ComponentMultiPartType.BASE,
         parent = kd.id,
         query = Query({'terr_level':'СБ', 'code':'oborot_rozn'}),
-        type = MetricType.MULTI
+        type = MetricType.MULTI,
+        mp_decomp_tp=MultipartDecompositionType.INTEGRAL
     )
     h.add_node(kd_oborot)
 
