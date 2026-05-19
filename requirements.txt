@@ -78,7 +78,6 @@ Pympler==1.1
 pyOpenSSL==26.2.0
 pyparsing==3.3.2
 pyperclip==1.11.0
-pytest==9.0.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 pytz==2025.1
