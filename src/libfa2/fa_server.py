@@ -12,9 +12,8 @@ from .data_access.aggr import DataAccess
 from .fa_impl.deviation_calc_metadata import DeviationCalcMetadata
 from .fa_impl.all_together import calculate_and_summarize_deviation
 
-from .enums import FaServerAction
+from sdk.fa2026.enums import FaServerAction, FA_PROTOCOL
 
-FA_PROTOCOL = 'fa2026'
 
 
 class FaServerImpl(BaseAppServerPart):

@@ -8,7 +8,7 @@ logging.basicConfig(
 
 
 async def test_fa_client():
-    from libfa2.fa_client import FaClient
+    from sdk.fa2026.client import FaClient
     from sdk.tools.settings import env__init_keydb_instance
     from datetime import date
     from libfa2.fa_impl.deviation_calc_metadata import DeviationCalcMetadata, SourceParameters, SearchDevParameters
