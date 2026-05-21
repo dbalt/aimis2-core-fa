@@ -22,8 +22,6 @@ RUN microdnf install -y gcc gcc-c++ libffi-devel zlib-devel libjpeg-turbo-devel 
         --output-filename=run_fa_server.bin \
         --remove-output \
         --include-package=coredis \
-        --include-package=pandas \
-        --include-package=numpy \
         /tmp_bld/src/run__fa_server.py \
     && rm -rf /tmp_bld \
     && mv /app/run__fa_server.dist /app/cake \
