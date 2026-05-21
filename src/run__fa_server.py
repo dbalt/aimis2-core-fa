@@ -52,10 +52,14 @@ def main():
 
 if __name__ == '__main__':
     # add extra path
+
     import os, sys
+    lgr = get_logger()
     sdk_path = os.environ.get('AIMIS_SDK_PATH')
-    print(f'=== SDK_PATH: {sdk_path} ===')
+    lgr.info(f'=== SDK_PATH: {sdk_path} ===')
     if sdk_path:
+        lgr.info('inserting to sys.path ...')
         sys.path.insert(0, sdk_path)
+        lgr.info(f'Current sys.path: {sys.path}')
 
     main()
