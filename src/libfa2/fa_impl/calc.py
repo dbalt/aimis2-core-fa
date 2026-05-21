@@ -315,12 +315,20 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
 
         lgr.debug(f'MULTI direct impacts: ratio={ratio_impact_direct_calc}, base={base_impact_direct_calc}, total={total_impact}')
 
+        current_impact = ratio_data_row.fact * base_data_row.fact - (ratio_data_row.plan * base_data_row.plan)
+
         (ratio_impact, base_impact) = _calc_parts_impact(
             ratio_impact_direct_calc,
             base_impact_direct_calc,
-            total_impact,
+            current_impact,
             current_node.mp_decomp_tp
         )
+
+        # По идее надо от родителя идти
+
+        if total_impact != current_impact:
+            ratio_impact = ratio_impact * total_impact/current_impact
+            base_impact = base_impact * total_impact/current_impact
 
         lgr.debug(f'MULTI final impacts: ratio={ratio_impact}, base={base_impact}, calculation metod: {current_node.mp_decomp_tp}')
 

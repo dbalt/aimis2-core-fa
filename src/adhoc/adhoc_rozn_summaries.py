@@ -14,8 +14,8 @@ async def get_and_save_rozn_summaries():
     from sdk.tools.settings import FileTools
 
     dates = (
-        date(2026, 1, 31),
-        date(2026, 2, 28),
+        # date(2026, 1, 31),
+        # date(2026, 2, 28),
         date(2025, 5, 31),
     )
 
