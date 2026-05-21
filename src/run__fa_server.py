@@ -51,4 +51,10 @@ def main():
     asyncio.run(run())
 
 if __name__ == '__main__':
+    # add extra path
+    import os, sys
+    sdk_path = os.environ.get('AIMIS_SDK_PATH')
+    if sdk_path:
+        sys.path.insert(0, sdk_path)
+
     main()
