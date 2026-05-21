@@ -208,8 +208,8 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         return val_row
 
     # Лямбды для выделения положительной / отрицательной составляющих вклада
-    _pos = lambda x: x if x > 0 else 0
-    _neg = lambda x: x if x < 0 else 0
+    _pos = lambda x: x if not deviation_calc_params.search_dev_params.is_negative(x) else 0
+    _neg = lambda x: x if deviation_calc_params.search_dev_params.is_negative(x) else 0
 
     # ----- SUM: суммируемые компоненты -----
     if current_node.type == MetricType.SUM:
@@ -220,7 +220,7 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
             components.append(val_row)
 
         # Рассчитываем факторы (влияние каждого потомка на отклонение)
-        (factors, deviation_detail_amts) = get_factors(components, deviation_calc_params.search_dev_params)
+        (factors, deviation_detail_amts) = get_factors(components, deviation_calc_params.search_dev_params, True)
 
         lgr.debug(f'SUM factors calculated for node id={current_node.id}: {len(factors)} factors, '
                   f'positive_contrib={deviation_detail_amts.positive_contrib}, negative_contrib={deviation_detail_amts.negative_contrib}')
@@ -244,14 +244,15 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
             )
 
             drill.components.append(chld_dc)
-            task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
+            if deviation_calc_params.search_dev_params.is_negative(chld_dc.amts.deviation):
+                task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
 
         return
 
-    def _calc_parts_impact(base_impact_direct_calc: float, ratio_impact_direct_calc: float, total_impact: float,
+    def _calc_parts_impact(ratio_impact_direct_calc: float, base_impact_direct_calc: float, total_impact: float,
                                  calc_meth: MultipartDecompositionType) -> Tuple[float, float]:
         if calc_meth is None:
-            calc_meth = MultipartDecompositionType.AVERAGE_WEIGHTED
+            calc_meth = MultipartDecompositionType.INTEGRAL
 
         _sum = ratio_impact_direct_calc + base_impact_direct_calc
 
@@ -292,6 +293,9 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         # Данные по базе — загружаем из DAL
         base_data_row = await _get_data_for_node(node_base)
 
+        if base_data_row.plan == 0 or base_data_row.fact == 0:
+            return
+
         # Значения множителя (ставки) вычисляем как частное: показатель / база
         ratio_data_row = DataRow(
             dims = {'node':node_base},
@@ -311,12 +315,20 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
 
         lgr.debug(f'MULTI direct impacts: ratio={ratio_impact_direct_calc}, base={base_impact_direct_calc}, total={total_impact}')
 
+        current_impact = ratio_data_row.fact * base_data_row.fact - (ratio_data_row.plan * base_data_row.plan)
+
         (ratio_impact, base_impact) = _calc_parts_impact(
             ratio_impact_direct_calc,
             base_impact_direct_calc,
-            total_impact,
+            current_impact,
             current_node.mp_decomp_tp
         )
+
+        # По идее надо от родителя идти
+
+        if total_impact != current_impact:
+            ratio_impact = ratio_impact * total_impact/current_impact
+            base_impact = base_impact * total_impact/current_impact
 
         lgr.debug(f'MULTI final impacts: ratio={ratio_impact}, base={base_impact}, calculation metod: {current_node.mp_decomp_tp}')
 

@@ -20,6 +20,9 @@ async def main():
         try:
             print(f'==== Processing {x} ======')
             data = json.loads(FileTools.read_all_file_contents(x))
+            data = {
+                "data": [data]
+            }
             sum_res = await summarize(data, get_llm_client)
             if not sum_res.ok:
                 print(f'something wrong: {sum_res.err}')

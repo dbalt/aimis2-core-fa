@@ -1,3 +1,9 @@
+import os, sys, asyncio
+sdk_path = os.environ.get('AIMIS_SDK_PATH')
+print(f'=== SDK_PATH: {sdk_path} ===')
+if sdk_path:
+    sys.path.insert(0, sdk_path)
+
 from libfa2.fa_server import FaServerImpl
 from libfa2.data_access.data_mgmt import DataMgmtDataGate
 from libfa2.data_access.aggr import DataAccessDataGate
