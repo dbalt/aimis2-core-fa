@@ -11,3 +11,4 @@ packaging
 Pympler
 typing_extensions
 wrapt
+pandas
