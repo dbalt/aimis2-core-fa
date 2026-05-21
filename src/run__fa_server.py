@@ -47,13 +47,7 @@ async def run():
 
 
 def main():
-    import asyncio
-    asyncio.run(run())
-
-if __name__ == '__main__':
-    # add extra path
-
-    import os, sys
+    import os, sys, asyncio
     lgr = get_logger()
     sdk_path = os.environ.get('AIMIS_SDK_PATH')
     lgr.info(f'=== SDK_PATH: {sdk_path} ===')
@@ -61,5 +55,7 @@ if __name__ == '__main__':
         lgr.info('inserting to sys.path ...')
         sys.path.insert(0, sdk_path)
         lgr.info(f'Current sys.path: {sys.path}')
+    asyncio.run(run())
 
+if __name__ == '__main__':
     main()
