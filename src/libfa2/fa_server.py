@@ -5,7 +5,7 @@ from coredis import Redis as KeyDbClient
 from sdk.core.base_api_server_app import BaseAppServerPart
 from sdk.core.monadic import Res
 from sdk.core.logging import get_logger
-from typing import Dict, AsyncIterable
+from typing import Dict, AsyncIterable, Callable
 
 from .data_access.data_mgmt import DataMgmt
 from .data_access.aggr import DataAccess
@@ -22,12 +22,17 @@ class FaServerImpl(BaseAppServerPart):
         keydb_client: KeyDbClient,
         data_mgmt: DataMgmt,
         data_access: DataAccess,
-        llm_client_gen_fn,
+        llm_client_gen_fn:Callable,
+        model_summary:str = 'GigaChat-3-Ultra',
+        model_details:str = 'GigaChat-2-Max'
     ):
         super().__init__(keydb_client, FA_PROTOCOL)
         self._data_mgmt = data_mgmt
         self._data_access = data_access
         self._llm_client_gen_fn = llm_client_gen_fn
+
+        self._model_summary = model_summary
+        self._model_details = model_details
 
     async def m__process_request(self, request_payload: Dict) -> AsyncIterable[Dict]:
         lgr = get_logger()
@@ -101,7 +106,9 @@ class FaServerImpl(BaseAppServerPart):
             dt,
             calc_metadata,
             self._data_access,
-            self._llm_client_gen_fn
+            self._llm_client_gen_fn,
+            self._model_summary,
+            self._model_details
         )
 
         if not tpl_res.ok:
