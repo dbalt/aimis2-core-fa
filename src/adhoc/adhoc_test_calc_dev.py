@@ -109,7 +109,7 @@ def make_test_hierarchy()->Hierarchy:
 
 async def get_llm_client()->GigaChatClientPartV2:
     kc = await _instantiate_keydb()
-    ggc = GigaChatClientPartV2(kc, source='navi_signal')
+    ggc = GigaChatClientPartV2(kc, source='default')
     return ggc
 
 async def get_data_access_client_aimis()->DataAccess:

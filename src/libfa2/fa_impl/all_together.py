@@ -19,7 +19,9 @@ async def calculate_and_summarize_deviation(
         dt:date,
         deviation_calc_metadata:DeviationCalcMetadata,
         data_access:DataAccess,
-        fn_get_llm_client:Callable
+        fn_get_llm_client:Callable,
+        model_summary:str = 'GigaChat-3-Ultra',
+        model_details:str = 'GigaChat-2-Max'
     )->Res[Tuple[Dict, str]]:
 
     lgr = get_logger()
@@ -43,7 +45,7 @@ async def calculate_and_summarize_deviation(
         "data": data_lst
     }
 
-    summary_res = await summarize(data, fn_get_llm_client)
+    summary_res = await summarize(data, fn_get_llm_client, model_summary, model_details)
     if not summary_res.ok:
         lgr.warning(f'Summarization failed: code={code}, dt={dt}: {summary_res.err}')
         return Res.mk_error(summary_res.err)

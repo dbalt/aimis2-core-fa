@@ -341,7 +341,7 @@ async def summarize_results(data:Dict, llm_client:GigaChatClientPartV2, llm_mode
 
 
 
-async def summarize(data:Dict, llm_client_gen_fn)->Res[str]:
+async def summarize(data:Dict, llm_client_gen_fn, model_summary:str = 'GigaChat-3-Ultra', model_details:str = 'GigaChat-2-Max')->Res[str]:
 
     tsks = []
     async with asyncio.TaskGroup() as tg:
@@ -350,7 +350,7 @@ async def summarize(data:Dict, llm_client_gen_fn)->Res[str]:
                 summarize_results(
                     data,
                     await llm_client_gen_fn(),
-                    'GigaChat-3-Ultra'
+                    model_summary
                 )
             )
         )
@@ -360,7 +360,7 @@ async def summarize(data:Dict, llm_client_gen_fn)->Res[str]:
                 build_deviations_visualization_table(
                     data,
                     await llm_client_gen_fn(),
-                    'GigaChat-2-Max'
+                    model_details
                 )
             )
         )
