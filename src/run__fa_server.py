@@ -29,7 +29,7 @@ async def run():
     dm = DataMgmtDataGate(kc, tbl_metadata, tbl_results)
 
     async def get_llm_client():
-        return GigaChatClientPartV2(kc)
+        return GigaChatClientPartV2(kc, source='navi_signal')
 
     server = FaServerImpl(
         kc,
