@@ -43,7 +43,7 @@ pipeline {
         // const
         // sonar
         SONAR_HOST_URL = 'https://sonar.delta.sbrf.ru/'
-        SONAR_LOGIN = 'cefda292-7575-47d2-bc9a-1022d242f8d0'
+        SONAR_LOGIN = 'sq-aimis2-core-fa'
 
         // const
         // tools
@@ -130,7 +130,7 @@ pipeline {
             }
         }
 
-        /*stage('SonarQube Analysis') {
+        stage('SonarQube Analysis') {
             when {
                 anyOf {
                     branch master_branch 
@@ -152,7 +152,7 @@ pipeline {
 
                 echo "###### Stage SonarQube Analysis SUCCESS ######"
             }
-        }*/
+        }
 
         stage('Docker Build') {
             when {
