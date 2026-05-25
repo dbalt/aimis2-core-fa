@@ -42,7 +42,7 @@ pipeline {
 
         // const
         // sonar
-        SONAR_HOST_URL = 'https://sbt-sonarqube.sigma.sbrf.ru/'
+        SONAR_HOST_URL = 'https://sonar.delta.sbrf.ru/'
         SONAR_LOGIN = 'cefda292-7575-47d2-bc9a-1022d242f8d0'
 
         // const
