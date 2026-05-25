@@ -14,7 +14,7 @@ pipeline {
         appImg = 'aimisCoreFaImg'
 		repo = 'aimis2-core-fa'
 		vers = '01.000.01'
-        SONAR_PROJECT_KEY = 'aimis2_core_fa'
+        SONAR_PROJECT_KEY = 'aimis2-core-fa'
 
         // const
         //project info
