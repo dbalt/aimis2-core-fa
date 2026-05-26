@@ -139,6 +139,10 @@ class DataMgmt(ABC):
         data_str = json.dumps(data, ensure_ascii=False)
         lgr.debug(f'save_results data_len={len(data_str)}, summary_len={len(summary)}')
 
+        del_res = await self.delete_results(code, dt)
+        if not del_res.ok:
+            lgr.warning(f'save_results: delete failed but continuing: {del_res.err}')
+
         sql = (
             f"insert into {self._results_table} (code, dt, data, summary) "
             f"values (%(code)s, %(dt)s, %(data)s, %(summary)s)"

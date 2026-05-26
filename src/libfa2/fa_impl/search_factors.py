@@ -34,6 +34,7 @@ def get_factors(
 
     for row in data_set:
         dev = row.deviation
+        if dev == 0: continue
         if _is_negative(dev, sign):
             negative_contrib += dev
             negative_rows.append(row)
