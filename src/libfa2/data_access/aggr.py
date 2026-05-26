@@ -32,6 +32,8 @@ class DataRow:
 
     @property
     def deviation(self)->float:
+        if self.fact is None: return 0
+        if self.plan is None: return 0
         return self.fact - self.plan
 
     @classmethod
