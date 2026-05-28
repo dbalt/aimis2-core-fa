@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "Прибыль до налогообложения ВСП ФЛ",
+      "amounts": {
+        "plan": -6069583779.98,
+        "fact": -4275256977.45,
+        "deviation": 1794326802.52,
+        "impact_to_top_lvl": 1794326802.52
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 1794326802.52,
+          "negative_contrib": 0.0,
+          "total": 1794326802.52
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "ОД до резервов",
+            "amounts": {
+              "plan": 9698296739.91,
+              "fact": 10732246195.07,
+              "deviation": 1033949455.16,
+              "impact_to_top_lvl": 1033949455.16
+            }
+          },
+          {
+            "hieararchy_node": "Операционные расходы",
+            "amounts": {
+              "plan": -15767880519.89,
+              "fact": -15007503172.52,
+              "deviation": 760377347.37,
+              "impact_to_top_lvl": 760377347.37
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

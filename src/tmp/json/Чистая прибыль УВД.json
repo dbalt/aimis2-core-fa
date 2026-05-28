@@ -1,0 +1,50 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "Чистая прибыль УВД",
+      "amounts": {
+        "plan": -367848567.61,
+        "fact": -318344446.64,
+        "deviation": 49504120.97,
+        "impact_to_top_lvl": 49504120.97
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 49504120.97,
+          "negative_contrib": 0.0,
+          "total": 49504120.97
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "ОД до резервов",
+            "amounts": {
+              "plan": 102513137.17,
+              "fact": 121516794.23,
+              "deviation": 19003657.07,
+              "impact_to_top_lvl": 19003657.07
+            }
+          },
+          {
+            "hieararchy_node": "Операционные расходы",
+            "amounts": {
+              "plan": -396806972.16,
+              "fact": -376203711.14,
+              "deviation": 20603261.01,
+              "impact_to_top_lvl": 20603261.01
+            }
+          },
+          {
+            "hieararchy_node": "Налог на прибыль",
+            "amounts": {
+              "plan": -73554732.62,
+              "fact": -63657529.73,
+              "deviation": 9897202.88,
+              "impact_to_top_lvl": 9897202.88
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

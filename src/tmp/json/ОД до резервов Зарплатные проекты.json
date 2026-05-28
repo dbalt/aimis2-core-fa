@@ -1,0 +1,157 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "ОД до резервов Зарплатные проекты",
+      "amounts": {
+        "plan": 9253212948.96,
+        "fact": 9282154835.21,
+        "deviation": 28941886.25,
+        "impact_to_top_lvl": 28941886.25
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 31430053.78,
+          "negative_contrib": -2488167.52,
+          "total": 28941886.25
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "Чистый процентный доход",
+            "amounts": {
+              "plan": -44886647.6,
+              "fact": -14168155.11,
+              "deviation": 30718492.5,
+              "impact_to_top_lvl": 30718492.5
+            }
+          },
+          {
+            "hieararchy_node": "Чистый комиссионный доход",
+            "amounts": {
+              "plan": -1870880.0,
+              "fact": -1159318.72,
+              "deviation": 711561.28,
+              "impact_to_top_lvl": 711561.28
+            }
+          },
+          {
+            "hieararchy_node": "Прочие чистые операционные доходы",
+            "amounts": {
+              "plan": 9299970476.56,
+              "fact": 9297482309.04,
+              "deviation": -2488167.52,
+              "impact_to_top_lvl": -2488167.52
+            },
+            "details": {
+              "type": "Детализация по компонентам иерархии",
+              "deviation_amounts": {
+                "positive_contrib": 156846282.66,
+                "negative_contrib": -159334450.19,
+                "total": -2488167.52
+              },
+              "top_factors": [
+                {
+                  "hieararchy_node": "Продукты банка",
+                  "amounts": {
+                    "plan": -125625961.15,
+                    "fact": -118400566.24,
+                    "deviation": 7225394.91,
+                    "impact_to_top_lvl": 7225394.91
+                  }
+                },
+                {
+                  "hieararchy_node": "Зарплатные проекты и соц. зачисления",
+                  "amounts": {
+                    "plan": 9865454423.79,
+                    "fact": 9706119973.61,
+                    "deviation": -159334450.19,
+                    "impact_to_top_lvl": -159334450.19
+                  },
+                  "details": {
+                    "type": "Детализация по: [Тербанк]",
+                    "deviation_amounts": {
+                      "positive_contrib": 4614936.42,
+                      "negative_contrib": -163949386.6,
+                      "total": -159334450.19
+                    },
+                    "top_factors": [
+                      {
+                        "hieararchy_node": "Зарплатные проекты и соц. зачисления",
+                        "analytic_slice": {
+                          "Тербанк": null
+                        },
+                        "amounts": {
+                          "plan": 251282026.0,
+                          "fact": 219283639.12,
+                          "deviation": -31998386.88,
+                          "impact_to_top_lvl": -31998386.88
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Зарплатные проекты и соц. зачисления",
+                        "analytic_slice": {
+                          "Тербанк": "Московский банк"
+                        },
+                        "amounts": {
+                          "plan": 1763581339.49,
+                          "fact": 1731827391.06,
+                          "deviation": -31753948.43,
+                          "impact_to_top_lvl": -31753948.43
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Зарплатные проекты и соц. зачисления",
+                        "analytic_slice": {
+                          "Тербанк": "Северо-Западный банк"
+                        },
+                        "amounts": {
+                          "plan": 1161566696.01,
+                          "fact": 1136411293.39,
+                          "deviation": -25155402.62,
+                          "impact_to_top_lvl": -25155402.62
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Зарплатные проекты и соц. зачисления",
+                        "analytic_slice": {
+                          "Тербанк": "Волго-Вятский банк"
+                        },
+                        "amounts": {
+                          "plan": 954355848.13,
+                          "fact": 931782762.93,
+                          "deviation": -22573085.2,
+                          "impact_to_top_lvl": -22573085.2
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Зарплатные проекты и соц. зачисления",
+                        "analytic_slice": {
+                          "Тербанк": "Уральский банк"
+                        },
+                        "amounts": {
+                          "plan": 1093888217.21,
+                          "fact": 1072015855.38,
+                          "deviation": -21872361.82,
+                          "impact_to_top_lvl": -21872361.82
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "hieararchy_node": "Прочее",
+                  "amounts": {
+                    "plan": -439857986.08,
+                    "fact": -290237098.33,
+                    "deviation": 149620887.75,
+                    "impact_to_top_lvl": 149620887.75
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
