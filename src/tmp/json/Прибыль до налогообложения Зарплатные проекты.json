@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "Прибыль до налогообложения Зарплатные проекты",
+      "amounts": {
+        "plan": 6638251111.0,
+        "fact": 6837833379.64,
+        "deviation": 199582268.64,
+        "impact_to_top_lvl": 199582268.64
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 199582268.64,
+          "negative_contrib": 0.0,
+          "total": 199582268.64
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "ОД до резервов",
+            "amounts": {
+              "plan": 9253212948.96,
+              "fact": 9282154835.21,
+              "deviation": 28941886.25,
+              "impact_to_top_lvl": 28941886.25
+            }
+          },
+          {
+            "hieararchy_node": "Операционные расходы",
+            "amounts": {
+              "plan": -2614961837.96,
+              "fact": -2444321455.57,
+              "deviation": 170640382.39,
+              "impact_to_top_lvl": 170640382.39
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

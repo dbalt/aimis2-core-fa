@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "Прибыль до налогообложения УВД",
+      "amounts": {
+        "plan": -294293834.99,
+        "fact": -254686916.91,
+        "deviation": 39606918.08,
+        "impact_to_top_lvl": 39606918.08
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 39606918.08,
+          "negative_contrib": 0.0,
+          "total": 39606918.08
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "ОД до резервов",
+            "amounts": {
+              "plan": 102513137.17,
+              "fact": 121516794.23,
+              "deviation": 19003657.07,
+              "impact_to_top_lvl": 19003657.07
+            }
+          },
+          {
+            "hieararchy_node": "Операционные расходы",
+            "amounts": {
+              "plan": -396806972.16,
+              "fact": -376203711.14,
+              "deviation": 20603261.01,
+              "impact_to_top_lvl": 20603261.01
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

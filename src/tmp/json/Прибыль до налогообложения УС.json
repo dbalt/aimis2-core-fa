@@ -1,0 +1,340 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "Прибыль до налогообложения УС",
+      "amounts": {
+        "plan": 4244578257.34,
+        "fact": 4198439608.63,
+        "deviation": -46138648.71,
+        "impact_to_top_lvl": -46138648.71
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 489336781.69,
+          "negative_contrib": -535475430.4,
+          "total": -46138648.71
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "ОД до резервов",
+            "amounts": {
+              "plan": 10075473914.48,
+              "fact": 9539998484.09,
+              "deviation": -535475430.4,
+              "impact_to_top_lvl": -535475430.4
+            },
+            "details": {
+              "type": "Детализация по компонентам иерархии",
+              "deviation_amounts": {
+                "positive_contrib": 125146170.15,
+                "negative_contrib": -660621600.55,
+                "total": -535475430.4
+              },
+              "top_factors": [
+                {
+                  "hieararchy_node": "Чистый процентный доход",
+                  "amounts": {
+                    "plan": -269063781.81,
+                    "fact": -143917611.65,
+                    "deviation": 125146170.15,
+                    "impact_to_top_lvl": 125146170.15
+                  }
+                },
+                {
+                  "hieararchy_node": "Прочие чистые операционные доходы",
+                  "amounts": {
+                    "plan": 10344537696.29,
+                    "fact": 9683916095.74,
+                    "deviation": -660621600.55,
+                    "impact_to_top_lvl": -660621600.55
+                  },
+                  "details": {
+                    "type": "Детализация по компонентам иерархии",
+                    "deviation_amounts": {
+                      "positive_contrib": 82044602.66,
+                      "negative_contrib": -742666203.22,
+                      "total": -660621600.55
+                    },
+                    "top_factors": [
+                      {
+                        "hieararchy_node": "Продукты банка",
+                        "amounts": {
+                          "plan": 25593392.11,
+                          "fact": 71294615.46,
+                          "deviation": 45701223.35,
+                          "impact_to_top_lvl": 45701223.35
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Экосистема. Доходы небанковского бизнеса",
+                        "amounts": {
+                          "plan": 0.0,
+                          "fact": 35763733.44,
+                          "deviation": 35763733.44,
+                          "impact_to_top_lvl": 35763733.44
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Расчёты за устройства самообслуживания",
+                        "amounts": {
+                          "plan": 10310512381.47,
+                          "fact": 9567846178.26,
+                          "deviation": -742666203.22,
+                          "impact_to_top_lvl": -742666203.22
+                        },
+                        "details": {
+                          "type": "Детализация по компонентам иерархии",
+                          "deviation_amounts": {
+                            "positive_contrib": 5376296.83,
+                            "negative_contrib": -748042500.05,
+                            "total": -742666203.22
+                          },
+                          "top_factors": [
+                            {
+                              "hieararchy_node": "Взнос/выдача наличных",
+                              "amounts": {
+                                "plan": 9887849218.02,
+                                "fact": 9257099541.95,
+                                "deviation": -630749676.07,
+                                "impact_to_top_lvl": -630749676.07
+                              },
+                              "details": {
+                                "type": "Детализация по: [Тербанк]",
+                                "deviation_amounts": {
+                                  "positive_contrib": 0.0,
+                                  "negative_contrib": -630749676.07,
+                                  "total": -630749676.07
+                                },
+                                "top_factors": [
+                                  {
+                                    "hieararchy_node": "Взнос/выдача наличных",
+                                    "analytic_slice": {
+                                      "Тербанк": "Среднерусский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 1481410793.04,
+                                      "fact": 1340968205.37,
+                                      "deviation": -140442587.67,
+                                      "impact_to_top_lvl": -140442587.67
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Взнос/выдача наличных",
+                                    "analytic_slice": {
+                                      "Тербанк": "Московский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 1397882206.26,
+                                      "fact": 1272499845.46,
+                                      "deviation": -125382360.8,
+                                      "impact_to_top_lvl": -125382360.8
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Взнос/выдача наличных",
+                                    "analytic_slice": {
+                                      "Тербанк": "Волго-Вятский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 897739816.75,
+                                      "fact": 833122509.75,
+                                      "deviation": -64617307.0,
+                                      "impact_to_top_lvl": -64617307.0
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Взнос/выдача наличных",
+                                    "analytic_slice": {
+                                      "Тербанк": "Сибирский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 784251613.32,
+                                      "fact": 724741510.68,
+                                      "deviation": -59510102.64,
+                                      "impact_to_top_lvl": -59510102.64
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Взнос/выдача наличных",
+                                    "analytic_slice": {
+                                      "Тербанк": "Поволжский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 749502997.71,
+                                      "fact": 701509418.5,
+                                      "deviation": -47993579.21,
+                                      "impact_to_top_lvl": -47993579.21
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Взнос/выдача наличных",
+                                    "analytic_slice": {
+                                      "Тербанк": "Уральский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 851248720.36,
+                                      "fact": 804152659.27,
+                                      "deviation": -47096061.08,
+                                      "impact_to_top_lvl": -47096061.08
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Взнос/выдача наличных",
+                                    "analytic_slice": {
+                                      "Тербанк": "Центрально-Черноземный банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 513281735.98,
+                                      "fact": 470623678.12,
+                                      "deviation": -42658057.86,
+                                      "impact_to_top_lvl": -42658057.86
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "hieararchy_node": "Компенсация УС СФ",
+                              "amounts": {
+                                "plan": 282997872.78,
+                                "fact": 165705048.8,
+                                "deviation": -117292823.98,
+                                "impact_to_top_lvl": -117292823.98
+                              },
+                              "details": {
+                                "type": "Детализация по: [Тербанк]",
+                                "deviation_amounts": {
+                                  "positive_contrib": 0.0,
+                                  "negative_contrib": -117292823.98,
+                                  "total": -117292823.98
+                                },
+                                "top_factors": [
+                                  {
+                                    "hieararchy_node": "Компенсация УС СФ",
+                                    "analytic_slice": {
+                                      "Тербанк": "Юго-Западный банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 64509854.95,
+                                      "fact": 24800882.45,
+                                      "deviation": -39708972.5,
+                                      "impact_to_top_lvl": -39708972.5
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Компенсация УС СФ",
+                                    "analytic_slice": {
+                                      "Тербанк": "Уральский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 33031807.9,
+                                      "fact": 20994724.92,
+                                      "deviation": -12037082.99,
+                                      "impact_to_top_lvl": -12037082.99
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Компенсация УС СФ",
+                                    "analytic_slice": {
+                                      "Тербанк": "Поволжский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 22947437.46,
+                                      "fact": 12736411.73,
+                                      "deviation": -10211025.73,
+                                      "impact_to_top_lvl": -10211025.73
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Компенсация УС СФ",
+                                    "analytic_slice": {
+                                      "Тербанк": "Волго-Вятский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 22783523.73,
+                                      "fact": 12650505.09,
+                                      "deviation": -10133018.64,
+                                      "impact_to_top_lvl": -10133018.64
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Компенсация УС СФ",
+                                    "analytic_slice": {
+                                      "Тербанк": "Московский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 29004379.89,
+                                      "fact": 19927871.19,
+                                      "deviation": -9076508.7,
+                                      "impact_to_top_lvl": -9076508.7
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Компенсация УС СФ",
+                                    "analytic_slice": {
+                                      "Тербанк": "Северо-Западный банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 30032267.34,
+                                      "fact": 21110442.47,
+                                      "deviation": -8921824.87,
+                                      "impact_to_top_lvl": -8921824.87
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Компенсация УС СФ",
+                                    "analytic_slice": {
+                                      "Тербанк": "Среднерусский банк"
+                                    },
+                                    "amounts": {
+                                      "plan": 26908481.73,
+                                      "fact": 18447276.45,
+                                      "deviation": -8461205.28,
+                                      "impact_to_top_lvl": -8461205.28
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "hieararchy_node": "Самоинкассация",
+                              "amounts": {
+                                "plan": 139665290.68,
+                                "fact": 145041587.51,
+                                "deviation": 5376296.83,
+                                "impact_to_top_lvl": 5376296.83
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Прочее",
+                        "amounts": {
+                          "plan": 8431922.71,
+                          "fact": 9011568.58,
+                          "deviation": 579645.87,
+                          "impact_to_top_lvl": 579645.87
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "hieararchy_node": "Операционные расходы",
+            "amounts": {
+              "plan": -5830895657.15,
+              "fact": -5341558875.46,
+              "deviation": 489336781.69,
+              "impact_to_top_lvl": 489336781.69
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

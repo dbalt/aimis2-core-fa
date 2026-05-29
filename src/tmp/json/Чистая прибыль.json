@@ -1,0 +1,263 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "Чистая прибыль",
+      "amounts": {
+        "plan": 5744886262.73,
+        "fact": 7730392869.85,
+        "deviation": 1985506607.12,
+        "impact_to_top_lvl": 1985506607.12
+      },
+      "details": {
+        "type": "Детализация по: [Канал]",
+        "deviation_amounts": {
+          "positive_contrib": 2550094935.54,
+          "negative_contrib": -564588328.42,
+          "total": 1985506607.12
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "Чистая прибыль",
+            "analytic_slice": {
+              "Канал": "Прочее"
+            },
+            "amounts": {
+              "plan": 75376555.28,
+              "fact": -431538462.26,
+              "deviation": -506915017.54,
+              "impact_to_top_lvl": -506915017.54
+            },
+            "details": {
+              "type": "Детализация по компонентам иерархии",
+              "deviation_amounts": {
+                "positive_contrib": 18029251.1,
+                "negative_contrib": -524944268.63,
+                "total": -506915017.54
+              },
+              "top_factors": [
+                {
+                  "hieararchy_node": "ОД до резервов",
+                  "analytic_slice": {
+                    "Канал": "Прочее"
+                  },
+                  "amounts": {
+                    "plan": 117154310.14,
+                    "fact": -337910296.05,
+                    "deviation": -455064606.19,
+                    "impact_to_top_lvl": -455064606.19
+                  },
+                  "details": {
+                    "type": "Детализация по компонентам иерархии",
+                    "deviation_amounts": {
+                      "positive_contrib": 0.0,
+                      "negative_contrib": -455064606.19,
+                      "total": -455064606.19
+                    },
+                    "top_factors": [
+                      {
+                        "hieararchy_node": "Чистый процентный доход",
+                        "analytic_slice": {
+                          "Канал": "Прочее"
+                        },
+                        "amounts": {
+                          "plan": 3238271.95,
+                          "fact": 0.0,
+                          "deviation": -3238271.95,
+                          "impact_to_top_lvl": -3238271.95
+                        },
+                        "details": {
+                          "type": "Детализация по компонентам иерархии",
+                          "deviation_amounts": {
+                            "positive_contrib": 0.0,
+                            "negative_contrib": -3238271.95,
+                            "total": -3238271.95
+                          },
+                          "top_factors": [
+                            {
+                              "hieararchy_node": "Фондирование капитала и вложения в ДЗО",
+                              "analytic_slice": {
+                                "Канал": "Прочее"
+                              },
+                              "amounts": {
+                                "plan": 3238271.95,
+                                "fact": 0.0,
+                                "deviation": -3238271.95,
+                                "impact_to_top_lvl": -3238271.95
+                              },
+                              "details": {
+                                "type": "Детализация по: [Тербанк]",
+                                "deviation_amounts": {
+                                  "positive_contrib": 0.0,
+                                  "negative_contrib": -3238271.95,
+                                  "total": -3238271.95
+                                },
+                                "top_factors": [
+                                  {
+                                    "hieararchy_node": "Фондирование капитала и вложения в ДЗО",
+                                    "analytic_slice": {
+                                      "Канал": "Прочее",
+                                      "Тербанк": null
+                                    },
+                                    "amounts": {
+                                      "plan": 3238271.95,
+                                      "fact": 0.0,
+                                      "deviation": -3238271.95,
+                                      "impact_to_top_lvl": -3238271.95
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Чистый комиссионный доход",
+                        "analytic_slice": {
+                          "Канал": "Прочее"
+                        },
+                        "amounts": {
+                          "plan": 0.0,
+                          "fact": -3166384.45,
+                          "deviation": -3166384.45,
+                          "impact_to_top_lvl": -3166384.45
+                        }
+                      },
+                      {
+                        "hieararchy_node": "Прочие чистые операционные доходы",
+                        "analytic_slice": {
+                          "Канал": "Прочее"
+                        },
+                        "amounts": {
+                          "plan": 113916038.19,
+                          "fact": -334743911.6,
+                          "deviation": -448659949.79,
+                          "impact_to_top_lvl": -448659949.79
+                        },
+                        "details": {
+                          "type": "Детализация по компонентам иерархии",
+                          "deviation_amounts": {
+                            "positive_contrib": 2804130.26,
+                            "negative_contrib": -451464080.05,
+                            "total": -448659949.79
+                          },
+                          "top_factors": [
+                            {
+                              "hieararchy_node": "Экосистема. Доходы небанковского бизнеса",
+                              "analytic_slice": {
+                                "Канал": "Прочее"
+                              },
+                              "amounts": {
+                                "plan": 113916038.19,
+                                "fact": -337548041.86,
+                                "deviation": -451464080.05,
+                                "impact_to_top_lvl": -451464080.05
+                              },
+                              "details": {
+                                "type": "Детализация по компонентам иерархии",
+                                "deviation_amounts": {
+                                  "positive_contrib": 91663.42,
+                                  "negative_contrib": -451555743.47,
+                                  "total": -451464080.05
+                                },
+                                "top_factors": [
+                                  {
+                                    "hieararchy_node": "Тарифная выручка",
+                                    "analytic_slice": {
+                                      "Канал": "Прочее"
+                                    },
+                                    "amounts": {
+                                      "plan": 0.0,
+                                      "fact": 91663.42,
+                                      "deviation": 91663.42,
+                                      "impact_to_top_lvl": 91663.42
+                                    }
+                                  },
+                                  {
+                                    "hieararchy_node": "Дельта тарифной выручки и доходных договоров",
+                                    "analytic_slice": {
+                                      "Канал": "Прочее"
+                                    },
+                                    "amounts": {
+                                      "plan": 113916038.19,
+                                      "fact": -337639705.28,
+                                      "deviation": -451555743.47,
+                                      "impact_to_top_lvl": -451555743.47
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "hieararchy_node": "Прочее",
+                              "analytic_slice": {
+                                "Канал": "Прочее"
+                              },
+                              "amounts": {
+                                "plan": 0.0,
+                                "fact": 2804130.26,
+                                "deviation": 2804130.26,
+                                "impact_to_top_lvl": 2804130.26
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "hieararchy_node": "Операционные расходы",
+                  "analytic_slice": {
+                    "Канал": "Прочее"
+                  },
+                  "amounts": {
+                    "plan": -25349724.85,
+                    "fact": -7320473.75,
+                    "deviation": 18029251.1,
+                    "impact_to_top_lvl": 18029251.1
+                  }
+                },
+                {
+                  "hieararchy_node": "Налог на прибыль",
+                  "analytic_slice": {
+                    "Канал": "Прочее"
+                  },
+                  "amounts": {
+                    "plan": -16428030.01,
+                    "fact": -86307692.45,
+                    "deviation": -69879662.44,
+                    "impact_to_top_lvl": -69879662.44
+                  },
+                  "details": {
+                    "type": "Детализация по: [Тербанк]",
+                    "deviation_amounts": {
+                      "positive_contrib": 24401.24,
+                      "negative_contrib": -69904063.68,
+                      "total": -69879662.44
+                    },
+                    "top_factors": [
+                      {
+                        "hieararchy_node": "Налог на прибыль",
+                        "analytic_slice": {
+                          "Канал": "Прочее",
+                          "Тербанк": null
+                        },
+                        "amounts": {
+                          "plan": -16428030.01,
+                          "fact": -86332093.69,
+                          "deviation": -69904063.68,
+                          "impact_to_top_lvl": -69904063.68
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

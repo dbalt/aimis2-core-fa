@@ -1,0 +1,50 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "ОД до резервов ВСП ФЛ",
+      "amounts": {
+        "plan": 9698296739.91,
+        "fact": 10732246195.07,
+        "deviation": 1033949455.16,
+        "impact_to_top_lvl": 1033949455.16
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 1033949455.16,
+          "negative_contrib": 0.0,
+          "total": 1033949455.16
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "Чистый процентный доход",
+            "amounts": {
+              "plan": -434475995.61,
+              "fact": -353540376.76,
+              "deviation": 80935618.85,
+              "impact_to_top_lvl": 80935618.85
+            }
+          },
+          {
+            "hieararchy_node": "Чистый комиссионный доход",
+            "amounts": {
+              "plan": 0.0,
+              "fact": 940696.72,
+              "deviation": 940696.72,
+              "impact_to_top_lvl": 940696.72
+            }
+          },
+          {
+            "hieararchy_node": "Прочие чистые операционные доходы",
+            "amounts": {
+              "plan": 10132772735.52,
+              "fact": 11084845875.1,
+              "deviation": 952073139.59,
+              "impact_to_top_lvl": 952073139.59
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

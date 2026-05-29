@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "hieararchy_node": "ОД до резервов УВД",
+      "amounts": {
+        "plan": 102513137.17,
+        "fact": 121516794.23,
+        "deviation": 19003657.07,
+        "impact_to_top_lvl": 19003657.07
+      },
+      "details": {
+        "type": "Детализация по компонентам иерархии",
+        "deviation_amounts": {
+          "positive_contrib": 19003657.07,
+          "negative_contrib": 0.0,
+          "total": 19003657.07
+        },
+        "top_factors": [
+          {
+            "hieararchy_node": "Чистый процентный доход",
+            "amounts": {
+              "plan": -6568199.03,
+              "fact": -4255009.87,
+              "deviation": 2313189.16,
+              "impact_to_top_lvl": 2313189.16
+            }
+          },
+          {
+            "hieararchy_node": "Прочие чистые операционные доходы",
+            "amounts": {
+              "plan": 109081336.19,
+              "fact": 125771804.1,
+              "deviation": 16690467.91,
+              "impact_to_top_lvl": 16690467.91
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
