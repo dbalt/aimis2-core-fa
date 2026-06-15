@@ -1,0 +1,437 @@
+{
+  "metricName": "Операционный доход до резервов ТБ",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Операционный доход до резервов",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 2,
+      "name": "ТБ/ГОСБ",
+      "role": "razrez",
+      "parent": 1
+    },
+    {
+      "id": 3,
+      "name": "Блок/Подблок(Сегмент КИБ)",
+      "role": "razrez",
+      "parent": 1
+    },
+    {
+      "id": 4,
+      "name": "Чистый процентный доход от активов",
+      "role": "podstatya",
+      "parent": 3
+    },
+    {
+      "id": 5,
+      "name": "Кредиты банкам",
+      "role": "podstatya",
+      "parent": 4
+    },
+    {
+      "id": 6,
+      "name": "Кредиты юридическим лицам",
+      "role": "podstatya",
+      "parent": 4
+    },
+    {
+      "id": 7,
+      "name": "Кредиты физическим лицам",
+      "role": "podstatya",
+      "parent": 4
+    },
+    {
+      "id": 8,
+      "name": "Ценные бумаги",
+      "role": "podstatya",
+      "parent": 4
+    },
+    {
+      "id": 9,
+      "name": "Прочие активы",
+      "role": "podstatya",
+      "parent": 4
+    },
+    {
+      "id": 11,
+      "name": "Продукт ЕК",
+      "role": "razrez",
+      "parent": 7
+    },
+    {
+      "id": 14,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 6
+    },
+    {
+      "id": 16,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 6
+    },
+    {
+      "id": 17,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 11
+    },
+    {
+      "id": 18,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 11
+    },
+    {
+      "id": 19,
+      "name": "Чистый процентный доход от пассивов",
+      "role": "podstatya",
+      "parent": 3
+    },
+    {
+      "id": 20,
+      "name": "Государственное финансирование",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 21,
+      "name": "Средства банков",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 22,
+      "name": "Средства юридических лиц",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 23,
+      "name": "Средства физических лиц",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 24,
+      "name": "Облигации",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 25,
+      "name": "Начисленные проценты",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 26,
+      "name": "Прочие обязательства",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 27,
+      "name": "Собственные средства",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 28,
+      "name": "Прочие",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 29,
+      "name": "Средства до востребования",
+      "role": "podstatya",
+      "parent": 22
+    },
+    {
+      "id": 30,
+      "name": "Срочные инструменты привлечения",
+      "role": "podstatya",
+      "parent": 22
+    },
+    {
+      "id": 32,
+      "name": "Счета эскроу",
+      "role": "podstatya",
+      "parent": 22
+    },
+    {
+      "id": 33,
+      "name": "Счета до востребования",
+      "role": "podstatya",
+      "parent": 23
+    },
+    {
+      "id": 34,
+      "name": "Срочные инструменты привлечения",
+      "role": "podstatya",
+      "parent": 23
+    },
+    {
+      "id": 35,
+      "name": "Счета эскроу",
+      "role": "podstatya",
+      "parent": 23
+    },
+    {
+      "id": 36,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 33
+    },
+    {
+      "id": 37,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 33
+    },
+    {
+      "id": 38,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 34
+    },
+    {
+      "id": 39,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 34
+    },
+    {
+      "id": 40,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 35
+    },
+    {
+      "id": 41,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 35
+    },
+    {
+      "id": 42,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 29
+    },
+    {
+      "id": 43,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 29
+    },
+    {
+      "id": 44,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 30
+    },
+    {
+      "id": 45,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 30
+    },
+    {
+      "id": 46,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 32
+    },
+    {
+      "id": 47,
+      "name": "СДО",
+      "role": "baza",
+      "parent": 32
+    },
+    {
+      "id": 48,
+      "name": "Чистый комиссионный доход",
+      "role": "podstatya",
+      "parent": 3
+    },
+    {
+      "id": 49,
+      "name": "Операции с банковскими картами (***)",
+      "role": "podstatya",
+      "parent": 48
+    },
+    {
+      "id": 50,
+      "name": "Эквайринг (***)",
+      "role": "podstatya",
+      "parent": 49
+    },
+    {
+      "id": 51,
+      "name": "Комиссионный доход по эквайрингу",
+      "role": "podstatya",
+      "parent": 50
+    },
+    {
+      "id": 52,
+      "name": "Интерчейндж",
+      "role": "podstatya",
+      "parent": 50
+    },
+    {
+      "id": 53,
+      "name": "Комиссии эквайера платежным системам",
+      "role": "podstatya",
+      "parent": 50
+    },
+    {
+      "id": 54,
+      "name": "Interchange «us on us»",
+      "role": "podstatya",
+      "parent": 50
+    },
+    {
+      "id": 55,
+      "name": "Терр. распределение по карте",
+      "role": "podstatya",
+      "parent": 54
+    },
+    {
+      "id": 56,
+      "name": "Терр. распределение по ЮЛ",
+      "role": "podstatya",
+      "parent": 54
+    },
+    {
+      "id": 57,
+      "name": "Обслуживание карты и переводы со счета",
+      "role": "podstatya",
+      "parent": 49
+    },
+    {
+      "id": 59,
+      "name": "Программы лояльности (***)",
+      "role": "podstatya",
+      "parent": 49
+    },
+    {
+      "id": 60,
+      "name": "Прочие операции с банковскими картами (***)",
+      "role": "podstatya",
+      "parent": 49
+    },
+    {
+      "id": 62,
+      "name": "Расчетно-кассовое обслуживание (***)",
+      "role": "podstatya",
+      "parent": 48
+    },
+    {
+      "id": 63,
+      "name": "Платежи и переводы ФЛ (***)",
+      "role": "podstatya",
+      "parent": 62
+    },
+    {
+      "id": 64,
+      "name": "Комиссии по платежам",
+      "role": "podstatya",
+      "parent": 63
+    },
+    {
+      "id": 66,
+      "name": "Комиссии по переводам",
+      "role": "podstatya",
+      "parent": 63
+    },
+    {
+      "id": 68,
+      "name": "Расчетные операции юридических лиц",
+      "role": "podstatya",
+      "parent": 62
+    },
+    {
+      "id": 69,
+      "name": "Безналичные операции корпоративных клиентов",
+      "role": "podstatya",
+      "parent": 68
+    },
+    {
+      "id": 70,
+      "name": "Cash management",
+      "role": "podstatya",
+      "parent": 68
+    },
+    {
+      "id": 71,
+      "name": "Зарплатные проекты",
+      "role": "podstatya",
+      "parent": 68
+    },
+    {
+      "id": 72,
+      "name": "Кассовые операции",
+      "role": "podstatya",
+      "parent": 62
+    },
+    {
+      "id": 73,
+      "name": "Ведение счетов",
+      "role": "podstatya",
+      "parent": 62
+    },
+    {
+      "id": 74,
+      "name": "Прочие РКО (***)",
+      "role": "podstatya",
+      "parent": 62
+    },
+    {
+      "id": 75,
+      "name": "Конверсия и фин.рынки (***)",
+      "role": "podstatya",
+      "parent": 48
+    },
+    {
+      "id": 76,
+      "name": "Гарантии и ТФиДО",
+      "role": "podstatya",
+      "parent": 48
+    },
+    {
+      "id": 77,
+      "name": "Агентские и прочие доходы (***)",
+      "role": "podstatya",
+      "parent": 48
+    },
+    {
+      "id": 78,
+      "name": "Прочие чистые операционные доходы",
+      "role": "podstatya",
+      "parent": 3
+    },
+    {
+      "id": 79,
+      "name": "Чистые доходы по торговым операциям",
+      "role": "podstatya",
+      "parent": 78
+    },
+    {
+      "id": 80,
+      "name": "Доходы и расходы от страховой деятельности",
+      "role": "podstatya",
+      "parent": 78
+    },
+    {
+      "id": 81,
+      "name": "Прочие чистые операционные доходы",
+      "role": "podstatya",
+      "parent": 78
+    }
+  ]
+}

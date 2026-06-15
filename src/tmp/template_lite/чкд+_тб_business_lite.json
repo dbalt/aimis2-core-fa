@@ -1,0 +1,203 @@
+{
+  "metricName": "ЧКД+ ТБ",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "ЧКД+ ТБ",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 2,
+      "name": "ТБ/ГОСБ",
+      "role": "razrez",
+      "parent": 1
+    },
+    {
+      "id": 5,
+      "name": "Блок/Подблок(Сегмент КИБ)",
+      "role": "razrez",
+      "parent": 1
+    },
+    {
+      "id": 6,
+      "name": "Операции с банковскими картами (***)",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 9,
+      "name": "Эквайринг (***)",
+      "role": "podstatya",
+      "parent": 6
+    },
+    {
+      "id": 10,
+      "name": "Обслуживание карты и переводы со счета",
+      "role": "podstatya",
+      "parent": 6
+    },
+    {
+      "id": 11,
+      "name": "Программы лояльности (***)",
+      "role": "podstatya",
+      "parent": 6
+    },
+    {
+      "id": 12,
+      "name": "Прочие операции с банковскими картами (***)",
+      "role": "podstatya",
+      "parent": 6
+    },
+    {
+      "id": 13,
+      "name": "Комиссионный доход по эквайрингу",
+      "role": "podstatya",
+      "parent": 9
+    },
+    {
+      "id": 14,
+      "name": "Интерчейндж",
+      "role": "podstatya",
+      "parent": 9
+    },
+    {
+      "id": 15,
+      "name": "Комиссии эквайера платежным системам",
+      "role": "podstatya",
+      "parent": 9
+    },
+    {
+      "id": 16,
+      "name": "Interchange «us on us»",
+      "role": "podstatya",
+      "parent": 9
+    },
+    {
+      "id": 17,
+      "name": "Терр. распределение по карте",
+      "role": "podstatya",
+      "parent": 16
+    },
+    {
+      "id": 18,
+      "name": "Терр. распределение по ЮЛ",
+      "role": "podstatya",
+      "parent": 16
+    },
+    {
+      "id": 19,
+      "name": "Расчетно-кассовое обслуживание (***) ",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 20,
+      "name": "Платежи и переводы ФЛ (***)",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 21,
+      "name": "Расчетные операции юридических лиц",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 22,
+      "name": "Кассовые операции",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 23,
+      "name": "Ведение счетов",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 24,
+      "name": "Прочие РКО (***)",
+      "role": "podstatya",
+      "parent": 19
+    },
+    {
+      "id": 25,
+      "name": "Комиссии по платежам",
+      "role": "podstatya",
+      "parent": 20
+    },
+    {
+      "id": 26,
+      "name": "Комиссии по переводам",
+      "role": "podstatya",
+      "parent": 20
+    },
+    {
+      "id": 27,
+      "name": "Безналичные операции корпоративных клиентов",
+      "role": "podstatya",
+      "parent": 21
+    },
+    {
+      "id": 28,
+      "name": "Cash management",
+      "role": "podstatya",
+      "parent": 21
+    },
+    {
+      "id": 29,
+      "name": "Зарплатные проекты",
+      "role": "podstatya",
+      "parent": 21
+    },
+    {
+      "id": 30,
+      "name": "Конверсия и фин.рынки (***)",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 31,
+      "name": "Гарантии и ТФиДО",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 32,
+      "name": "Агентские и прочие доходы (***)",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 33,
+      "name": "Страховые премии и резервы ",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 34,
+      "name": "Расчеты по брокерскому обслуживанию ",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 35,
+      "name": "Доп.вознаграждение за операции через УКП ",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 37,
+      "name": "Продукты УБ ",
+      "role": "podstatya",
+      "parent": 5
+    },
+    {
+      "id": 38,
+      "name": "Доходы от небанковского бизнеса",
+      "role": "podstatya",
+      "parent": 5
+    }
+  ]
+}
