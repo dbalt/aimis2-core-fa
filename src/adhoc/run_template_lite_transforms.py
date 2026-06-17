@@ -1,8 +1,13 @@
 
 from adhoc.template_lite.deserializer import get_from_template_lite_json
 from adhoc.template_lite.transform import transform_template_lite_to_hierarchy
+from adhoc.template_lite.transform_queries import transform_next_step
+from libfa2.hier_metadata.hierarchy import Hierarchy
 
 from sdk.tools.settings import FileTools
+
+
+
 
 
 def main():
@@ -16,6 +21,7 @@ def main():
     print(data)
 
     next_data = transform_template_lite_to_hierarchy(data)
+    next_data = transform_next_step(next_data)
     print(next_data)
 
 
