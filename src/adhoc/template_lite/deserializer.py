@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 from typing import Union
 
+from sdk.core.logging import get_logger
+
 from .template import TemplateLite
 
 #: Тип источника данных: путь к файлу, JSON-строка или уже разобранный dict.
@@ -67,8 +69,12 @@ def get_from_template_lite_json(source: TemplateLiteSource) -> TemplateLite:
         >>> tpl.count_nodes()
         33
     """
+    lgr = get_logger()
+    lgr.debug(f"Источник шаблона: type={type(source).__name__}")
+
     # Уже разобранный словарь — используем напрямую.
     if isinstance(source, dict):
+        lgr.info("Источник — dict: десериализация напрямую, без обращения к ФС")
         return TemplateLite.from_dict(source)
 
     # Путь к файлу или JSON-строка.
@@ -80,15 +86,21 @@ def get_from_template_lite_json(source: TemplateLiteSource) -> TemplateLite:
         # содержимое JSON от пути без обращения к файловой системе (вызов
         # is_file() на длинной JSON-строке выбрасывает OSError).
         if text.lstrip().startswith(("{", "[")):
+            lgr.info("Источник распознан как JSON-строка, разбор напрямую")
             data = json.loads(text)
         else:
             path = Path(text)
+            lgr.info(f"Источник распознан как путь к файлу: {path}")
+            if not path.is_file():
+                lgr.warning(f"Файл сценария не найден по пути: {path}")
             with path.open(encoding="utf-8") as fh:
                 data = json.load(fh)
 
         return TemplateLite.from_dict(data)
 
-    raise TypeError(
+    msg = (
         f"source должен быть str, pathlib.Path или dict, "
         f"получен {type(source).__name__}"
     )
+    lgr.warning(msg)
+    raise TypeError(msg)

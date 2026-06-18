@@ -10,6 +10,8 @@ TemplateLiteNode представляет собой отдельный узел
 from dataclasses import dataclass
 from typing import Optional
 
+from sdk.core.logging import get_logger
+
 from .enums import NodeRole
 
 
@@ -117,6 +119,9 @@ class TemplateLiteNode:
             >>> data = {"id": 1, "name": "ЧКД+ ТБ", "role": "podstatya", "parent": None}
             >>> node = TemplateLiteNode.from_dict(data)
         """
+        lgr = get_logger()
+        lgr.debug(f"Десериализация узла из dict: {data}")
+
         # --- обязательные поля ---
         if "id" not in data:
             raise ValueError("Обязательное поле 'id' отсутствует")
@@ -149,6 +154,9 @@ class TemplateLiteNode:
                 f"Поле 'parent' должно быть int или null, получено {type(parent).__name__}"
             )
 
+        lgr.debug(
+            f"Узел создан: id={node_id} name={name!r} role={role.value} parent={parent}"
+        )
         return cls(id=node_id, name=name, role=role, parent=parent)
 
     # --- Валидация одного узла -----------------------------------------

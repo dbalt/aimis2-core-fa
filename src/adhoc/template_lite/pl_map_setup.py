@@ -1,5 +1,7 @@
 from typing import List, Dict, Tuple
 
+from sdk.core.logging import get_logger
+
 PL_MAP_SRC = [
     ("PL", "A.05.01.01.03.01.01", "PL_04_03_01", "Безналичные операции корпоративных клиентов", [] ),
     ("BS", "B.01.04.03", "BS_01_04_06", "Требования по получению процентов", [] ),
@@ -204,17 +206,31 @@ PL_MAP_SRC = [
 ]
 
 def find_node_address_by_name(name:str)->List|None:
+    lgr = get_logger()
+    lgr.debug(f'Поиск адреса узла по имени {name!r} в pl-карте')
     for (_, fin_code, pl_code, pl_name, lst) in PL_MAP_SRC:
         if name == pl_name:
             if len(lst) == 0:
+                lgr.debug(f'Найден pl_code={pl_code!r} по имени {name!r}')
                 return [pl_code]
+            lgr.debug(f'Найден список из {len(lst)} кодов по имени {name!r}')
             return lst
+        # NOTE: return None расположен внутри цикла — поиск прерывается после
+        # первой же записи. Поведение сохранено намеренно (см. отчёт по задаче 28).
+        lgr.debug(f'Адрес по имени {name!r} не найден в pl-карте (нет совпадения)')
         return None
 
 def find_node_address_by_fin_code(code:str)->List|None:
+    lgr = get_logger()
+    lgr.debug(f'Поиск адреса узла по fin_code {code!r} в pl-карте')
     for (_, fin_code, pl_code, pl_name, lst) in PL_MAP_SRC:
         if fin_code == code:
             if len(lst) == 0:
+                lgr.debug(f'Найден pl_code={pl_code!r} по fin_code {code!r}')
                 return [pl_code]
+            lgr.debug(f'Найден список из {len(lst)} кодов по fin_code {code!r}')
             return lst
+        # NOTE: return None расположен внутри цикла — поиск прерывается после
+        # первой же записи. Поведение сохранено намеренно (см. отчёт по задаче 28).
+        lgr.debug(f'Адрес по fin_code {code!r} не найден в pl-карте (нет совпадения)')
         return None

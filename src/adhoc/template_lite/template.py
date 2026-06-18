@@ -10,6 +10,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from sdk.core.logging import get_logger
+
 from .enums import NodeRole
 from .node import TemplateLiteNode
 
@@ -56,8 +58,12 @@ class TemplateLite:
         Raises:
             ValueError: если узел с таким ``id`` уже существует
         """
+        lgr = get_logger()
+        lgr.debug(f"Добавление узла id={node.id} name={node.name!r} role={node.role.value}")
         if node.id in self.nodes:
-            raise ValueError(f"Узел с id={node.id} уже существует в сценарии")
+            msg = f"Узел с id={node.id} уже существует в сценарии"
+            lgr.error(msg)
+            raise ValueError(msg)
         self.nodes[node.id] = node
 
     def remove_node(self, node_id: int) -> Optional[TemplateLiteNode]:
@@ -262,6 +268,9 @@ class TemplateLite:
             ValueError: если структура некорректна либо при ошибке
                         десериализации отдельного узла
         """
+        lgr = get_logger()
+        lgr.debug("Десериализация TemplateLite из dict")
+
         if not isinstance(data, dict):
             raise ValueError(f"Ожидался dict, получен {type(data).__name__}")
 
@@ -279,13 +288,23 @@ class TemplateLite:
         if not isinstance(nodes_data, list):
             raise ValueError("Поле 'nodes' должно быть списком")
 
+        lgr.info(
+            f"metricName={metric_name!r}, узлов в JSON: {len(nodes_data)}"
+        )
+
         template = cls(metric_name=metric_name)
         for raw_node in nodes_data:
             try:
                 node = TemplateLiteNode.from_dict(raw_node)
             except ValueError as exc:
+                lgr.exception(
+                    f"Ошибка десериализации узла {raw_node}"
+                )
                 raise ValueError(f"Ошибка десериализации узла {raw_node}: {exc}")
             template.add_node(node)
+        lgr.info(
+            f"TemplateLite собран: узлов добавлено={template.count_nodes()}"
+        )
         return template
 
     @classmethod

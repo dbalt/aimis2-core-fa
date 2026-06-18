@@ -1,6 +1,8 @@
 from typing import List, Tuple, Dict, Iterable
 import re
 
+from sdk.core.logging import get_logger
+
 GRP_MAP_SRC = [
     ('Операции с банковскими картами (***)', 'A.05.01.03 Операции с банковскими картами', 1),
     ('Операции с банковскими картами (***)', 'A.05.02.03 Операции с банковскими картами', 1),
@@ -80,16 +82,24 @@ GRP_MAP_SRC = [
 
 
 def split_custom_name(name:str)->Tuple[str|None,str|None]:
+    lgr = get_logger()
+    lgr.debug(f'Разбор составного имени: {name!r}')
     pattern = r"^(?P<fin_code>[A-Z]\.\d{2}(?:\.\d{2})*)\s+(?P<name>.*)$"
     match = re.search(pattern, name)
-    if not match: return (None, None)
+    if not match:
+        lgr.debug(f'Имя {name!r} не соответствует шаблону "fin_code name" — возвращено (None, None)')
+        return (None, None)
     fin_code = match.group('fin_code')
     name = match.group('name')
+    lgr.debug(f'Разобрано: fin_code={fin_code!r}, name={name!r}')
     return (fin_code, name)
 
 
 def find_parts_by_name(name:str)->List[Tuple[str, int]]:
+    lgr = get_logger()
+    lgr.debug(f'Поиск частей по имени {name!r} в grp-карте')
     res = [(part, sign) for (_name, part, sign) in GRP_MAP_SRC if _name == name]
+    lgr.debug(f'Найдено частей: {len(res)}')
     return res
 
 
