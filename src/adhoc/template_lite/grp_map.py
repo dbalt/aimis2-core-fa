@@ -88,9 +88,14 @@ def split_custom_name(name:str)->Tuple[str|None,str|None]:
     match = re.search(pattern, name)
     if not match:
         lgr.debug(f'Имя {name!r} не соответствует шаблону "fin_code name" — возвращено (None, None)')
-        return (None, None)
+        return (None, name)
+
     fin_code = match.group('fin_code')
+    fin_code = fin_code.strip()
+
     name = match.group('name')
+    name = name.strip()
+
     lgr.debug(f'Разобрано: fin_code={fin_code!r}, name={name!r}')
     return (fin_code, name)
 
@@ -98,7 +103,7 @@ def split_custom_name(name:str)->Tuple[str|None,str|None]:
 def find_parts_by_name(name:str)->List[Tuple[str, int]]:
     lgr = get_logger()
     lgr.debug(f'Поиск частей по имени {name!r} в grp-карте')
-    res = [(part, sign) for (_name, part, sign) in GRP_MAP_SRC if _name == name]
+    res = [(part, sign) for (_name, part, sign) in GRP_MAP_SRC if _name.strip() == name.strip()]
     lgr.debug(f'Найдено частей: {len(res)}')
     return res
 

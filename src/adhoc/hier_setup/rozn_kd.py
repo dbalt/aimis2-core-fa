@@ -144,7 +144,8 @@ def _mk_hier2()->Hierarchy:
 
 async def setup_hier():
     from sdk.tools.settings import env__init_keydb_instance
-    from libfa2.fa_client import FaClient
+    from sdk.fa2026.client import FaClient
+
     hier_lst = [
         _mk_hier1(),
         _mk_hier2()
