@@ -11,8 +11,10 @@
 
 1. Узел с ``role == NodeRole.RAZREZ`` — это описание аналитического разреза.
    Он **не** становится отдельным ``MetricNode``: в его родительский (ближайший
-   неразрезный) ``MetricNode`` добавляется ``AnalyticalStructureMetadata`` с
-   одним алгоритмом и одним измерением; все наименования берутся из поля ``name``.
+   неразрезный) ``MetricNode`` добавляется ``AnalyticalStructureMetadata``, где
+   все разрезы этого показателя образуют **один** алгоритм с цепочкой шагов в
+   ``drill_order`` (по одному измерению на разрез); все наименования берутся из
+   поля ``name``.
 2. ``role == NodeRole.PODSTATYA`` у потомка означает ``type=MetricType.SUM`` у
    родителя; ``role`` в ``{TARIF, BAZA}`` — ``type=MetricType.MULTI`` у родителя,
    а сам узел получает ``componentMultiPartType`` (``RATE`` для тарифа, ``BASE``
@@ -204,7 +206,9 @@ def transform_template_lite_to_hierarchy(
         else:
             query = None
 
-        # analyt_metadata — из сгруппированных разрезов (правило 1).
+        # analyt_metadata — из сгруппированных разрезов (правило 1):
+        # все разрезы этого показателя попадают в один алгоритм с цепочкой
+        # шагов drill_order (None, если разрезов нет).
         analyt_metadata = _build_analyt_metadata(razrez_by_target.get(nid))
 
         # mp_decomp_tp обязателен для MULTI в модели MetricNode.
@@ -237,11 +241,17 @@ def _build_analyt_metadata(
     """
     Построить ``AnalyticalStructureMetadata`` по списку имён разрезов.
 
-    Каждый разрез даёт ровно одно измерение (``Dimension``) и один алгоритм
-    (``Algorithm``) с ``drill_order=[[<code>]]``. Наименования (``code``,
-    ``name``, ``column``) берутся из имени разреза. При совпадении имён к
-    ``code``/``column`` добавляется числовой суффикс, чтобы избежать коллизий
-    кодов измерений в пределах одного узла.
+    Все разрезы попадают в **один** алгоритм (``Algorithm``), образуя цепочку
+    шагов детализации в его ``drill_order`` (один шаг на разрез, в порядке
+    исходного сценария). Каждый разрез даёт ровно одно измерение (``Dimension``);
+    наименования (``code``, ``name``, ``column``) берутся из имени разреза. При
+    совпадении имён к ``code``/``column`` добавляется числовой суффикс, чтобы
+    избежать коллизий кодов измерений в пределах одного узла.
+
+    Семантика: несколько разрезов одного показателя — это одна
+    последовательность детализации (один порядок разложения), а не несколько
+    независимых алгоритмов (см. ``factor_analysis__general_description.md``,
+    раздел «Разложение по аналитическим разрезам» — «Порядок разложения»).
 
     Args:
         razrez_names: Упорядоченный список имён разрезов (поле ``name``)
@@ -257,14 +267,26 @@ def _build_analyt_metadata(
         return None
 
     lgr.debug(f"Построение analyt_metadata по разрезам: {razrez_names}")
+
     metadata = AnalyticalStructureMetadata()
-    for index, name in enumerate(razrez_names, start=1):
+    codes: List[str] = []
+    for name in razrez_names:
         code = _unique_dimension_code(metadata, name)
         metadata.add_dimension(Dimension(code=code, name=name, column=name))
-        metadata.add_algorithm(Algorithm(id=index, drill_order=[[code]]))
+        codes.append(code)
+
+    # Все разрезы — один порядок разложения, поэтому один алгоритм с цепочкой
+    # шагов в drill_order (по одному коду измерения на шаг, в порядке разрезов).
+    drill_order: List[List[str]] = [[code] for code in codes]
+    metadata.add_algorithm(Algorithm(id=1, drill_order=drill_order))
+
+    lgr.info(
+        f"Сгруппировано разрезов: {len(razrez_names)} -> построен один алгоритм "
+        f"с drill_order из {len(drill_order)} шагов"
+    )
     lgr.debug(
         f"analyt_metadata построена: измерений={len(metadata.dimensions)}, "
-        f"алгоритмов={len(metadata.algorithms)}"
+        f"алгоритмов={len(metadata.algorithms)}, drill_order={drill_order}"
     )
     return metadata
 

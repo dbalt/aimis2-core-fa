@@ -123,7 +123,8 @@ def test_razrez_without_metric_parent_is_skipped():
 
 def test_multiple_razrez_same_parent_are_merged():
     """Несколько разрезов под одним родителем объединяются в один
-    analyt_metadata (по одному алгоритму и измерению на разрез)."""
+    analyt_metadata: ровно один алгоритм, по одному измерению на разрез,
+    а drill_order — цепочка шагов в порядке разрезов сценария."""
     tpl = _make_template([
         (1, "Показатель", NodeRole.PODSTATYA, None),
         (2, "ТБ/ГОСБ", NodeRole.RAZREZ, 1),
@@ -132,18 +133,44 @@ def test_multiple_razrez_same_parent_are_merged():
     h = transform_template_lite_to_hierarchy(tpl)
     meta = h.get_node(1).analyt_metadata
 
+    # По одному измерению на разрез.
     assert len(meta.dimensions) == 2
-    assert len(meta.algorithms) == 2
     dim_names = {d.name for d in meta.dimensions.values()}
     assert dim_names == {"ТБ/ГОСБ", "Блок/Подблок"}
-    # Каждый алгоритм ссылается на свой собственный код измерения.
-    for algo in meta.algorithms.values():
-        ref = algo.drill_order[0][0]
-        assert ref in meta.dimensions
+
+    # Ровно один алгоритм с цепочкой из двух шагов в порядке разрезов
+    # (по id узла: сначала id=2, затем id=3).
+    assert len(meta.algorithms) == 1
+    algo = next(iter(meta.algorithms.values()))
+    assert algo.id == 1
+    assert algo.drill_order == [["ТБ/ГОСБ"], ["Блок/Подблок"]]
+    # Каждый шаг ссылается на существующее измерение.
+    for step in algo.drill_order:
+        for code in step:
+            assert code in meta.dimensions
+
+
+def test_many_razrez_form_single_algorithm_chain():
+    """N разрезов (N >= 3) дают один алгоритм с цепочкой из N шагов
+    в порядке исходного сценария."""
+    tpl = _make_template([
+        (1, "Показатель", NodeRole.PODSTATYA, None),
+        (2, "Сегмент", NodeRole.RAZREZ, 1),
+        (3, "Геоструктура", NodeRole.RAZREZ, 1),
+        (4, "Канал", NodeRole.RAZREZ, 1),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    meta = h.get_node(1).analyt_metadata
+
+    assert len(meta.dimensions) == 3
+    assert len(meta.algorithms) == 1
+    algo = next(iter(meta.algorithms.values()))
+    assert algo.drill_order == [["Сегмент"], ["Геоструктура"], ["Канал"]]
 
 
 def test_duplicate_razrez_names_get_suffixed_codes():
-    """При совпадении имён разрезов коды измерений получают суффикс."""
+    """При совпадении имён разрезов коды измерений получают суффикс и
+    корректно попадают в цепочку drill_order единственного алгоритма."""
     tpl = _make_template([
         (1, "Показатель", NodeRole.PODSTATYA, None),
         (2, "Сегмент", NodeRole.RAZREZ, 1),
@@ -154,9 +181,22 @@ def test_duplicate_razrez_names_get_suffixed_codes():
 
     codes = set(meta.dimensions)
     assert codes == {"Сегмент", "Сегмент_2"}
-    # Оба алгоритма корректно ссылаются на свои уникальные коды.
-    for algo in meta.algorithms.values():
-        assert algo.drill_order[0][0] in codes
+    # Один алгоритм; оба уникальных кода — в его цепочке drill_order.
+    assert len(meta.algorithms) == 1
+    algo = next(iter(meta.algorithms.values()))
+    assert algo.drill_order == [["Сегмент"], ["Сегмент_2"]]
+    assert algo.dimension_codes == codes
+
+
+def test_node_without_razrez_has_no_metadata():
+    """У узла без разрезов analyt_metadata отсутствует (None)."""
+    tpl = _make_template([
+        (1, "Корень", NodeRole.PODSTATYA, None),
+        (2, "Подстатья", NodeRole.PODSTATYA, 1),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    assert h.get_node(1).analyt_metadata is None
+    assert h.get_node(2).analyt_metadata is None
 
 
 # ---------------------------------------------------------------------------
@@ -436,6 +476,11 @@ def test_real_file_od_bef_rez_specifics(template_lite_dir):
     assert len(root.analyt_metadata.dimensions) == 2
     dim_names = {d.name for d in root.analyt_metadata.dimensions.values()}
     assert dim_names == {"ТБ/ГОСБ", "Блок/Подблок(Сегмент КИБ)"}
+    # Оба разреза корня — один алгоритм с цепочкой drill_order из двух шагов
+    # (порядок по id узла: «ТБ/ГОСБ» id=2, затем «Блок/Подблок(Сегмент КИБ)» id=3).
+    assert len(root.analyt_metadata.algorithms) == 1
+    root_algo = next(iter(root.analyt_metadata.algorithms.values()))
+    assert root_algo.drill_order == [["ТБ/ГОСБ"], ["Блок/Подблок(Сегмент КИБ)"]]
     # Есть MULTI-узлы (пары Маржа/СДО), включая «Кредиты физлицам»,
     # чьи тариф/база были вложены под разрез «Продукт ЕК».
     multi_nodes = [n for n in h if n.type == MetricType.MULTI]
