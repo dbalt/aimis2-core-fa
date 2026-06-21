@@ -2,6 +2,7 @@
 from adhoc.template_lite.deserializer import get_from_template_lite_json
 from adhoc.template_lite.transform import transform_template_lite_to_hierarchy
 from adhoc.template_lite.transform_queries import transform_next_step
+from adhoc.template_lite.transform_analytical_structs import transform_analytical_structs
 from libfa2.hier_metadata.hierarchy import Hierarchy, MetricNode
 
 from sdk.tools.settings import FileTools
@@ -50,23 +51,29 @@ def main():
     lgr.info(f'Запуск преобразования template_lite. Файл-источник: {path}')
 
     try:
-        lgr.debug('Шаг 1/3: десериализация template_lite из JSON')
+        lgr.debug('Шаг 1/4: десериализация template_lite из JSON')
         data = get_from_template_lite_json(path)
         lgr.info(
-            f'Шаг 1/3 завершён: получен TemplateLite '
+            f'Шаг 1/4 завершён: получен TemplateLite '
             f'(metric_name={data.metric_name!r}, узлов={data.count_nodes()})'
         )
 
-        lgr.debug('Шаг 2/3: преобразование TemplateLite -> Hierarchy')
+        lgr.debug('Шаг 2/4: преобразование TemplateLite -> Hierarchy')
         next_data = transform_template_lite_to_hierarchy(data)
         lgr.info(
-            f'Шаг 2/3 завершён: построена Hierarchy '
+            f'Шаг 2/4 завершён: построена Hierarchy '
             f'(узлов={len(next_data.nodes)})'
         )
 
-        lgr.debug('Шаг 3/3: расчёт query-свойств узлов (transform_next_step)')
+        lgr.debug('Шаг 3/4: расчёт query-свойств узлов (transform_next_step)')
         next_data:Hierarchy = transform_next_step(next_data)
-        lgr.info('Шаг 3/3 завершён: query-свойства расставлены')
+        lgr.info('Шаг 3/4 завершён: query-свойства расставлены')
+
+
+        lgr.debug('Шаг 4/4: трансформация аналитических метаданных')
+        next_data:Hierarchy = transform_analytical_structs(next_data)
+        lgr.info('Шаг 4/4 завершён: новые analyt metadata')
+
 
         lgr.info('Преобразование template_lite успешно завершено')
 
