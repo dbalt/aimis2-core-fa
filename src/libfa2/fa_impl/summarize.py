@@ -20,12 +20,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import Dict, List, Optional, Tuple, Callable
 
 from sdk.giga.client import GigaChatClientPartV2, DEFAULT_GIGA_MODEL
 from sdk.giga.iface import MsgBase, AssistantMsg
 from sdk.core.monadic import Res
 from .summarize_prompts import SummarizerPrompt
+from .table_renderer import render_factor_table_wrapper
 
 
 # ===========================================================================
@@ -125,28 +127,6 @@ def classify(obj: Dict) -> int:
 
 
 # ===========================================================================
-#              С Т А Р Ы Е   Ф У Н К Ц И И   ( с о х р а н е н и е   A P I )
-# ===========================================================================
-async def build_deviations_visualization_table(
-        data: Dict,
-        llm_client: GigaChatClientPartV2,
-        llm_model: str = "GigaChat-3-Ultra",
-) -> Res[str]:
-    """Старая функция — оставлена для обратной совместимости.
-    Теперь использует единый TABLE_PROMPT с 🔴/🟢 маркерами."""
-    return await _base_llm_processing_function(SummarizerPrompt.TABLE_PROMPT, data, llm_client, llm_model)
-
-
-async def summarize_results(data: Dict, llm_client: GigaChatClientPartV2,
-                            llm_model: str = "GigaChat-3-Ultra") -> Res[str]:
-    """Старая функция — оставлена для обратной совместимости.
-    Теперь использует роутинг по веткам + веточный промпт."""
-    branch = classify(data)
-    summary_prompt = SummarizerPrompt.PROMPT_PAIRS[branch][0]
-    return await _base_llm_processing_function(summary_prompt, data, llm_client, llm_model)
-
-
-# ===========================================================================
 #              С Б О Р К А   О Т Ч Ё Т А   ( н о в а я   л о г и к а )
 # ===========================================================================
 async def build_branch_report(
@@ -167,19 +147,17 @@ async def build_branch_report(
             )
         ))
         tsks.append(tg.create_task(
-            _base_llm_processing_function(
-                table_prompt, data, await llm_client_gen_fn(), model_table
-            )
+            render_factor_table_wrapper(data)
         ))
 
     summary_res, table_res = (t.result() for t in tsks)
 
     if not summary_res.ok:
         return Res.mk_error(f"Failed build summary. err: {summary_res.err}")
-    if not table_res.ok:
-        return Res.mk_error(f"Failed build deviations detailed table. err: {table_res.err}")
+    if table_res['ex']:
+        return Res.mk_error(f"Failed build deviations detailed table. error: {table_res['ex']}")
 
-    return Res.mk_result(f"{summary_res.data}\n\n\n{table_res.data}")
+    return Res.mk_result(f"{summary_res.data}\n\n\n{table_res['table']}")
 
 
 # ===========================================================================
