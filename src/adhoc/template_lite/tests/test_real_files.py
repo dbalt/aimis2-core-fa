@@ -39,8 +39,32 @@ def test_deserialize_real_file(idx, template_lite_dir):
     assert tpl.count_nodes() > 0
 
 
+def _strip_fin_code(node: dict) -> dict:
+    """Привести узел к виду, который round-trip-ится через codes (List[str]).
+
+    codes хранит составные коды ``"<type_code>#<node_code>"`` (либо просто
+    ``node_code``, если ``type_code`` отсутствует); поле ``fin_code`` намеренно
+    не сохраняется (см. :meth:`TemplateLiteNode.to_dict`). Поэтому из эталонного
+    ``upr_cube_codes`` убираем ``fin_code`` — после этого узлы должны совпадать
+    с результатом ``to_dict``.
+    """
+    ucc = node.get("upr_cube_codes")
+    if not ucc:
+        return node
+    normalized = dict(node)
+    normalized["upr_cube_codes"] = [
+        {k: v for k, v in el.items() if k != "fin_code"} for el in ucc
+    ]
+    return normalized
+
+
 def test_real_files_roundtrip(template_lite_dir):
-    """Round-trip: десериализация -> to_dict() эквивалентен исходному JSON."""
+    """Round-trip: десериализация -> to_dict() эквивалентен исходному JSON.
+
+    Поле ``upr_cube_codes`` реконструируется из ``codes`` (``List[str]``) без
+    ``fin_code``, поэтому эталон нормализуется (``fin_code`` убирается) перед
+    сравнением.
+    """
     for path in _real_files(template_lite_dir):
         original = json.loads(path.read_text(encoding="utf-8"))
         tpl = get_from_template_lite_json(str(path))
@@ -52,7 +76,10 @@ def test_real_files_roundtrip(template_lite_dir):
         new_nodes = {n["id"]: n for n in rebuilt["nodes"]}
         assert set(orig_nodes) == set(new_nodes)
         for nid, orig in orig_nodes.items():
-            assert new_nodes[nid] == orig, f"Расхождение в узле id={nid} ({path.name})"
+            expected = _strip_fin_code(orig)
+            assert new_nodes[nid] == expected, (
+                f"Расхождение в узле id={nid} ({path.name})"
+            )
 
 
 def test_real_files_valid_structure(template_lite_dir):
@@ -117,3 +144,92 @@ def test_chkd_specifics(template_lite_dir):
     assert len(tpl.get_tarif()) == 0
     assert len(tpl.get_baza()) == 0
     assert len(tpl.get_razrez()) > 0
+
+
+# ---------------------------------------------------------------------------
+# Поле upr_cube_codes (задача 30): node_code -> codes -> query
+# ---------------------------------------------------------------------------
+
+def _files_with_upr_cube_codes(template_lite_dir):
+    """Рекурсивно найти JSON-сценарии, содержащие поле upr_cube_codes."""
+    found = []
+    for path in sorted(template_lite_dir.glob("**/*.json")):
+        text = path.read_text(encoding="utf-8")
+        if "upr_cube_codes" in text:
+            found.append(path)
+    return found
+
+
+def test_upr_cube_codes_parsed_into_codes(template_lite_dir):
+    """В реальных файлах с upr_cube_codes поле codes заполняется составными
+    кодами "<type_code>#<node_code>"."""
+    files = _files_with_upr_cube_codes(template_lite_dir)
+    if not files:
+        pytest.skip("Нет файлов с upr_cube_codes")
+
+    total_with_codes = 0
+    combined_seen = False
+    for path in files:
+        tpl = get_from_template_lite_json(str(path))
+        for node in tpl:
+            if not node.is_valid():
+                continue
+            # codes — всегда список строк.
+            assert isinstance(node.codes, list)
+            assert all(isinstance(c, str) for c in node.codes)
+            for code in node.codes:
+                # Реальные элементы всегда содержат type_code -> код вида
+                # "<type_code>#<node_code>" с непустыми частями.
+                if "#" in code:
+                    combined_seen = True
+                    type_code, node_code = code.split("#", 1)
+                    assert type_code and node_code
+            if node.codes:
+                total_with_codes += 1
+    assert total_with_codes > 0, "Ни один узел не получил codes из upr_cube_codes"
+    assert combined_seen, "Составной код type_code#node_code не встретился"
+
+
+def test_upr_cube_codes_flow_into_node_code_query(template_lite_dir):
+    """Узлы с codes после трансформации получают query {'node_code': codes}."""
+    from adhoc.template_lite import transform_template_lite_to_hierarchy
+
+    files = _files_with_upr_cube_codes(template_lite_dir)
+    if not files:
+        pytest.skip("Нет файлов с upr_cube_codes")
+
+    checked = 0
+    for path in files:
+        tpl = get_from_template_lite_json(str(path))
+        h = transform_template_lite_to_hierarchy(tpl)
+        assert h.is_valid(), f"{path.name}: {h.validate()}"
+        for tl_node in tpl:
+            if not tl_node.codes:
+                continue
+            metric = h.get_node(tl_node.id)
+            assert metric is not None
+            assert metric.query is not None
+            assert metric.query.to_dict() == {"node_code": tl_node.codes}
+            checked += 1
+    assert checked > 0
+
+
+def test_specific_od_tbgosb_file_codes(template_lite_dir):
+    """Известный факт: «Кредиты банкам» в файле «2 ветка ОД (от блока)»
+    имеет ровно один составной код PL#R_01_02 (type_code=PL, node_code=R_01_02)."""
+    target = next(
+        (
+            p for p in _files_with_upr_cube_codes(template_lite_dir)
+            if "от блока" in p.name and "тотала" in str(p).lower()
+        ),
+        None,
+    )
+    if target is None:
+        pytest.skip("Файл «2 ветка ОД (от блока)» не найден")
+    tpl = get_from_template_lite_json(str(target))
+    # Найти узел «Кредиты банкам».
+    node = next(
+        (n for n in tpl if n.name == "Кредиты банкам" and n.codes), None
+    )
+    assert node is not None, "Узел «Кредиты банкам» с codes не найден"
+    assert node.codes == ["PL#R_01_02"]

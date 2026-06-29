@@ -1,0 +1,17 @@
+{
+  "metricName": "Операционный доход до резервов ТБ",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Операционный доход до резервов",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 84,
+      "name": "ТБ",
+      "role": "razrez",
+      "parent": 1
+    }
+  ]
+}

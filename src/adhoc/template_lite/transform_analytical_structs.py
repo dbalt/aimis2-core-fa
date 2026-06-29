@@ -6,9 +6,16 @@ dim_tb = Dimension('tb', 'ТБ', 'tb')
 dim_gosb = Dimension('gosb', 'ГОСБ', 'gosb')
 dim_bb = Dimension('bb', 'Бизнес блок', 'biz_block')
 
+
+dim_prod_ek1 = Dimension('prod_l1', 'Продукт ЕК ур.1', 'prod_l1')
+dim_prod_ek2 = Dimension('prod_l2', 'Продукт ЕК ур.2', 'prod_l2')
+dim_prod_ek3 = Dimension('prod_l3', 'Продукт ЕК ур.3', 'prod_l3')
+
 _SETUP = {
-    'ТБ/ГОСБ': (('tb', 'gosb',), (dim_tb, dim_gosb,),),
+    #'ТБ/ГОСБ': (('tb', 'gosb',), (dim_tb, dim_gosb,),),
+    'ТБ': (('tb',), (dim_tb,),),
     'Блок/Подблок(Сегмент КИБ)': (('bb',), (dim_bb,)),
+    'Продукт ЕК': (('prod_l1', 'prod_l2', 'prod_l3',), (dim_prod_ek1, dim_prod_ek2, dim_prod_ek3,),)
 }
 
 def transform_analytical_structs(hier:Hierarchy)->Hierarchy:

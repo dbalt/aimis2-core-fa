@@ -1,7 +1,8 @@
-from libfa2.hier_metadata import MetricType
-from libfa2.hier_metadata.hierarchy import Hierarchy, MetricNode
+from libfa2.hier_metadata import MetricType, ComponentMultiPartType
+from libfa2.hier_metadata.hierarchy import Hierarchy, MetricNode, Query
 from .grp_map import find_parts_by_name, split_custom_name
 from .pl_map_setup import find_node_address_by_name, find_node_address_by_fin_code
+from .pl_codes_data import get_leafs
 
 from sdk.core.logging import get_logger
 
@@ -14,13 +15,18 @@ def calculate_and_set_query_prop(node:MetricNode):
     nm = node.name
     lgr.debug(f'Расчёт query для узла id={node.id} name={nm!r}')
 
+    if node.componentMultiPartType == ComponentMultiPartType.BASE:
+        ind_id = 4
+    else:
+        ind_id = 49
+
     if '(***)' in nm:
         # ищем в рассшифровке, там может быть одно минус другое
         lgr.info(f'Имя содержит "(***)": ищем составные части по grp-карте ({nm!r})')
         parts = find_parts_by_name(nm)
         if len(parts) == 0:
             lgr.warning(f'Составные части для имени {nm!r} не найдены в grp-карте — query=BAD_FIELD')
-            node.query = {'BAD_FIELD':''}
+            node.query = Query({'BAD_FIELD':''})
             return
 
         include_lst = []
@@ -33,7 +39,7 @@ def calculate_and_set_query_prop(node:MetricNode):
                 lgr.warning(
                     f'Адрес узла по fin_code={node_fin_code!r} не найден в pl-карте — query=BAD_FIELD'
                 )
-                node.query = {'BAD_FIELD': ''}
+                node.query = Query({'BAD_FIELD': ''})
                 return
 
             if sign > 0:
@@ -49,7 +55,7 @@ def calculate_and_set_query_prop(node:MetricNode):
                 lgr.warning(
                     f'Элемент {x} из exclude_lst отсутствует в include_lst — query=BAD_FIELD'
                 )
-                node.query = {'BAD_FIELD': ''}
+                node.query = Query({'BAD_FIELD': ''})
                 return
 
         diff_lst = [x for x in include_lst if x not in exclude_lst]
@@ -57,7 +63,9 @@ def calculate_and_set_query_prop(node:MetricNode):
             f'Разность списков: include={len(include_lst)} exclude={len(exclude_lst)} -> {len(diff_lst)} кодов'
         )
 
-        node.query = {'node_code': diff_lst}
+
+
+        node.query = Query({'node_code': diff_lst, 'ind_id': ind_id})
         return
 
 
@@ -66,16 +74,16 @@ def calculate_and_set_query_prop(node:MetricNode):
     node_code_lst = find_node_address_by_name(nm)
     if node_code_lst is None:
         lgr.warning(f'Адрес узла по имени {nm!r} не найден в pl-карте — query=BAD_FIELD')
-        node.query = {'BAD_FIELD': ''}
+        node.query = Query({'BAD_FIELD': ''})
         return
 
-    node.query = {'node_code': node_code_lst}
+    node.query = Query({'node_code': node_code_lst, 'ind_id': ind_id})
     return
 
 
 
 
-def transform_next_step(hier:Hierarchy) -> Hierarchy:
+def calculate_query_prop(hier:Hierarchy) -> Hierarchy:
     lgr = get_logger()
 
     root = hier.get_root()
@@ -96,6 +104,40 @@ def transform_next_step(hier:Hierarchy) -> Hierarchy:
         if len(children) == 0:
             plgr.debug(f'Узел id={n.id} листовой — расчёт query')
             calculate_and_set_query_prop(n)
+
+        for chld in children:
+            process_node(chld)
+
+
+    process_node(root)
+
+    lgr.info('transform_next_step завершён')
+    return hier
+
+
+
+
+
+def calculate_query_prop_v2(hier:Hierarchy) -> Hierarchy:
+    lgr = get_logger()
+
+    root = hier.get_root()
+    lgr.info(
+        f'Старт transform_next_step: корень id={root.id if root else None} '
+        f'name={root.name if root else None!r}'
+    )
+
+    def process_node(n:MetricNode):
+
+        if n.query:
+            qry_dict = n.query.to_dict()
+            codes = qry_dict.get('node_code', [])
+            expanded = []
+            for x in codes:
+                expanded.extend(get_leafs(x))
+            n.query = Query({'node_code': expanded})
+
+        children = hier.get_children(n.id)
 
         for chld in children:
             process_node(chld)

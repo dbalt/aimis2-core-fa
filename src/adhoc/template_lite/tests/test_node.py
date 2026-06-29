@@ -84,6 +84,130 @@ class TestNodeSerialization:
         assert node.parent is None
 
 
+class TestNodeCodes:
+    """Поле codes (составные коды "<type_code>#<node_code>" из upr_cube_codes)."""
+
+    def test_codes_default_empty(self):
+        """По умолчанию codes — пустой список."""
+        node = TemplateLiteNode(id=1, name="x", role=NodeRole.PODSTATYA)
+        assert node.codes == []
+
+    def test_codes_can_be_set(self):
+        """codes задаётся явно при создании."""
+        node = TemplateLiteNode(
+            id=1, name="x", role=NodeRole.PODSTATYA, codes=["PL#R_01_02", "PL#R_01_03"]
+        )
+        assert node.codes == ["PL#R_01_02", "PL#R_01_03"]
+
+    def test_from_dict_builds_combined_codes(self):
+        """from_dict строит "<type_code>#<node_code>" из каждого элемента
+        upr_cube_codes (fin_code отбрасывается)."""
+        data = {
+            "id": 5,
+            "name": "Кредиты банкам",
+            "role": "podstatya",
+            "parent": 4,
+            "upr_cube_codes": [
+                {"type_code": "PL", "fin_code": "A.01.02", "node_code": "R_01_02"},
+                {"type_code": "PL", "fin_code": "A.01.99", "node_code": "R_01_99"},
+            ],
+        }
+        node = TemplateLiteNode.from_dict(data)
+        assert node.codes == ["PL#R_01_02", "PL#R_01_99"]
+
+    def test_from_dict_without_upr_cube_codes_defaults_empty(self):
+        """Нет upr_cube_codes -> codes пустой."""
+        data = {"id": 5, "name": "x", "role": "podstatya", "parent": 4}
+        node = TemplateLiteNode.from_dict(data)
+        assert node.codes == []
+
+    def test_from_dict_empty_upr_cube_codes(self):
+        """Пустой список upr_cube_codes -> codes пустой."""
+        data = {
+            "id": 5, "name": "x", "role": "podstatya", "parent": 4,
+            "upr_cube_codes": [],
+        }
+        node = TemplateLiteNode.from_dict(data)
+        assert node.codes == []
+
+    def test_from_dict_single_element(self):
+        """Одиночный элемент upr_cube_codes -> один составной код."""
+        data = {
+            "id": 5, "name": "x", "role": "podstatya", "parent": 4,
+            "upr_cube_codes": [
+                {"type_code": "BS", "fin_code": "B.01.06", "node_code": "R_01_05_01"},
+            ],
+        }
+        node = TemplateLiteNode.from_dict(data)
+        assert node.codes == ["BS#R_01_05_01"]
+
+    def test_from_dict_skips_elements_without_node_code(self):
+        """Элементы без node_code пропускаются (не ломают разбор). Элементы без
+        type_code попадают в codes как простой node_code (без префикса)."""
+        data = {
+            "id": 5, "name": "x", "role": "podstatya", "parent": 4,
+            "upr_cube_codes": [
+                {"type_code": "PL", "fin_code": "A.01.02", "node_code": "R_01_02"},
+                {"type_code": "PL", "fin_code": "A.01.99"},  # без node_code
+                {"node_code": "R_02"},  # только node_code (без type_code)
+            ],
+        }
+        node = TemplateLiteNode.from_dict(data)
+        assert node.codes == ["PL#R_01_02", "R_02"]
+
+    def test_from_dict_upr_cube_codes_not_list_raises(self):
+        """upr_cube_codes не списком -> ValueError."""
+        data = {
+            "id": 5, "name": "x", "role": "podstatya", "parent": 4,
+            "upr_cube_codes": "R_01_02",
+        }
+        with pytest.raises(ValueError, match="upr_cube_codes"):
+            TemplateLiteNode.from_dict(data)
+
+    def test_to_dict_omits_upr_cube_codes_when_empty(self):
+        """to_dict не включает upr_cube_codes при пустом codes."""
+        node = TemplateLiteNode(id=1, name="x", role=NodeRole.PODSTATYA)
+        assert "upr_cube_codes" not in node.to_dict()
+
+    def test_to_dict_splits_combined_codes_into_type_and_node(self):
+        """to_dict разбирает составные коды обратно в {type_code, node_code}."""
+        node = TemplateLiteNode(
+            id=1, name="x", role=NodeRole.PODSTATYA,
+            codes=["PL#R_01_02", "BS#R_01_99"],
+        )
+        d = node.to_dict()
+        assert d["upr_cube_codes"] == [
+            {"type_code": "PL", "node_code": "R_01_02"},
+            {"type_code": "BS", "node_code": "R_01_99"},
+        ]
+
+    def test_to_dict_plain_code_without_type_code(self):
+        """Код без '#' (нет type_code) сериализуется как {node_code}."""
+        node = TemplateLiteNode(
+            id=1, name="x", role=NodeRole.PODSTATYA, codes=["R_01_02"]
+        )
+        d = node.to_dict()
+        assert d["upr_cube_codes"] == [{"node_code": "R_01_02"}]
+
+    def test_to_dict_roundtrip_preserves_codes(self):
+        """to_dict -> from_dict сохраняет составные codes."""
+        node = TemplateLiteNode(
+            id=1, name="x", role=NodeRole.PODSTATYA, parent=None,
+            codes=["PL#R_01_02", "BS#R_01_99"],
+        )
+        restored = TemplateLiteNode.from_dict(node.to_dict())
+        assert restored.codes == node.codes
+
+    def test_to_dict_roundtrip_preserves_plain_codes(self):
+        """Round-trip сохраняет коды без type_code (без добавления '#')."""
+        node = TemplateLiteNode(
+            id=1, name="x", role=NodeRole.PODSTATYA, parent=None,
+            codes=["R_01_02"],
+        )
+        restored = TemplateLiteNode.from_dict(node.to_dict())
+        assert restored.codes == ["R_01_02"]
+
+
 class TestNodeValidation:
     """Валидация отдельного узла."""
 

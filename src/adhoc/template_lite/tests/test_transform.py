@@ -372,6 +372,106 @@ def test_sum_node_without_query():
 
 
 # ---------------------------------------------------------------------------
+# Правило 3 (расширение): codes -> query {'node_code': <codes>}
+# ---------------------------------------------------------------------------
+
+def _make_template_with_codes(spec) -> TemplateLite:
+    """Собрать TemplateLite из (id, name, role, parent, codes)."""
+    tpl = TemplateLite(metric_name="Тест")
+    for node_id, name, role, parent, codes in spec:
+        tpl.add_node(
+            TemplateLiteNode(
+                id=node_id, name=name, role=role, parent=parent, codes=codes
+            )
+        )
+    return tpl
+
+
+def test_leaf_with_codes_gets_node_code_query():
+    """Листовой узел с codes получает query {'node_code': codes}."""
+    tpl = _make_template_with_codes([
+        (1, "Корень", NodeRole.PODSTATYA, None, []),
+        (2, "Кредиты банкам", NodeRole.PODSTATYA, 1, ["R_01_02", "R_01_99"]),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    leaf = h.get_node(2)
+    assert leaf.has_query()
+    assert leaf.query.to_dict() == {"node_code": ["R_01_02", "R_01_99"]}
+
+
+def test_codes_take_priority_over_pl_code():
+    """При наличии codes query строится по node_code, а не по pl_code (name)."""
+    tpl = _make_template_with_codes([
+        (1, "Корень", NodeRole.PODSTATYA, None, []),
+        (2, "Статья", NodeRole.PODSTATYA, 1, ["R_01_02"]),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    assert h.get_node(2).query.to_dict() == {"node_code": ["R_01_02"]}
+    # pl_code по имени НЕ используется, когда есть codes.
+    assert "pl_code" not in h.get_node(2).query.to_dict()
+
+
+def test_single_code_query():
+    """Одиночный node_code попадает в query списком из одного элемента."""
+    tpl = _make_template_with_codes([
+        (1, "Корень", NodeRole.PODSTATYA, None, []),
+        (2, "Статья", NodeRole.PODSTATYA, 1, ["R_01_05_01"]),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    assert h.get_node(2).query.to_dict() == {"node_code": ["R_01_05_01"]}
+
+
+def test_baza_with_codes_gets_node_code_query():
+    """База (лист с componentMultiPartType) с codes получает node_code query."""
+    tpl = _make_template_with_codes([
+        (1, "Корень", NodeRole.PODSTATYA, None, []),
+        (2, "Статья", NodeRole.PODSTATYA, 1, []),
+        (3, "Маржа", NodeRole.TARIF, 2, []),
+        (4, "СДО", NodeRole.BAZA, 2, ["R_01_05_01", "R_11_08_14"]),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    baza = h.get_node(4)
+    assert baza.componentMultiPartType == ComponentMultiPartType.BASE
+    assert baza.query.to_dict() == {"node_code": ["R_01_05_01", "R_11_08_14"]}
+
+
+def test_multi_node_with_codes_uses_node_code():
+    """MULTI-узел с codes получает node_code query (MULTI обязан иметь query)."""
+    tpl = _make_template_with_codes([
+        (1, "Корень", NodeRole.PODSTATYA, None, []),
+        (2, "Статья", NodeRole.PODSTATYA, 1, ["R_multi"]),
+        (3, "Маржа", NodeRole.TARIF, 2, []),
+        (4, "СДО", NodeRole.BAZA, 2, []),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    multi = h.get_node(2)
+    assert multi.type == MetricType.MULTI
+    assert multi.query.to_dict() == {"node_code": ["R_multi"]}
+
+
+def test_leaf_without_codes_still_uses_pl_code():
+    """Без codes сохраняется прежнее поведение: query {'pl_code': name}."""
+    tpl = _make_template([
+        (1, "Корень", NodeRole.PODSTATYA, None),
+        (2, "Листовая статья", NodeRole.PODSTATYA, 1),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    assert h.get_node(2).query.to_dict() == {"pl_code": "Листовая статья"}
+
+
+def test_mixed_codes_and_no_codes_in_one_tree():
+    """В одном дереве часть листьев с codes, часть без — query строятся раздельно."""
+    tpl = _make_template_with_codes([
+        (1, "Корень", NodeRole.PODSTATYA, None, []),
+        (2, "С кодами", NodeRole.PODSTATYA, 1, ["R_01"]),
+        (3, "Без кодов", NodeRole.PODSTATYA, 1, []),
+    ])
+    h = transform_template_lite_to_hierarchy(tpl)
+    assert h.get_node(2).query.to_dict() == {"node_code": ["R_01"]}
+    assert h.get_node(3).query.to_dict() == {"pl_code": "Без кодов"}
+
+
+# ---------------------------------------------------------------------------
 # mp_decomp_tp
 # ---------------------------------------------------------------------------
 

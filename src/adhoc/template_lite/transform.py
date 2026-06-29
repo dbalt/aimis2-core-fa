@@ -21,6 +21,9 @@
    для базы).
 3. Листовые ``MetricNode`` (``type is None``) и ``MetricNode`` с
    ``type=MetricType.MULTI`` получают ``query`` вида ``{'pl_code': <name>}``.
+   Если у узла-источника заполнено поле ``codes`` (составные коды
+   ``"<type_code>#<node_code>"`` из ``upr_cube_codes``), вместо ``pl_code``
+   используется точный ключ запроса ``{'node_code': <codes>}``.
 """
 
 from typing import Dict, List, Optional
@@ -42,6 +45,7 @@ from libfa2.hier_metadata import (
 )
 
 from .enums import NodeRole
+from .node import NODE_CODE_KEY
 from .template import TemplateLite
 
 #: Ключ параметра запроса, в который кладётся имя статьи-источника.
@@ -198,11 +202,22 @@ def transform_template_lite_to_hierarchy(
         else:
             component_multi_part_type = None
 
-        # query — для листьев и MULTI (правило 3).
+        # query (правило 3 + приоритетное правило для codes).
+        # Если у узла есть коды узлов куба (codes — составные коды вида
+        # "<type_code>#<node_code>") — используем их как точный ключ запроса:
+        # Query({'node_code': codes}). Это применимо к любому элементу с непустым
+        # codes (листьям, тарифам/базам, а при наличии — и к MULTI/SUM). Иначе —
+        # прежняя логика: pl_code для листьев и MULTI.
         # (Показатели типа ratio в template_lite отсутствуют, поэтому исключение
         # «кроме ratio» из правила не применимо и ни одного узла не исключает.)
-        if metric_type == MetricType.MULTI or metric_type is None:
-            query: Optional[Query] = Query({PL_CODE_KEY: node.name})
+        if node.codes:
+            query: Optional[Query] = Query({NODE_CODE_KEY: node.codes})
+            lgr.debug(
+                f"Узел id={nid} name={node.name!r}: query по codes "
+                f"({len(node.codes)} шт. составных кодов type_code#node_code)"
+            )
+        elif metric_type == MetricType.MULTI or metric_type is None:
+            query = Query({PL_CODE_KEY: node.name})
         else:
             query = None
 
