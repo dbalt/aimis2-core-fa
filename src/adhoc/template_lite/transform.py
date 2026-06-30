@@ -85,7 +85,7 @@ def transform_template_lite_to_hierarchy(
         TypeError: если ``template_lite`` не является экземпляром :class:`TemplateLite`.
 
     Example:
-        >>> from adhoc.template_lite import (
+        >>> from adhoc_xxx.template_lite import (
         ...     get_from_template_lite_json,
         ...     transform_template_lite_to_hierarchy,
         ... )

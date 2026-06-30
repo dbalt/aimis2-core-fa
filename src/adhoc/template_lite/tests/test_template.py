@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from adhoc.template_lite import (
+from adhoc_xxx.template_lite import (
     NodeRole,
     TemplateLite,
     TemplateLiteNode,

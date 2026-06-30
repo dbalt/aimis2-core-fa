@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from adhoc.template_lite import (
+from adhoc_xxx.template_lite import (
     NodeRole,
     TemplateLite,
     get_from_template_lite_json,
@@ -192,7 +192,7 @@ def test_upr_cube_codes_parsed_into_codes(template_lite_dir):
 
 def test_upr_cube_codes_flow_into_node_code_query(template_lite_dir):
     """Узлы с codes после трансформации получают query {'node_code': codes}."""
-    from adhoc.template_lite import transform_template_lite_to_hierarchy
+    from adhoc_xxx.template_lite import transform_template_lite_to_hierarchy
 
     files = _files_with_upr_cube_codes(template_lite_dir)
     if not files:

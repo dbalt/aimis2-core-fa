@@ -2,7 +2,7 @@
 
 import pytest
 
-from adhoc.template_lite import NodeRole, TemplateLiteNode
+from adhoc_xxx.template_lite import NodeRole, TemplateLiteNode
 
 
 class TestNodeCreation:

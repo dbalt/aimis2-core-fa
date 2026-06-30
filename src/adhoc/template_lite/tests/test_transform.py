@@ -9,7 +9,7 @@ query для листьев/MULTI), подъём поддерева разрез
 
 import pytest
 
-from adhoc.template_lite import (
+from adhoc_xxx.template_lite import (
     NodeRole,
     TemplateLite,
     TemplateLiteNode,
@@ -542,7 +542,7 @@ def test_hierarchy_roundtrip_preserves_structure(sample_template):
 
 def test_real_files_produce_valid_hierarchy(template_lite_dir):
     """Каждый реальный сценарий преобразуется в валидную иерархию."""
-    from adhoc.template_lite import get_from_template_lite_json
+    from adhoc_xxx.template_lite import get_from_template_lite_json
 
     for path in sorted(template_lite_dir.glob("*.json")):
         tpl = get_from_template_lite_json(str(path))
@@ -556,7 +556,7 @@ def test_real_files_produce_valid_hierarchy(template_lite_dir):
 
 def test_real_file_od_bef_rez_specifics(template_lite_dir):
     """Известные факты о файле «операционный доход до резервов»."""
-    from adhoc.template_lite import get_from_template_lite_json
+    from adhoc_xxx.template_lite import get_from_template_lite_json
 
     target = next(
         (p for p in template_lite_dir.glob("*.json") if "od_bef" in p.name.lower()),
