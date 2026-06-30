@@ -127,6 +127,16 @@ def calculate_query_prop_v2(hier:Hierarchy) -> Hierarchy:
         f'name={root.name if root else None!r}'
     )
 
+    MAP_IND = {
+        'PL': 49,
+        'BS': 4,
+    }
+
+    MAP_TOTAL_TP = {
+        'PL': 1,
+        'BS': 1
+    }
+
     def process_node(n:MetricNode):
 
         if n.query:
@@ -135,7 +145,17 @@ def calculate_query_prop_v2(hier:Hierarchy) -> Hierarchy:
             expanded = []
             for x in codes:
                 expanded.extend(get_leafs(x))
-            n.query = Query({'node_code': expanded})
+
+            if len(expanded) > 0:
+
+                tp = 'BS' if expanded[0].startswith('BS') else 'PL'
+                expanded = [x.replace('BS#', '').replace('PL#','') for x in expanded]
+
+                n.query = Query({
+                    'node_code': expanded,
+                    'ind_id': MAP_IND[tp],
+                    'total_type': MAP_TOTAL_TP[tp]
+                })
 
         children = hier.get_children(n.id)
 

@@ -54,7 +54,7 @@ PL_CODE_KEY = "pl_code"
 #: Тип декомпозиции MULTI по умолчанию — метод цепных подстановок
 #: (влияние базы считается прямым счётом, влияние ставки — обратным).
 #: Соответствует документу ``algo__chain_substs_method.md``.
-DEFAULT_MULTI_DECOMP_TP = MultipartDecompositionType.DIRECT_BASE
+DEFAULT_MULTI_DECOMP_TP = MultipartDecompositionType.INTEGRAL
 
 
 def transform_template_lite_to_hierarchy(
