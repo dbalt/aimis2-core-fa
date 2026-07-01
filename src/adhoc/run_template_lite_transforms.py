@@ -493,12 +493,12 @@ def main():
     dt = date(2026, 4, 30)
 
     all_prefixes = [
-        'od',
-        'rez',
-        'operpl',
-        'opex',
-        'chkd',
-        'chpda',
+        # 'od',
+        # 'rez',
+        # 'operpl',
+        # 'opex',
+        # 'chkd',
+        # 'chpda',
         'chpdp'
     ]
     # prefix = 'operpl'
@@ -512,8 +512,8 @@ def main():
 
         for prefix in all_prefixes:
             print(f'Processing prefix {prefix}')
-            await setup_tbgosb_pao(prefix)
-            await calc_tbgosb_pao(prefix, dt)
+            # await setup_tbgosb_pao(prefix)
+            # await calc_tbgosb_pao(prefix, dt)
             await setup_tbgosb_tb(prefix)
             await calc_tbgosb_tb(prefix, dt)
 
