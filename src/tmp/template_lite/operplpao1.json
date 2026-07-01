@@ -1,0 +1,17 @@
+{
+  "metricName": "Операционная прибыль ТБ",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Операционная прибыль ТБ",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 149,
+      "name": "ТБ",
+      "role": "razrez",
+      "parent": 1
+    }
+  ]
+}

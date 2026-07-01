@@ -344,15 +344,179 @@ async def calc_od_tb():
 
 
 
+async def setup_tbgosb_pao(prefix:str):
+    from sdk.tools.settings import env__init_keydb_instance
+    from sdk.fa2026.client import FaClient
+
+    code = f'{prefix}pao'
+
+    h1 = make_hier(f'{code}1')
+    h2 = make_hier(f'{code}2')
+
+    total_cond = bubble_and_reduce_query_to_top(h2)
+    root_h1 = h1.get_root()
+    root_h1.query = Query(total_cond)
+
+    hier_lst = [
+        h1, h2
+    ]
+
+    meta = DeviationCalcMetadata(
+        code,
+        SourceParameters(
+            'missa_bidr.v_aimis__usl_facts_exp',
+            'dt'
+        ),
+        SearchDevParameters(
+            'val_plan',
+            'val_fact',
+            -1
+        ),
+        hier_lst
+    )
+
+    meta_json = meta.to_json()
+
+    kc = await env__init_keydb_instance()
+    fac = FaClient(kc)
+
+    await fac.delete_metadata(code)
+    await fac.save_metadata(code, meta_json)
+
+
+
+async def calc_tbgosb_pao(prefix:str, dt:date):
+    from sdk.tools.settings import env__init_keydb_instance
+    from sdk.fa2026.client import FaClient
+
+    code = f'{prefix}pao'
+    kc = await env__init_keydb_instance()
+    fac = FaClient(kc)
+
+    await fac.delete_results(code, dt)
+    res = await fac.get_summary(code, dt)
+    print(res)
+
+
+
+async def setup_tbgosb_tb(prefix:str):
+
+    from sdk.tools.settings import env__init_keydb_instance
+    from sdk.fa2026.client import FaClient
+
+    code_pref = f'{prefix}tb'
+
+    h1 = make_hier(f'{code_pref}1')
+    h2 = make_hier(f'{code_pref}2')
+
+    total_cond = bubble_and_reduce_query_to_top(h2)
+    root_h1 = h1.get_root()
+    root_h1.query = Query(total_cond)
+
+
+
+    for (tb_code, tbname) in TB_SETUP.items():
+        hc1 = Hierarchy.from_json(h1.to_json())
+        hc2 = Hierarchy.from_json(h2.to_json())
+
+        r1 = hc1.get_root()
+        r1.name = f'{r1.name} ({tbname})'
+
+        r2 = hc2.get_root()
+        r2.name = f'{r2.name} ({tbname})'
+
+        for n in hc1.nodes.values():
+            if n.query:
+                dic = {}
+                dic.update(n.query.to_dict())
+                dic.update({
+                    'tb': tbname
+                })
+                n.query = Query(dic)
+
+        for n in hc2.nodes.values():
+            if n.query:
+                dic = {}
+                dic.update(n.query.to_dict())
+                dic.update({
+                    'tb': tbname
+                })
+                n.query = Query(dic)
+
+        hier_lst = [
+            hc1, hc2
+        ]
+
+        code = f'{code_pref}_{tb_code}'
+
+        meta = DeviationCalcMetadata(
+            code,
+            SourceParameters(
+                'missa_bidr.v_aimis__usl_facts_exp',
+                'dt'
+            ),
+            SearchDevParameters(
+                'val_plan',
+                'val_fact',
+                -1
+            ),
+            hier_lst
+        )
+
+        meta_json = meta.to_json()
+
+        kc = await env__init_keydb_instance()
+        fac = FaClient(kc)
+
+        await fac.delete_metadata(code)
+        await fac.save_metadata(code, meta_json)
+
+
+
+async def calc_tbgosb_tb(prefix:str, dt:date):
+    from sdk.tools.settings import env__init_keydb_instance
+    from sdk.fa2026.client import FaClient
+    kc = await env__init_keydb_instance()
+
+    for tbcode in TB_SETUP.keys():
+        code = f'{prefix}tb_{tbcode}'
+
+        fac = FaClient(kc)
+        await fac.delete_results(code,dt)
+        res = await fac.get_summary(code, dt)
+        print(res)
+
+
 
 
 def main():
+    dt = date(2026, 4, 30)
+
+    all_prefixes = [
+        'od',
+        'rez',
+        'operpl',
+        'opex',
+        'chkd',
+        'chpda',
+        'chpdp'
+    ]
+    # prefix = 'operpl'
+
     import asyncio
     async def run():
         # await setup_od_pao()
         # await calc_od_pao()
         # await setup_od_tb()
-        await calc_od_tb()
+        # await calc_od_tb()
+
+        for prefix in all_prefixes:
+            print(f'Processing prefix {prefix}')
+            await setup_tbgosb_pao(prefix)
+            await calc_tbgosb_pao(prefix, dt)
+            await setup_tbgosb_tb(prefix)
+            await calc_tbgosb_tb(prefix, dt)
+
     asyncio.run(run())
 
 

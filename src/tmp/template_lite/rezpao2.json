@@ -1,0 +1,82 @@
+{
+  "metricName": "Расходы по созданию резервов",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Расходы по созданию резервов",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 3,
+      "name": "Блок/Подблок(Сегмент КИБ)",
+      "role": "razrez",
+      "parent": 1
+    },
+    {
+      "id": 5,
+      "name": "Резервы по ценным бумагам",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.09.03",
+          "node_code": "R_17_43_14"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Прочие резервы на возможные потери",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.09.05",
+          "node_code": "R_17_41_01"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Резерв на возможные потери по кредитам банкам",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.09.02",
+          "node_code": "R_17_43_16"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Резерв на возможные потери по кредитам клиентам",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.09.04",
+          "node_code": "R_12_24_39"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Финансовый результат от передачи проблемных активов в ДРПА",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.09.06",
+          "node_code": "R_12_15_45"
+        }
+      ]
+    }
+  ]
+}

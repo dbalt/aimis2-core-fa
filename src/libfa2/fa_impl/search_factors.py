@@ -4,6 +4,7 @@ from ..data_access.aggr import DataRow
 from .units import SearchDevParameters, DeviationDetailAmts
 
 PARETO_THRESHOLD = 0.8
+MINIMAL_COUNT = 5
 
 
 def _is_negative(deviation: float, sign_negative_impact: int) -> bool:
@@ -60,10 +61,12 @@ def get_factors(
 
     cumulative = 0.0
     pareto_rows: List[DataRow] = []
+    cnt = 0
     for row in negative_rows:
+        cnt += 1
         pareto_rows.append(row)
         cumulative += abs(row.deviation)
-        if cumulative / total_neg_abs >= PARETO_THRESHOLD:
+        if cumulative / total_neg_abs >= PARETO_THRESHOLD and cnt >= MINIMAL_COUNT:
             break
 
     return pareto_rows, detail

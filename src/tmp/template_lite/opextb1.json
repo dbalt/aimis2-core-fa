@@ -1,0 +1,17 @@
+{
+  "metricName": "Операционные расходы Т",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Операционные расходы ТБ",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 98,
+      "name": "ГОСБ",
+      "role": "razrez",
+      "parent": 1
+    }
+  ]
+}

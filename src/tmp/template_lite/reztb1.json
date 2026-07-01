@@ -1,0 +1,17 @@
+{
+  "metricName": "Расходы по созданию резервов",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Расходы по созданию резервов",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 14,
+      "name": "ГОСБ",
+      "role": "razrez",
+      "parent": 1
+    }
+  ]
+}

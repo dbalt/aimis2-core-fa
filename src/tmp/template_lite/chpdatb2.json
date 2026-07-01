@@ -1,0 +1,131 @@
+{
+  "metricName": "Чистый процентный доход от активов",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "Чистый процентный доход от активов",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 2,
+      "name": "Блок/Подблок(Сегмент КИБ)",
+      "role": "razrez",
+      "parent": 1
+    },
+    {
+      "id": 3,
+      "name": "Кредиты банкам",
+      "role": "podstatya",
+      "parent": 2,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.02",
+          "node_code": "R_01_02"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Кредиты юридическим лицам",
+      "role": "podstatya",
+      "parent": 2,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.03.01",
+          "node_code": "R_01_03_01"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Кредиты физическим лицам",
+      "role": "podstatya",
+      "parent": 2,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.03.02",
+          "node_code": "R_01_03_02"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Ценные бумаги",
+      "role": "podstatya",
+      "parent": 2,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.04",
+          "node_code": "R_11_29_42"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Прочие активы",
+      "role": "podstatya",
+      "parent": 2,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.05",
+          "node_code": "R_01_10"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Продукт ЕК",
+      "role": "razrez",
+      "parent": 5
+    },
+    {
+      "id": 9,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 4
+    },
+    {
+      "id": 10,
+      "name": "Кредиты ЮЛ",
+      "role": "baza",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "BS",
+          "fin_code": "B.01.06.01",
+          "node_code": "R_01_05_01"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Маржа",
+      "role": "tarif",
+      "parent": 8
+    },
+    {
+      "id": 12,
+      "name": "СДО кредиты ФЛ",
+      "role": "baza",
+      "parent": 8,
+      "upr_cube_codes": [
+        {
+          "type_code": "BS",
+          "fin_code": "B.01.06.02.01",
+          "node_code": "R_11_08_14"
+        },
+        {
+          "type_code": "BS",
+          "fin_code": "B.01.06.02.02",
+          "node_code": "R_11_11_25"
+        }
+      ]
+    }
+  ]
+}

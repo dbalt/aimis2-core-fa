@@ -1,0 +1,17 @@
+{
+  "metricName": "ЧКД+",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "ЧКД+ ",
+      "role": "podstatya",
+      "parent": null
+    },
+    {
+      "id": 34,
+      "name": "ГОСБ",
+      "role": "razrez",
+      "parent": 1
+    }
+  ]
+}
