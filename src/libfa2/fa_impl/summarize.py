@@ -136,8 +136,9 @@ async def build_branch_report(
         model_summary: str = "GigaChat-3-Ultra",
         model_table: str = "GigaChat-2-Max",
 ) -> Res[str]:
-    """Собрать отчёт по выбранной ветке: параллельно саммари + таблица."""
-    summary_prompt, table_prompt = SummarizerPrompt.PROMPT_PAIRS[branch]
+    """Собрать отчёт по выбранной ветке: параллельно short_summary, key_factors, таблица."""
+    summary_prompt = SummarizerPrompt.SHORT_SUMMARY_PROMPTS[branch]
+    factors_prompt = SummarizerPrompt.KEY_FACTORS_PROMPTS[branch]
 
     tsks = []
     async with asyncio.TaskGroup() as tg:
@@ -147,17 +148,25 @@ async def build_branch_report(
             )
         ))
         tsks.append(tg.create_task(
+            _base_llm_processing_function(
+                factors_prompt, data, await llm_client_gen_fn(), model_summary
+            )
+        ))
+        tsks.append(tg.create_task(
             render_factor_table_wrapper(data)
         ))
 
-    summary_res, table_res = (t.result() for t in tsks)
+    short_summary_res, key_factors_res, table_res = (t.result() for t in tsks)
 
-    if not summary_res.ok:
-        return Res.mk_error(f"Failed build summary. err: {summary_res.err}")
+    if not short_summary_res.ok:
+        return Res.mk_error(f"Failed build short_summary. err: {short_summary_res.err}")
+    if not key_factors_res.ok:
+        return Res.mk_error(f"Failed build key_factors. err: {key_factors_res.err}")
     if table_res['ex']:
         return Res.mk_error(f"Failed build deviations detailed table. error: {table_res['ex']}")
 
-    return Res.mk_result(f"{summary_res.data}\n\n\n{table_res['table']}")
+    # Сборка финального отчёта: short_summary + key_factors + table
+    return Res.mk_result(f"{short_summary_res.data}\n\n\n{key_factors_res.data}\n\n\n{table_res['table']}")
 
 
 # ===========================================================================
