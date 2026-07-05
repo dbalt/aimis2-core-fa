@@ -1,5 +1,5 @@
 import datetime
-from warnings import catch_warnings
+from asyncio import TaskGroup
 from datetime import date
 
 from adhoc.template_lite.deserializer import get_from_template_lite_json
@@ -14,10 +14,17 @@ from functools import reduce
 
 from sdk.tools.settings import FileTools
 from sdk.core.logging import get_logger
+from sdk.tools.settings import env__init_keydb_instance
+
+from coredis import Redis
+from typing import Tuple,List,Dict
+
+
+
 
 import logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(name)s %(levelname)s - %(message)s',
     datefmt='%H:%M:%S'
 )
@@ -185,7 +192,7 @@ def bubble_and_reduce_query_to_top(h:Hierarchy):
 
 
 
-async def setup_od_pao():
+async def setup_od_pao(kc:Redis):
     from sdk.tools.settings import env__init_keydb_instance
     from sdk.fa2026.client import FaClient
 
@@ -216,19 +223,18 @@ async def setup_od_pao():
 
     meta_json = meta.to_json()
 
-    kc = await env__init_keydb_instance()
     fac = FaClient(kc)
 
     await fac.delete_metadata('odpao')
     await fac.save_metadata('odpao', meta_json)
+    await kc.connection_pool.disconnect()
 
 
 
-async def calc_od_pao():
+async def calc_od_pao(kc:Redis):
     code = 'odpao'
-    from sdk.tools.settings import env__init_keydb_instance
+
     from sdk.fa2026.client import FaClient
-    kc = await env__init_keydb_instance()
     fac = FaClient(kc)
     dt= date(2026,4,30)
     await fac.delete_results(code,dt)
@@ -250,9 +256,9 @@ TB_SETUP = {
     'msk':'Московский банк',
 }
 
-async def setup_od_tb():
+async def setup_od_tb(kc:Redis):
 
-    from sdk.tools.settings import env__init_keydb_instance
+
     from sdk.fa2026.client import FaClient
 
     h1 = make_hier('odtb1')
@@ -314,7 +320,6 @@ async def setup_od_tb():
 
         meta_json = meta.to_json()
 
-        kc = await env__init_keydb_instance()
         fac = FaClient(kc)
 
         await fac.delete_metadata(code)
@@ -326,10 +331,10 @@ async def setup_od_tb():
 
 
 
-async def calc_od_tb():
+
+async def calc_od_tb(kc:Redis):
     from sdk.tools.settings import env__init_keydb_instance
     from sdk.fa2026.client import FaClient
-    kc = await env__init_keydb_instance()
 
     for tbcode in TB_SETUP.keys():
         code = f'odtb_{tbcode}'
@@ -344,9 +349,11 @@ async def calc_od_tb():
 
 
 
-async def setup_tbgosb_pao(prefix:str):
-    from sdk.tools.settings import env__init_keydb_instance
+
+async def setup_tbgosb_pao(prefix:str, kc:Redis):
+
     from sdk.fa2026.client import FaClient
+
 
     code = f'{prefix}pao'
 
@@ -377,7 +384,6 @@ async def setup_tbgosb_pao(prefix:str):
 
     meta_json = meta.to_json()
 
-    kc = await env__init_keydb_instance()
     fac = FaClient(kc)
 
     await fac.delete_metadata(code)
@@ -385,12 +391,13 @@ async def setup_tbgosb_pao(prefix:str):
 
 
 
-async def calc_tbgosb_pao(prefix:str, dt:date):
-    from sdk.tools.settings import env__init_keydb_instance
+
+async def calc_tbgosb_pao(prefix:str, dt:date, kc:Redis):
+
     from sdk.fa2026.client import FaClient
 
     code = f'{prefix}pao'
-    kc = await env__init_keydb_instance()
+
     fac = FaClient(kc)
 
     await fac.delete_results(code, dt)
@@ -399,11 +406,13 @@ async def calc_tbgosb_pao(prefix:str, dt:date):
 
 
 
-async def setup_tbgosb_tb(prefix:str):
 
-    from sdk.tools.settings import env__init_keydb_instance
-    from sdk.fa2026.client import FaClient
-
+"""
+    ###################################################################################
+        Разбор json-ов посвященных ТБ
+    ###################################################################################
+"""
+def build_hierarchies_based_on_source_jsons(prefix:str)->Tuple[Dict,Dict]:
     code_pref = f'{prefix}tb'
 
     h1 = make_hier(f'{code_pref}1')
@@ -413,78 +422,88 @@ async def setup_tbgosb_tb(prefix:str):
     root_h1 = h1.get_root()
     root_h1.query = Query(total_cond)
 
+    return (h1.to_json(), h2.to_json())
 
 
-    for (tb_code, tbname) in TB_SETUP.items():
-        hc1 = Hierarchy.from_json(h1.to_json())
-        hc2 = Hierarchy.from_json(h2.to_json())
-
-        r1 = hc1.get_root()
-        r1.name = f'{r1.name} ({tbname})'
-
-        r2 = hc2.get_root()
-        r2.name = f'{r2.name} ({tbname})'
-
-        for n in hc1.nodes.values():
-            if n.query:
-                dic = {}
-                dic.update(n.query.to_dict())
-                dic.update({
-                    'tb': tbname
-                })
-                n.query = Query(dic)
-
-        for n in hc2.nodes.values():
-            if n.query:
-                dic = {}
-                dic.update(n.query.to_dict())
-                dic.update({
-                    'tb': tbname
-                })
-                n.query = Query(dic)
-
-        hier_lst = [
-            hc1, hc2
-        ]
-
-        code = f'{code_pref}_{tb_code}'
-
-        meta = DeviationCalcMetadata(
-            code,
-            SourceParameters(
-                'missa_bidr.v_aimis__usl_facts_exp',
-                'dt'
-            ),
-            SearchDevParameters(
-                'val_plan',
-                'val_fact',
-                -1
-            ),
-            hier_lst
-        )
-
-        meta_json = meta.to_json()
-
-        kc = await env__init_keydb_instance()
-        fac = FaClient(kc)
-
-        await fac.delete_metadata(code)
-        await fac.save_metadata(code, meta_json)
-
-
-
-async def calc_tbgosb_tb(prefix:str, dt:date):
-    from sdk.tools.settings import env__init_keydb_instance
+async def setup_and_save_for_one_tb(prefix:str, kc:Redis, h1json:Dict, h2json:Dict, tb_code:str, tbname:str):
     from sdk.fa2026.client import FaClient
-    kc = await env__init_keydb_instance()
 
-    for tbcode in TB_SETUP.keys():
-        code = f'{prefix}tb_{tbcode}'
+    code_pref = f'{prefix}tb'
 
-        fac = FaClient(kc)
-        await fac.delete_results(code,dt)
-        res = await fac.get_summary(code, dt)
-        print(res)
+    hc1 = Hierarchy.from_json(h1json)
+    hc2 = Hierarchy.from_json(h2json)
+
+    r1 = hc1.get_root()
+    r1.name = f'{r1.name} ({tbname})'
+
+    r2 = hc2.get_root()
+    r2.name = f'{r2.name} ({tbname})'
+
+    for n in hc1.nodes.values():
+        if n.query:
+            dic = {}
+            dic.update(n.query.to_dict())
+            dic.update({
+                'tb': tbname
+            })
+            n.query = Query(dic)
+
+    for n in hc2.nodes.values():
+        if n.query:
+            dic = {}
+            dic.update(n.query.to_dict())
+            dic.update({
+                'tb': tbname
+            })
+            n.query = Query(dic)
+
+    hier_lst = [
+        hc1, hc2
+    ]
+
+    code = f'{code_pref}_{tb_code}'
+
+    meta = DeviationCalcMetadata(
+        code,
+        SourceParameters(
+            'missa_bidr.v_aimis__usl_facts_exp',
+            'dt'
+        ),
+        SearchDevParameters(
+            'val_plan',
+            'val_fact',
+            -1
+        ),
+        hier_lst
+    )
+
+    meta_json = meta.to_json()
+
+    fac = FaClient(kc)
+
+    await fac.delete_metadata(code)
+    await fac.save_metadata(code, meta_json)
+
+
+async def setup_tbgosb_tb(prefix:str, kc:Redis, tg:TaskGroup):
+    (h1_json, h2_json) = build_hierarchies_based_on_source_jsons(prefix)
+    for (tb_code, tbname) in TB_SETUP.items():
+        await setup_and_save_for_one_tb(prefix, kc, h1_json, h2_json, tb_code, tbname)
+
+
+
+
+async def calc_tbgosb_onetb(prefix:str, dt:date, kc:Redis, tbcode:str):
+    from sdk.fa2026.client import FaClient
+
+    code = f'{prefix}tb_{tbcode}'
+
+    fac = FaClient(kc)
+    await fac.delete_results(code,dt)
+    res = await fac.get_summary(code, dt)
+    print(res)
+
+
 
 
 
@@ -493,29 +512,56 @@ def main():
     dt = date(2026, 4, 30)
 
     all_prefixes = [
-        # 'od',
-        # 'rez',
-        # 'operpl',
-        # 'opex',
-        # 'chkd',
-        # 'chpda',
+        'od',
+        'rez',
+        'operpl',
+        'opex',
+        'chkd',
+        'chpda',
         'chpdp'
     ]
     # prefix = 'operpl'
 
     import asyncio
+
+
+
+
     async def run():
-        # await setup_od_pao()
-        # await calc_od_pao()
-        # await setup_od_tb()
-        # await calc_od_tb()
+        import asyncio
+
+        kc = env__init_keydb_instance()
 
         for prefix in all_prefixes:
-            print(f'Processing prefix {prefix}')
-            # await setup_tbgosb_pao(prefix)
-            # await calc_tbgosb_pao(prefix, dt)
-            await setup_tbgosb_tb(prefix)
-            await calc_tbgosb_tb(prefix, dt)
+            # async def _run():
+            #     try:
+            #         await setup_tbgosb_pao(prefix, kc)
+            #         await asyncio.sleep(0.1)
+            #         await calc_tbgosb_pao(prefix, dt, kc)
+            #     except:
+            #         print(f'SOME ERR {prefix} PAO')
+            #
+            # await _run()
+
+
+            (h1_json, h2_json) = build_hierarchies_based_on_source_jsons(prefix)
+            for (tb_code, tbname) in TB_SETUP.items():
+                await setup_and_save_for_one_tb(prefix, kc, h1_json, h2_json, tb_code, tbname)
+                await calc_tbgosb_onetb(prefix, dt, kc, tb_code)
+
+
+            await asyncio.sleep(0.1)
+
+
+
+
+
+        # for prefix in all_prefixes:
+        #     print(f'Processing prefix {prefix}')
+        #     await setup_tbgosb_pao(prefix, kc)
+        #     await calc_tbgosb_pao(prefix, dt, kc)
+        #     await setup_tbgosb_tb(prefix, kc)
+        #     await calc_tbgosb_tb(prefix, dt, kc)
 
     asyncio.run(run())
 

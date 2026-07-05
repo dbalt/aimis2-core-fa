@@ -255,9 +255,11 @@ class DataAccessDbWrapper(DataAccess):
     ) -> Res[List[Dict[str, Any]]]:
         try:
             rows = []
-            dbw = await self._db_gen()
+            dbw:DbWrapper = await self._db_gen()
             async for row in dbw.query(sql, params):
                 rows.append(row)
             return Res.result(rows)
         except Exception as e:
             return Res.error(str(e))
+        finally:
+            await dbw.release()

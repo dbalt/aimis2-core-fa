@@ -3,6 +3,8 @@ from datetime import datetime
 import asyncio
 import time
 
+from sdk.core.logging import get_logger
+
 
 class DbWrapper(object):
     def _upd_ts(self):
@@ -21,18 +23,18 @@ class DbWrapper(object):
     def tp(self) -> str:
         return self._tp
 
-    def release(self):
-        if self._is_released: return
-        if self._fn_release is not None and callable(self._fn_release):
-            self._fn_release()
-            close_core = self._conn.close()
-            if asyncio.iscoroutine(close_core):
-                try:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(close_core)
-                except RuntimeError:
-                    pass
-        self._is_released = True
+    async def release(self):
+
+        async def _local_rel_func():
+            await self._conn.close()
+            self._is_released = True
+
+        if self._fn_release is not None:
+            await self._fn_release(_local_rel_func)
+        else:
+            await _local_rel_func()
+
+
 
     def reset_cursor(self):
         self._cursor = None
@@ -50,6 +52,9 @@ class DbWrapper(object):
         '''
             Когда надо выполнить sql запрос и вернуть результат в виде итератора
         '''
+        l = get_logger()
+        l.info(f'query sql={sql}, params={params}')
+
         self._upd_ts()
 
         if self._is_released:
@@ -85,6 +90,10 @@ class DbWrapper(object):
         Когда надо просто какой то запрос без возращаемого значения
         upd/ins/del/create table
         '''
+
+        l = get_logger()
+        l.info(f'exec sql={sql}, params={params}')
+
         self._upd_ts()
         if self._is_released:
             raise Exception(F'connection already released, cant use this instance anymore')

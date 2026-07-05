@@ -5,7 +5,7 @@ if sdk_path:
     sys.path.insert(0, sdk_path)
 
 from libfa2.fa_server import FaServerImpl
-from libfa2.data_access.data_mgmt import DataMgmtDataGate
+from libfa2.data_access.data_mgmt import DataMgmtDataGate, DataMgmtDbWrapper
 from libfa2.data_access.aggr import DataAccessDataGate
 from sdk.tools.settings import env__init_keydb_instance
 from sdk.giga.client import GigaChatClientPartV2
@@ -22,7 +22,26 @@ logging.basicConfig(
 async def run():
     lgr = get_logger()
     kc = await env__init_keydb_instance()
-    da = DataAccessDataGate(kc)
+    # da = DataAccessDataGate(kc)
+
+    # trying local DbWraper based pool
+    '''
+        Этот кусок - временный workaround, чтобы разгрузить обращения к DataGate через keydb
+    '''
+    from libfa2.data_access.aggr import DataAccessDbWrapper
+    from libfa2.data_access.from_mono_rep import DataSourceConfig, ConnectionPoolAlwaysNew
+    ds_json = get_conf('secman.datasources.ch01')
+    ds_conf = DataSourceConfig.from_dic(ds_json)
+
+    conn_pool = ConnectionPoolAlwaysNew(ds_conf)
+
+    async def dbw_gen_func():
+        dbw = await conn_pool.acquire_db_wrapper()
+        return dbw
+
+    da = DataAccessDbWrapper(dbw_gen_func)
+
+
 
     tbl_metadata = get_conf('configs.fa2026.tables.metadata')
     tbl_results = get_conf('configs.fa2026.tables.results')
@@ -30,7 +49,8 @@ async def run():
     model_summary = get_conf('configs.fa2026.models.summary', 'GigaChat-3-Ultra')
     model_details = get_conf('configs.fa2026.models.details', 'GigaChat-2-Max')
 
-    dm = DataMgmtDataGate(kc, tbl_metadata, tbl_results)
+    # dm = DataMgmtDataGate(kc, tbl_metadata, tbl_results)
+    dm = DataMgmtDbWrapper(dbw_gen_func, tbl_metadata, tbl_results)
 
     async def get_llm_client():
         return GigaChatClientPartV2(kc, source=gigachat_cert_source)

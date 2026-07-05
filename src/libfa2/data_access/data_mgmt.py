@@ -230,6 +230,8 @@ class DataMgmtDbWrapper(DataMgmt):
             return Res.result(None)
         except Exception as e:
             return Res.error(str(e))
+        finally:
+            await dbw.release()
 
     async def _query(self, sql: str, params: Dict[str, Any] | None = None) -> Res[List[Dict[str, Any]]]:
         try:
@@ -240,3 +242,5 @@ class DataMgmtDbWrapper(DataMgmt):
             return Res.result(rows)
         except Exception as e:
             return Res.error(str(e))
+        finally:
+            await dbw.release()
