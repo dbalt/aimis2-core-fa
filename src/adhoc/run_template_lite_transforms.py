@@ -513,12 +513,12 @@ def main():
 
     all_prefixes = [
         'od',
-        'rez',
-        'operpl',
-        'opex',
-        'chkd',
-        'chpda',
-        'chpdp'
+        # 'rez',
+        # 'operpl',
+        # 'opex',
+        # 'chkd',
+        # 'chpda',
+        # 'chpdp'
     ]
     # prefix = 'operpl'
 
@@ -533,21 +533,21 @@ def main():
         kc = env__init_keydb_instance()
 
         for prefix in all_prefixes:
-            # async def _run():
-            #     try:
-            #         await setup_tbgosb_pao(prefix, kc)
-            #         await asyncio.sleep(0.1)
-            #         await calc_tbgosb_pao(prefix, dt, kc)
-            #     except:
-            #         print(f'SOME ERR {prefix} PAO')
-            #
-            # await _run()
+            async def _run():
+                try:
+                    await setup_tbgosb_pao(prefix, kc)
+                    await asyncio.sleep(0.1)
+                    await calc_tbgosb_pao(prefix, dt, kc)
+                except:
+                    print(f'SOME ERR {prefix} PAO')
+
+            await _run()
 
 
-            (h1_json, h2_json) = build_hierarchies_based_on_source_jsons(prefix)
-            for (tb_code, tbname) in TB_SETUP.items():
-                await setup_and_save_for_one_tb(prefix, kc, h1_json, h2_json, tb_code, tbname)
-                await calc_tbgosb_onetb(prefix, dt, kc, tb_code)
+            # (h1_json, h2_json) = build_hierarchies_based_on_source_jsons(prefix)
+            # for (tb_code, tbname) in TB_SETUP.items():
+            #     await setup_and_save_for_one_tb(prefix, kc, h1_json, h2_json, tb_code, tbname)
+            #     await calc_tbgosb_onetb(prefix, dt, kc, tb_code)
 
 
             await asyncio.sleep(0.1)

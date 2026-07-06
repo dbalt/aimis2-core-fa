@@ -227,11 +227,12 @@ class DataMgmtDbWrapper(DataMgmt):
         try:
             dbw = await self._db_gen()
             await dbw.exec(sql, params)
+            await dbw.release()
             return Res.result(None)
         except Exception as e:
             return Res.error(str(e))
-        finally:
-            await dbw.release()
+
+
 
     async def _query(self, sql: str, params: Dict[str, Any] | None = None) -> Res[List[Dict[str, Any]]]:
         try:
@@ -239,8 +240,9 @@ class DataMgmtDbWrapper(DataMgmt):
             dbw = await self._db_gen()
             async for row in dbw.query(sql, params):
                 rows.append(row)
+            await dbw.release()
             return Res.result(rows)
         except Exception as e:
             return Res.error(str(e))
-        finally:
-            await dbw.release()
+
+
