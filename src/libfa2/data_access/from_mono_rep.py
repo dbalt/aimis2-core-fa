@@ -124,7 +124,7 @@ class ConnectionPoolAlwaysNew(ConnectionPoolBase):
                 l.info(f'ConnPool {self._dsconf.tp}: decrementing conn count {curr_conn} -> {curr_conn - 1}')
                 # l_audit.info(f'ConnPool {self._dsconf.tp}: decrementing conn count {curr_conn} -> {curr_conn - 1}')
                 self._current_connections = self._current_connections - 1
-
+        dbw:DbWrapper = None
         while True:
             async with self._lock:
                 if self._current_connections < self._dsconf.pool_size:
