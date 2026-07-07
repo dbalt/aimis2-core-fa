@@ -13,10 +13,25 @@ def _is_negative(deviation: float, sign_negative_impact: int) -> bool:
     return deviation > 0
 
 
+def _select_pareto_rows(source: List[DataRow], total: float) -> List[DataRow]:
+    source.sort(key=lambda r: abs(r.deviation), reverse=True)
+    cum = 0.0
+    res: List[DataRow] = []
+    cnt = 0
+    for row in source:
+        cnt += 1
+        res.append(row)
+        cum += abs(row.deviation)
+        if cum / abs(total) >= PARETO_THRESHOLD and cnt >= MINIMAL_COUNT:
+            break
+    return res
+
+
 def get_factors(
     data_set: List[DataRow], 
     params: SearchDevParameters,
-    flg_all:bool = False
+    flg_all:bool = False,
+    flg_positive:bool = False
 ) -> Tuple[List[DataRow], DeviationDetailAmts]:
     """
     Разбивает итоговое отклонение data_set на позитивную и негативную
@@ -31,14 +46,14 @@ def get_factors(
 
     positive_contrib = 0.0
     negative_contrib = 0.0
-    negative_rows: List[DataRow] = []
+    # negative_rows: List[DataRow] = []
 
     for row in data_set:
         dev = row.deviation
         if dev == 0: continue
         if _is_negative(dev, sign):
             negative_contrib += dev
-            negative_rows.append(row)
+            # negative_rows.append(row)
         else:
             positive_contrib += dev
 
@@ -52,21 +67,17 @@ def get_factors(
         return ret_lst, detail
 
     # --- Pareto selection ---------------------------------------------------
-    total_neg_abs = sum(abs(r.deviation) for r in negative_rows)
-    if total_neg_abs == 0:
-        return [], detail
+    res = []
+    neg_rows = [x for x in data_set if _is_negative(x.deviation, sign)]
+    neg_rows = _select_pareto_rows(neg_rows, negative_contrib)
+    res.extend(neg_rows)
 
-    # Sort by |deviation| descending — biggest contributors first
-    negative_rows.sort(key=lambda r: abs(r.deviation), reverse=True)
+    if flg_positive:
+        pos_rows = [x for x in data_set if not _is_negative(x.deviation, sign)]
+        pos_rows = _select_pareto_rows(pos_rows, positive_contrib)
+        res.extend(pos_rows)
 
-    cumulative = 0.0
-    pareto_rows: List[DataRow] = []
-    cnt = 0
-    for row in negative_rows:
-        cnt += 1
-        pareto_rows.append(row)
-        cumulative += abs(row.deviation)
-        if cumulative / total_neg_abs >= PARETO_THRESHOLD and cnt >= MINIMAL_COUNT:
-            break
+    return res, detail
 
-    return pareto_rows, detail
+
+

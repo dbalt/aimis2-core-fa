@@ -220,7 +220,7 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
             components.append(val_row)
 
         # Рассчитываем факторы (влияние каждого потомка на отклонение)
-        (factors, deviation_detail_amts) = get_factors(components, deviation_calc_params.search_dev_params, True)
+        (factors, deviation_detail_amts) = get_factors(components, deviation_calc_params.search_dev_params, flg_all=False, flg_positive=True)
 
         lgr.debug(f'SUM factors calculated for node id={current_node.id}: {len(factors)} factors, '
                   f'positive_contrib={deviation_detail_amts.positive_contrib}, negative_contrib={deviation_detail_amts.negative_contrib}')

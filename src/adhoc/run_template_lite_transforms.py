@@ -513,12 +513,12 @@ def main():
 
     all_prefixes = [
         'od',
-        # 'rez',
-        # 'operpl',
-        # 'opex',
-        # 'chkd',
-        # 'chpda',
-        # 'chpdp'
+        'rez',
+        'operpl',
+        'opex',
+        'chkd',
+        'chpda',
+        'chpdp'
     ]
     # prefix = 'operpl'
 
