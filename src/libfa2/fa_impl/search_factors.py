@@ -68,11 +68,12 @@ def get_factors(
 
     # --- Pareto selection ---------------------------------------------------
     res = []
-    neg_rows = [x for x in data_set if _is_negative(x.deviation, sign)]
-    neg_rows = _select_pareto_rows(neg_rows, negative_contrib)
-    res.extend(neg_rows)
+    if negative_contrib != 0:
+        neg_rows = [x for x in data_set if _is_negative(x.deviation, sign)]
+        neg_rows = _select_pareto_rows(neg_rows, negative_contrib)
+        res.extend(neg_rows)
 
-    if flg_positive:
+    if flg_positive and positive_contrib != 0:
         pos_rows = [x for x in data_set if not _is_negative(x.deviation, sign)]
         pos_rows = _select_pareto_rows(pos_rows, positive_contrib)
         res.extend(pos_rows)
