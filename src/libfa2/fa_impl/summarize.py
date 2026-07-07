@@ -27,7 +27,7 @@ from sdk.giga.client import GigaChatClientPartV2, DEFAULT_GIGA_MODEL
 from sdk.giga.iface import MsgBase, AssistantMsg
 from sdk.core.monadic import Res
 from .summarize_prompts import SummarizerPrompt
-from .table_renderer import render_factor_table_wrapper
+from .table_renderer import render_factor_table_wrapper, _get_scale_info
 
 
 # ===========================================================================
@@ -139,17 +139,21 @@ async def build_branch_report(
     """Собрать отчёт по выбранной ветке: параллельно short_summary, key_factors, таблица."""
     summary_prompt = SummarizerPrompt.SHORT_SUMMARY_PROMPTS[branch]
     factors_prompt = SummarizerPrompt.KEY_FACTORS_PROMPTS[branch]
+    
+    # Добавляем информацию о масштабе в данные для промптов
+    scale_info = _get_scale_info(data)
+    data_with_scale = {**data, "scale_info": scale_info}
 
     tsks = []
     async with asyncio.TaskGroup() as tg:
         tsks.append(tg.create_task(
             _base_llm_processing_function(
-                summary_prompt, data, await llm_client_gen_fn(), model_summary
+                summary_prompt, data_with_scale, await llm_client_gen_fn(), model_summary
             )
         ))
         tsks.append(tg.create_task(
             _base_llm_processing_function(
-                factors_prompt, data, await llm_client_gen_fn(), model_summary
+                factors_prompt, data_with_scale, await llm_client_gen_fn(), model_summary
             )
         ))
         tsks.append(tg.create_task(
