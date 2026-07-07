@@ -12,6 +12,11 @@ def _is_negative(deviation: float, sign_negative_impact: int) -> bool:
         return deviation < 0
     return deviation > 0
 
+def _is_positive(deviation: float, sign_negative_impact: int) -> bool:
+    if sign_negative_impact == -1:
+        return deviation > 0
+    return deviation < 0
+
 
 def _select_pareto_rows(source: List[DataRow], total: float) -> List[DataRow]:
     source.sort(key=lambda r: abs(r.deviation), reverse=True)
@@ -74,7 +79,7 @@ def get_factors(
         res.extend(neg_rows)
 
     if flg_positive and positive_contrib != 0:
-        pos_rows = [x for x in data_set if not _is_negative(x.deviation, sign)]
+        pos_rows = [x for x in data_set if _is_positive(x.deviation, sign)]
         pos_rows = _select_pareto_rows(pos_rows, positive_contrib)
         res.extend(pos_rows)
 
