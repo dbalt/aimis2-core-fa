@@ -64,6 +64,7 @@ Each tree has:
 ### 5. ONE TREE, ONE OUTPUT
 Если data = [tree1, tree2, ...] — это ОДНО отклонение, разложенное по разным осям.
 Выводи каждый tree в отдельной секции, НЕ дублируя корневой показатель.
+Если в tree нет детей, то не выводи секцию, а просто упомяни что в этой секции по такому разрезу нет отклонений.
 
 ### 6. NO TECHNICAL TERMS
 Нет: "сценарий", "разрез", "срез", "алгоритм", "drill-down", "top_factors", "impact_to_top_lvl".
@@ -254,11 +255,12 @@ _BASE_FACTORS = _COMMON_FACTORS + """
 Output: one section `## Ключевые факторы`
 
 ### Selection rules
-- TOP 6 candidates only (direct children, by |impact| descending)
+- At the beginning count how many main axis blocks are there. That is how many main axis blocks must be in the output.
 - Include if |impact| >= 30% of largest OR >= significance threshold
 - If N-th factor and (N+1)-th differ < 15% → include both (up to 6 total)
-- If top 🔴 > 5, keep top 5 🔴 and 1 🟢
 - If only 1 significant child → output 1 bullet (not a problem)
+- Always try to get to the root of negative impacts.
+- IF TREE HAS NO CHILDREN - DONT MENTION IT (Tree != Root)
 
 ### CRITICAL RULE: PRESERVE ALL ANALYTICAL DIMENSIONS
 - **NEVER skip any analytical slice** even if its impact is small relative to Pareto threshold
@@ -267,7 +269,7 @@ Output: one section `## Ключевые факторы`
 - Exception: only if factor is absolutely trivial (|impact| < 0.01% of root deviation AND |impact| < 1 млн)
 
 ### CRITICAL RULE: TRUNCATION WITH PRIORITY
-- If inclusion of ALL slices exceeds 6 items:
+- If inclusion of ALL slices exceeds 10 items:
   - First, keep ALL slices from dimensions that represent major business axes (such as business blocks, channels, territories)
   - Then, keep ALL slices from core component breakdowns
   - Finally, truncate least significant factors (starting from deepest nesting level)
@@ -319,6 +321,8 @@ Output: 2-4 sentences
 4. Use "перекрыты/частично компенсированы" for compensation
    - Explicitly state which 🟢-factors compensate which 🔴-factors
    - If combined compensation: "🟢-факторы частично компенсированы: A (+X), B (+Y), C (+Z)"
+
+5. IF TREE HAS NO CHILDREN - DONT MENTION IT (Tree != Root)
 """
 
 _SHORT_SUMMARY_BRANCH_2 = _BASE_SUMMARY + """
