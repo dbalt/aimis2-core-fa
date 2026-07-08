@@ -312,11 +312,13 @@ Focus на 🔴-факторах и их компенсации.
 Output: 2-4 sentences
 1. Root measure + actual value + plan + total 🟢 deviation
 2. List all significant 🔴-factors (direct children, by |impact| desc)
-3. Show 1-3 🟢-factors that compensate the 🔴-factors
+3. Show 🟢-factors that compensate the 🔴-factors:
+   - Include up to 2 largest 🟢-factors that EACH compensate >= 15% of root deviation
+   - If no single 🟢-factor compensates >= 15% but combined they compensate root deviation:
+     - Include up to 4 🟢-factors (all positive contributors that help offset 🔴)
 4. Use "перекрыты/частично компенсированы" for compensation
-
-Example:
-Корневой показатель перевыполнил план на +150 млн руб. (факт — 5000 млн, план — 4850 млн). 🔴 Прочие чистые операционные доходы (−84 млн руб.) и 🔴 ОД до резервов (−75 млн руб.) перекрыты 🟢 Чистый процентный доход (+200 млн руб.).
+   - Explicitly state which 🟢-factors compensate which 🔴-factors
+   - If combined compensation: "🟢-факторы частично компенсированы: A (+X), B (+Y), C (+Z)"
 """
 
 _SHORT_SUMMARY_BRANCH_2 = _BASE_SUMMARY + """
@@ -355,22 +357,26 @@ Root执行/перевыполняет план (positive impact), но есть 
 Focus на 🔴-факторах и их компенсации.
 
 Output: section `## Ключевые факторы`
-
 Structure:
 - If multiple trees: separate sections for each with header
 - If one tree: flat list without subheaders
 
 Contents (in order):
-1. ALL significant 🔴-factors (direct children, by |impact| desc)
+   - ALL significant 🔴-factors (direct children, by |impact| desc)
+   - Include child components if needed
    - Include ALL slices from major business axes (business blocks, channels, territories) — NEVER truncate by Pareto
    - Include other core components (Детализация по компонентам иерархии)
    - If N-th and (N+1)-th differ < 15% → include both
-2. THEN 1-2 largest 🟢-factors (compensating)
-3. Total bullets: up to 6 (but not a quota)
+   - Include up to 2 largest 🟢-factors that EACH compensate >= 15% of root deviation
+   - If no single 🟢-factor compensates >= 15% but combined they compensate root deviation:
+     - Include up to 4 🟢-factors (all positive contributors that help offset 🔴)
+   - Total 🟢-factors: 1-2 if significant, up to 4 only if combined compensation needed
+   - All 🟢-factors sorted by desc
+   - Total bullets: up to 12 per axis branch(but not a quota)
    - First, include ALL slices from major business axes
    - Then, include other 🔴-factors by significance
-   - If total > 6: cut 🟢 first, then least significant 🔴 (never cut slices from major business axes!)
-   - If top 🔴 > 5: keep ALL slices from major business axes first, then cut less significant ones
+   - DO NOT SKIP ANY BUSINESS AXES, ITS YOUR MAIN PRIORITY
+   - IF YOU ARE DONE WITH ONE BUSINESS AXIS, CHECK IF ANY LEFT. IF YES, REPEAT PREVIOUS STEPS
 
 Nested levels:
 - 2nd level: driver (components or algorithm 7.2)
