@@ -260,6 +260,19 @@ Output: one section `## Ключевые факторы`
 - If top 🔴 > 5, keep top 5 🔴 and 1 🟢
 - If only 1 significant child → output 1 bullet (not a problem)
 
+### CRITICAL RULE: PRESERVE ALL ANALYTICAL DIMENSIONS
+- **NEVER skip any analytical slice** even if its impact is small relative to Pareto threshold
+- **NEVER skip entire analytical dimensions** represented as separate trees in data array
+- **Pareto 80% rule does NOT apply to slices from same analytical dimension**: all slices from one dimension must be reported together as a group
+- Exception: only if factor is absolutely trivial (|impact| < 0.01% of root deviation AND |impact| < 1 млн)
+
+### CRITICAL RULE: TRUNCATION WITH PRIORITY
+- If inclusion of ALL slices exceeds 6 items:
+  - First, keep ALL slices from dimensions that represent major business axes (such as business blocks, channels, territories)
+  - Then, keep ALL slices from core component breakdowns
+  - Finally, truncate least significant factors (starting from deepest nesting level)
+  - **Priority order**: Major business axes > Core components > Product/feature breakdowns
+
 ### Structure
 - Top level: 🔴/🟢 **Measure name** — impact **X.XX scale_full**
 - Nested 2nd level: driver (components or algorithm 7.2)
@@ -349,12 +362,15 @@ Structure:
 
 Contents (in order):
 1. ALL significant 🔴-factors (direct children, by |impact| desc)
-   - Include if |impact| >= 30% of largest or >= threshold
-   - If N-th and (N+1)-th differ < 15% → include both (up to 6 total)
+   - Include ALL slices from major business axes (business blocks, channels, territories) — NEVER truncate by Pareto
+   - Include other core components (Детализация по компонентам иерархии)
+   - If N-th and (N+1)-th differ < 15% → include both
 2. THEN 1-2 largest 🟢-factors (compensating)
 3. Total bullets: up to 6 (but not a quota)
-   - If total > 6, cut 🟢 first, keep 🔴 completely
-   - If top 🔴 > 5, keep top 5 🔴 and 1 🟢
+   - First, include ALL slices from major business axes
+   - Then, include other 🔴-factors by significance
+   - If total > 6: cut 🟢 first, then least significant 🔴 (never cut slices from major business axes!)
+   - If top 🔴 > 5: keep ALL slices from major business axes first, then cut less significant ones
 
 Nested levels:
 - 2nd level: driver (components or algorithm 7.2)
@@ -394,9 +410,12 @@ Structure:
 
 Contents:
 - Top 🔴-factors (direct children, by |impact| desc), up to 6
+- Include ALL slices from major business axes (business blocks, channels, territories) — NEVER truncate by Pareto
+- Include other core components (Детализация по компонентам иерархии)
 - Include only significant factors (meaningful relative to root deviation)
 - If only 1 significant child → output exactly 1 top-level bullet
   (do NOT lift its children to top level for quantity)
+- Priority: slices from major business axes > core components > product breakdowns
 
 Nested levels (ALWAYS expand if data allows):
 1. Component driver (2nd level bullet)
