@@ -261,6 +261,7 @@ Output: one section `## Ключевые факторы`
 - If only 1 significant child → output 1 bullet (not a problem)
 - Always try to get to the root of negative impacts.
 - IF TREE HAS NO CHILDREN - DONT MENTION IT (Tree != Root)
+- ALL 🔴/🟢 FACTORS ARE TAKEN ONLY FROM impact_to_top_lvl
 
 ### CRITICAL RULE: PRESERVE ALL ANALYTICAL DIMENSIONS
 - **NEVER skip any analytical slice** even if its impact is small relative to Pareto threshold

@@ -87,39 +87,54 @@ def _infer_scale(values: List[float]) -> Tuple[float, str, str]:
             return 1.0, "руб.", "руб."
 
 
-def _format_number(v: float, scale: float) -> str:
+def _format_number(v: float, scale: float, component_type: Optional[str] = None, as_percentage: bool = False) -> str:
     """
     Форматирует число с учётом масштаба и точности.
-    
+
+    Параметры:
+        v: значение для форматирования
+        scale: масштаб для деления (если 0, не делить)
+        component_type: тип компонента ('rate', 'base', 'ratio_num', 'ratio_den')
+        as_percentage: если True, всегда форматировать как проценты (для rate/ratio_num/ratio_den)
+                       если False, использовать масштаб (для impact)
+
     Правила:
-    - Для ставок/долей (0 < |v| < 1 в исходном масштабе) → проценты
-    - Для очень маленьких чисел (<< масштаба) → 4 знака после запятой
-    - Для обычных чисел → 1 знак после запятой
-    - Убирает лишние нули
-    - Для нулевых значений показывает 0,0
+        - Если as_percentage=True и component_type в ('rate', 'ratio_num', 'ratio_den') → проценты
+        - Если 0 < abs(v) < 1 и as_percentage не задан → автоматически проценты
+        - Иначе → с масштабированием
     """
     if v is None:
         return ""
-    
-    # Ставки/доли показываем в процентах (без учёта масштаба)
-    if 0 < abs(v) < 1:
+
+    # Если явно указано как проценты (для rate/ratio_num/ratio_den)
+    if as_percentage and component_type in ('rate', 'ratio_num', 'ratio_den'):
         s = f"{abs(v) * 100:.3f}".replace(".", ",")
         sign = "-" if v < 0 else ""
         return sign + s.rstrip('0').rstrip(',') + "%"
-    
+
+    # Ставки/доли показываем в процентах (без учёта масштаба)
+    if 0 < abs(v) < 1 and not as_percentage:
+        s = f"{abs(v) * 100:.3f}".replace(".", ",")
+        sign = "-" if v < 0 else ""
+        return sign + s.rstrip('0').rstrip(',') + "%"
+
+    # Если масштаб не задан (scale=0), используем 1
+    if scale == 0:
+        scale = 1
+
     scaled = v / scale
-    
+
     # Для нулевых значений — показываем 0,0 (учитываем float-артефакты)
     if abs(scaled) < 1e-10:
         return "0,0"
-    
+
     # Для очень маленьких чисел (меньше 1% от масштаба) — больше знаков после запятой
     if 0 < abs(scaled) < 0.01:
         s = f"{abs(scaled):.4f}".replace(".", ",")
         # Убираем лишние нули в конце
         s = s.rstrip('0').rstrip(',')
         return ("-" if v < 0 else "") + s
-    
+
     # Обычный формат с 1 знаком после запятой
     s = f"{abs(scaled):,.1f}".replace(",", " ").replace(".", ",")
     # Убираем лишние нули и точки
@@ -127,20 +142,22 @@ def _format_number(v: float, scale: float) -> str:
     return ("-" if v < 0 else "") + s
 
 
-def _t_amount(v: float, scale: float) -> str:
-    """План/Факт с динамическим масштабированием."""
-    return _format_number(v, scale)
+def _t_amount(v: float, scale: float, component_type: Optional[str] = None) -> str:
+    """План/Факт с динамическим масштабированием. Для rate/ratio показываем как проценты."""
+    # Для rate/ratio_num/ratio_den используем проценты, иначе используем автоматическое определение
+    as_percentage = component_type in ('rate', 'ratio_num', 'ratio_den')
+    return _format_number(v, scale, component_type, as_percentage=as_percentage)
 
 
-def _t_impact(v: float, scale: float) -> str:
-    """Влияние с динамическим масштабом и знаком: + / − / 0,0."""
+def _t_impact(v: float, scale: float, component_type: Optional[str] = None) -> str:
+    """Влияние с динамическим масштабом и знаком: + / − / 0,0. Для всех типов - как рубли."""
     if not v:
         return "0,0"
-    return _format_number(v, scale)
+    return _format_number(v, scale, component_type, as_percentage=False)
 
 
-def _impact_cell(v: float, bold: bool, scale: float) -> str:
-    txt = _t_impact(v, scale)
+def _impact_cell(v: float, bold: bool, scale: float, component_type: Optional[str] = None) -> str:
+    txt = _t_impact(v, scale, component_type)
     if bold:
         txt = f"**{txt}**"
     marker = "🔴 " if v < 0 else ("🟢 " if v > 0 else "")
@@ -233,10 +250,14 @@ async def render_factor_table(data: Dict) -> str:
                     break
         num = " " if depth == 0 else str(counter.__setitem__(0, counter[0] + 1) or counter[0])
         bold_infl = has_children or is_single or depth == 0
+        
+        # Получаем тип компонента из node для корректного форматирования
+        component_type = node.get("amount_type")
+        
         rows.append(
             f"| {num} | {_path_cell(node, depth, parent)} "
-            f"| {_t_amount(base_val, scale_factor)} | {_t_amount(am.get('fact'), scale_factor)} "
-            f"| {_impact_cell(_impact(node), bold_infl, scale_factor)} |"
+            f"| {_t_amount(base_val, scale_factor, component_type)} | {_t_amount(am.get('fact'), scale_factor, component_type)} "
+            f"| {_impact_cell(_impact(node), bold_infl, scale_factor, component_type)} |"
         )
         if has_children:
             dtype = (node.get("details") or {}).get("type") or ""
