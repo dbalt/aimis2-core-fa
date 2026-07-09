@@ -358,7 +358,7 @@ _KEY_FACTORS_BRANCH_1 = _BASE_FACTORS + """
 ## TASK (BRANCH 1)
 
 Root执行/перевыполняет план (positive impact), но есть 🔴-факторы.
-Focus на 🔴-факторах и их компенсации.
+Focus на 🔴-факторах и их компенсации. DONT FORGET TO MENTION 🟢-factors.
 
 Output: section `## Ключевые факторы`
 Structure:
