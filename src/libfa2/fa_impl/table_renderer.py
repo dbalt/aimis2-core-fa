@@ -189,9 +189,19 @@ async def render_factor_table(data: Dict) -> str:
     if not trees:
         return ""
 
+    # Фильтрация деревьев: оставляем только те, у которых есть дети
+    filtered_trees = []
+    for tree in trees:
+        children = (tree.get("details") or {}).get("top_factors") or []
+        if len(children) > 0:
+            filtered_trees.append(tree)
+
+    if not filtered_trees:
+        return ""
+
     # Сбор всех значений для определения оптимального масштаба
     all_values: List[float] = []
-    
+
     def collect_values(node: Dict) -> None:
         am = node.get("amounts") or {}
         for key in ("plan", "fact", "deviation", "impact_to_top_lvl"):
@@ -201,8 +211,8 @@ async def render_factor_table(data: Dict) -> str:
         children = (node.get("details") or {}).get("top_factors") or []
         for c in children:
             collect_values(c)
-    
-    for tree in trees:
+
+    for tree in filtered_trees:
         collect_values(tree)
 
     # Определение оптимального масштаба
@@ -234,13 +244,13 @@ async def render_factor_table(data: Dict) -> str:
             for c in children:
                 walk(c, depth + 1, node, len(children) == 1)
 
-    for ti, tree in enumerate(trees):
+    for ti, tree in enumerate(filtered_trees):
         if ti > 0:
             rows.append("|   | | | | |")          # разделитель между деревьями
         walk(tree, 0, None, False)
 
     head = (f"### Детализация факторного анализа отклонений: "
-            f"{_clean_name(trees[0].get('hieararchy_node', ''))}\n\n"
+            f"{_clean_name(filtered_trees[0].get('hieararchy_node', ''))}\n\n"
             f"| # | Путь разложения | План, {scale_suffix} | Факт, {scale_suffix} | Влияние, {scale_suffix} |\n"
             f"|---|----------------|----------:|----------:|----------------:|\n")
     return head + "\n".join(rows)
