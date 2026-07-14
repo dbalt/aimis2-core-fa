@@ -106,8 +106,8 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
     if v is None:
         return ""
 
-    # Если явно указано как проценты (для rate/ratio_num/ratio_den)
-    if as_percentage and component_type in ('rate', 'ratio_num', 'ratio_den'):
+    # Если явно указано как проценты
+    if as_percentage:
         s = f"{abs(v) * 100:.3f}".replace(".", ",")
         sign = "-" if v < 0 else ""
         return sign + s.rstrip('0').rstrip(',') + "%"
@@ -142,22 +142,22 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
     return ("-" if v < 0 else "") + s
 
 
-def _t_amount(v: float, scale: float, component_type: Optional[str] = None) -> str:
+def _t_amount(v: float, scale: float, flg_rate_type: Optional[bool] = None) -> str:
     """План/Факт с динамическим масштабированием. Для rate/ratio показываем как проценты."""
-    # Для rate/ratio_num/ratio_den используем проценты, иначе используем автоматическое определение
-    as_percentage = component_type in ('rate', 'ratio_num', 'ratio_den')
-    return _format_number(v, scale, component_type, as_percentage=as_percentage)
+    # Для rate/ratio показываем как проценты, иначе используем автоматическое определение
+    as_percentage = flg_rate_type is True
+    return _format_number(v, scale, None, as_percentage=as_percentage)
 
 
-def _t_impact(v: float, scale: float, component_type: Optional[str] = None) -> str:
-    """Влияние с динамическим масштабом и знаком: + / − / 0,0. Для всех типов - как рубли."""
+def _t_impact(v: float, scale: float) -> str:
+    """Влияние с динамическим масштабом и знаком: + / − / 0,0."""
     if not v:
         return "0,0"
-    return _format_number(v, scale, component_type, as_percentage=False)
+    return _format_number(v, scale, None, as_percentage=False)
 
 
-def _impact_cell(v: float, bold: bool, scale: float, component_type: Optional[str] = None) -> str:
-    txt = _t_impact(v, scale, component_type)
+def _impact_cell(v: float, bold: bool, scale: float, flg_rate_type: Optional[bool] = None) -> str:
+    txt = _t_impact(v, scale)
     if bold:
         txt = f"**{txt}**"
     marker = "🔴 " if v < 0 else ("🟢 " if v > 0 else "")
@@ -250,14 +250,14 @@ async def render_factor_table(data: Dict) -> str:
                     break
         num = " " if depth == 0 else str(counter.__setitem__(0, counter[0] + 1) or counter[0])
         bold_infl = has_children or is_single or depth == 0
-        
-        # Получаем тип компонента из node для корректного форматирования
-        component_type = node.get("amount_type")
-        
+
+        # flg_rate_type берётся с текущего узла
+        flg_rate_type = node.get("flg_rate_type")
+
         rows.append(
             f"| {num} | {_path_cell(node, depth, parent)} "
-            f"| {_t_amount(base_val, scale_factor, component_type)} | {_t_amount(am.get('fact'), scale_factor, component_type)} "
-            f"| {_impact_cell(_impact(node), bold_infl, scale_factor, component_type)} |"
+            f"| {_t_amount(base_val, scale_factor, flg_rate_type)} | {_t_amount(am.get('fact'), scale_factor, flg_rate_type)} "
+            f"| {_impact_cell(_impact(node), bold_infl, scale_factor)} |"
         )
         if has_children:
             dtype = (node.get("details") or {}).get("type") or ""

@@ -79,6 +79,8 @@ Each tree has:
 ## COMMON FORMATTING
 
 ### Numbers
+- `flg_rate_type: true` → план/факт = проценты (xxx.xxx%)
+- `flg_rate_type: false` или нет → деление на scale_factor + scale_full
 - 0 < |v| < 1 и контекст процентный → xxx.xxx% или x.xxx п.п.
 - Иначе → деление на scale_factor + scale_full
 - Разделитель тысяч: неразрывный пробел (1 000)
@@ -184,6 +186,8 @@ Each tree has:
 ## COMMON FORMATTING
 
 ### Numbers
+- `flg_rate_type: true` → план/факт = проценты (xxx.xxx%)
+- `flg_rate_type: false` или нет → деление на scale_factor + scale_full
 - 0 < |v| < 1 и контекст процентный → xxx.xxx% или x.xxx п.п.
 - Иначе → деление на scale_factor + scale_full
 - Разделитель тысяч: неразрывный пробел (1 000)
