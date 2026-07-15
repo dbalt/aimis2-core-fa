@@ -99,8 +99,7 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
                        если False, использовать масштаб (для impact)
 
     Правила:
-        - Если as_percentage=True и component_type в ('rate', 'ratio_num', 'ratio_den') → проценты
-        - Если 0 < abs(v) < 1 и as_percentage не задан → автоматически проценты
+        - Если as_percentage=True → проценты
         - Иначе → с масштабированием
     """
     if v is None:
@@ -108,12 +107,6 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
 
     # Если явно указано как проценты
     if as_percentage:
-        s = f"{abs(v) * 100:.3f}".replace(".", ",")
-        sign = "-" if v < 0 else ""
-        return sign + s.rstrip('0').rstrip(',') + "%"
-
-    # Ставки/доли показываем в процентах (без учёта масштаба)
-    if 0 < abs(v) < 1 and not as_percentage:
         s = f"{abs(v) * 100:.3f}".replace(".", ",")
         sign = "-" if v < 0 else ""
         return sign + s.rstrip('0').rstrip(',') + "%"
