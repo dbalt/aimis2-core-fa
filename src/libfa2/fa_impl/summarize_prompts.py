@@ -152,6 +152,8 @@ Each tree has:
 
 ## CORE RULES
 
+- ALL 🔴/🟢 FACTORS ARE TAKEN ONLY FROM impact_to_top_lvl
+
 ### 1. MARKERS (обязательно)
 🔴 = отрицательный вклад (факт хуже плана)
 🟢 = положительный вклад (факт лучше плана)

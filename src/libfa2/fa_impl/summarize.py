@@ -144,10 +144,8 @@ async def build_branch_report(
     root = _root_node(data)
     plan_alias = data.get("plan_alias") or root.get("plan_alias") or "План"
     fact_alias = data.get("fact_alias") or root.get("fact_alias") or "Факт"
-    if data.get("plan_alias") or root.get("plan_alias"):
-        scale_info["plan_alias"] = plan_alias
-    if data.get("fact_alias") or root.get("fact_alias"):
-        scale_info["fact_alias"] = fact_alias
+    scale_info["plan_alias"] = plan_alias.lower()
+    scale_info["fact_alias"] = fact_alias.lower()
     data_with_scale = {**data, "scale_info": scale_info}
 
     # Подставляем алиасы вместо {{plan_alias}}/{{fact_alias}} в промпты
