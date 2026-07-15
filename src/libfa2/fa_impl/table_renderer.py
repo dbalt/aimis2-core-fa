@@ -270,9 +270,12 @@ async def render_factor_table(data: Dict) -> str:
             rows.append("|   | | | | |")          # разделитель между деревьями
         walk(tree, 0, None, False)
 
+    plan_label = data.get("plan_alias") or filtered_trees[0].get("plan_alias") or "План"
+    fact_label = data.get("fact_alias") or filtered_trees[0].get("fact_alias") or "Факт"
+
     head = (f"### Детализация факторного анализа отклонений: "
             f"{_clean_name(filtered_trees[0].get('hieararchy_node', ''))}\n\n"
-            f"| # | Путь разложения | План, {scale_suffix} | Факт, {scale_suffix} | Влияние, {scale_suffix} |\n"
+            f"| # | Путь разложения | {plan_label}, {scale_suffix} | {fact_label}, {scale_suffix} | Влияние, {scale_suffix} |\n"
             f"|---|----------------|----------:|----------:|----------------:|\n")
     return head + "\n".join(rows)
 

@@ -74,6 +74,10 @@ Each tree has:
 Если фактор имеет только одного потомка (соотношение >= 0.90), спустись к нему.
 Конечный источник — в драйвере, промежуточные — НЕ показывай.
 
+### 8. PLAN / FACT ALIASES
+Используй scale_info.plan_alias и scale_info.fact_alias вместо слов
+"План" и "Факт" в текстах. Если алиас пустой — используй "План"/"Факт".
+
 ---
 
 ## COMMON FORMATTING
@@ -180,6 +184,10 @@ Each tree has:
 ### 7. TRANSPARENT CHAIN (транзитные узлы)
 Если фактор имеет только одного потомка (соотношение >= 0.90), спустись к нему.
 Конечный источник — в драйвере, промежуточные — НЕ показывай.
+
+### 8. PLAN / FACT ALIASES
+Используй scale_info.plan_alias и scale_info.fact_alias вместо слов
+"План" и "Факт" в текстах. Если алиас пустой — используй "План"/"Факт".
 
 ---
 
@@ -317,7 +325,7 @@ Root执行/перевыполняет план (positive impact), но есть 
 Focus на 🔴-факторах и их компенсации.
 
 Output: 2-4 sentences
-1. Root measure + actual value + plan + total 🟢 deviation
+1. Root measure + actual value + **{{plan_alias}}** + total 🟢 deviation
 2. List all significant 🔴-factors (direct children, by |impact| desc)
 3. Show 🟢-factors that compensate the 🔴-factors:
    - Include up to 2 largest 🟢-factors that EACH compensate >= 15% of root deviation
@@ -336,12 +344,12 @@ _SHORT_SUMMARY_BRANCH_2 = _BASE_SUMMARY + """
 Root执行/перевыполняет план (positive impact), 🔴-факторов НЕТ.
 
 Output: 2-4 sentences
-1. Root measure + actual value + plan + total 🟢 deviation
+1. Root measure + actual value + **{{plan_alias}}** + total 🟢 deviation
 2. List main 🟢-factors (direct children, by |impact| desc)
 3. Never write "негатива нет" — просто не упоминай
 
 Example:
-Корневой показатель перевыполнил план на +150 млн руб. (факт — 5000 млн, план — 4850 млн). Основной вклад внесли 🟢 Чистый процентный доход (+120 млн руб.) и 🟢 Прочие чистые операционные доходы (+30 млн руб.).
+Корневой показатель перевыполнил **{{plan_alias}}** на +150 млн руб. (факт — 5000 млн, **{{plan_alias}}** — 4850 млн). Основной вклад внесли 🟢 Чистый процентный доход (+120 млн руб.) и 🟢 Прочие чистые операционные доходы (+30 млн руб.).
 """
 
 _SHORT_SUMMARY_BRANCH_3 = _BASE_SUMMARY + """
@@ -351,12 +359,12 @@ Root ОТКЛОНЯЕТСЯ от плана (negative impact).
 Only 🔴-факторы, 🟢-факторы НЕ показывать.
 
 Output: 2-4 sentences
-1. Root measure + actual value + plan + total 🔴 deviation
+1. Root measure + actual value + **{{plan_alias}}** + total 🔴 deviation
 2. List 1-2 largest 🔴-factors (direct children)
 3. Never mention compensation or 🟢 factors
 
 Example:
-Корневой показатель отклонился от плана на −250 млн руб. (факт — 4600 млн, план — 4850 млн). Отклонение обусловлено 🔴 Прочими чистыми операционными доходами (−180 млн руб.) и 🔴 ОД до резервов (−70 млн руб.).
+Корневой показатель отклонился от **{{plan_alias}}** на −250 млн руб. (факт — 4600 млн, **{{plan_alias}}** — 4850 млн). Отклонение обусловлено 🔴 Прочими чистыми операционными доходами (−180 млн руб.) и 🔴 ОД до резервов (−70 млн руб.).
 """
 
 _KEY_FACTORS_BRANCH_1 = _BASE_FACTORS + """

@@ -139,10 +139,20 @@ async def build_branch_report(
     """Собрать отчёт по выбранной ветке: параллельно short_summary, key_factors, таблица."""
     summary_prompt = SummarizerPrompt.SHORT_SUMMARY_PROMPTS[branch]
     factors_prompt = SummarizerPrompt.KEY_FACTORS_PROMPTS[branch]
-    
-    # Добавляем информацию о масштабе в данные для промптов
+
     scale_info = _get_scale_info(data)
+    root = _root_node(data)
+    plan_alias = data.get("plan_alias") or root.get("plan_alias") or "План"
+    fact_alias = data.get("fact_alias") or root.get("fact_alias") or "Факт"
+    if data.get("plan_alias") or root.get("plan_alias"):
+        scale_info["plan_alias"] = plan_alias
+    if data.get("fact_alias") or root.get("fact_alias"):
+        scale_info["fact_alias"] = fact_alias
     data_with_scale = {**data, "scale_info": scale_info}
+
+    # Подставляем алиасы вместо {{plan_alias}}/{{fact_alias}} в промпты
+    summary_prompt = summary_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
+    factors_prompt = factors_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
 
     tsks = []
     async with asyncio.TaskGroup() as tg:

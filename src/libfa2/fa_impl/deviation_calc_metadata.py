@@ -18,6 +18,7 @@ class DeviationCalcMetadata:
     source_params: SourceParameters
     search_dev_params: SearchDevParameters
     hier_lst: List[Hierarchy]
+    aliases: dict | None = None
 
     # ---- serialization: dict ----
 
@@ -25,12 +26,15 @@ class DeviationCalcMetadata:
         return len(self.hier_lst)
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "code": self.code,
             "source_params": self.source_params.to_dict(),
             "search_dev_params": self.search_dev_params.to_dict(),
             "hier_lst": [h.to_json(include_empty_fields=True) for h in self.hier_lst],
         }
+        if self.aliases:
+            d["aliases"] = self.aliases
+        return d
 
     @classmethod
     def from_dict(cls, data: dict) -> "DeviationCalcMetadata":
@@ -43,6 +47,7 @@ class DeviationCalcMetadata:
             source_params=SourceParameters.from_dict(data["source_params"]),
             search_dev_params=SearchDevParameters.from_dict(data["search_dev_params"]),
             hier_lst=hier_lst,
+            aliases=data.get("aliases"),
         )
 
     # ---- serialization: json dict ----
@@ -54,6 +59,8 @@ class DeviationCalcMetadata:
         result["source_params"] = self.source_params.to_json()
         result["search_dev_params"] = self.search_dev_params.to_json()
         result["hier_lst"] = [h.to_json() for h in self.hier_lst]
+        if self.aliases:
+            result["aliases"] = self.aliases
         return result
 
     @classmethod
