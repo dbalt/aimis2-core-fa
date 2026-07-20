@@ -111,6 +111,12 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
         sign = "-" if v < 0 else ""
         return sign + s.rstrip('0').rstrip(',') + "%"
 
+    # Ставки/доли показываем в процентах (без учёта масштаба)
+    if 0 < abs(v) < 1 and not as_percentage:
+        s = f"{abs(v) * 100:.3f}".replace(".", ",")
+        sign = "-" if v < 0 else ""
+        return sign + s.rstrip('0').rstrip(',') + "%"
+
     # Если масштаб не задан (scale=0), используем 1
     if scale == 0:
         scale = 1
