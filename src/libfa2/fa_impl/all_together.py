@@ -45,6 +45,12 @@ async def calculate_and_summarize_deviation(
         "data": data_lst
     }
 
+    aliases = deviation_calc_metadata.aliases or {}
+    if aliases.get("plan_alias"):
+        data["plan_alias"] = aliases["plan_alias"]
+    if aliases.get("fact_alias"):
+        data["fact_alias"] = aliases["fact_alias"]
+
     summary_res = await summarize(data, fn_get_llm_client, model_summary, model_details)
     if not summary_res.ok:
         lgr.warning(f'Summarization failed: code={code}, dt={dt}: {summary_res.err}')

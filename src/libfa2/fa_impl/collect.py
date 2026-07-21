@@ -18,6 +18,10 @@ def collect_for_summary(root_drill_component:DrillComponent)->Dict:
 
         d['hieararchy_node'] = dc.hier_ref.name
 
+        # Добавляем flg_rate_type из метаданных иерархии (если задан)
+        if dc.hier_ref.flg_rate_type is not None:
+            d['flg_rate_type'] = dc.hier_ref.flg_rate_type
+
         if dc.analyt_struct:
             analyt_slice = {map.get(k, k):v for (k,v) in dc.analyt_struct.items()}
             d['analytic_slice'] = analyt_slice

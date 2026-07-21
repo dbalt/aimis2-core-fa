@@ -83,6 +83,9 @@ class MetricNode:
     #: Опциональные метаданные разложения по аналитическим разрезам
     analyt_metadata: Optional["AnalyticalStructureMetadata"] = None
 
+    #: Флаг типа ставки
+    flg_rate_type: Optional[bool] = None
+
     #: Тип декомпозиции для показателя типа MULTI (обязателен при type=MULTI)
     mp_decomp_tp: Optional[MultipartDecompositionType] = None
 
@@ -152,6 +155,8 @@ class MetricNode:
         if self.analyt_metadata is not None:
             import json
             result["analyt_metadata"] = json.loads(self.analyt_metadata.to_json())
+        if self.flg_rate_type is not None:
+            result["flg_rate_type"] = self.flg_rate_type
         if self.mp_decomp_tp is not None:
             result["mp_decomp_tp"] = self.mp_decomp_tp.value
 
@@ -199,6 +204,8 @@ class MetricNode:
             import json
             # AnalyticalStructureMetadata сериализуется как {fa_impl: [...], dimensions: [...]}
             result["analyt_metadata"] = json.loads(self.analyt_metadata.to_json())
+        if self.flg_rate_type is not None:
+            result["flg_rate_type"] = self.flg_rate_type
         # mp_decomp_tp включается только при type=MULTI
         if self.mp_decomp_tp is not None and self.type == MetricType.MULTI:
             result["mp_decomp_tp"] = self.mp_decomp_tp.value
@@ -286,6 +293,9 @@ class MetricNode:
             import json
             analyt_metadata = AnalyticalStructureMetadata.from_json(json.dumps(data["analyt_metadata"]))
 
+        # Обработка flg_rate_type
+        flg_rate_type = data.get("flg_rate_type")
+
         # Обработка mp_decomp_tp (читается только при type=multi)
         mp_decomp_tp = None
         if metric_type == MetricType.MULTI and "mp_decomp_tp" in data and data["mp_decomp_tp"] is not None:
@@ -304,6 +314,7 @@ class MetricNode:
             componentMultiPartType=component_multi_part_type,
             componentRatioPartType=component_ratio_part_type,
             analyt_metadata=analyt_metadata,
+            flg_rate_type=flg_rate_type,
             mp_decomp_tp=mp_decomp_tp,
         )
 
@@ -401,6 +412,8 @@ class MetricNode:
             parts.append(f"type={self.type.value}")
         if self.parent is not None:
             parts.append(f"parent={self.parent}")
+        if self.flg_rate_type is not None:
+            parts.append(f"flg_rate_type={self.flg_rate_type}")
         return f"MetricNode({', '.join(parts)})"
 
     def __eq__(self, other: object) -> bool:
@@ -417,6 +430,7 @@ class MetricNode:
             self.componentMultiPartType == other.componentMultiPartType and
             self.componentRatioPartType == other.componentRatioPartType and
             self.analyt_metadata == other.analyt_metadata and
+            self.flg_rate_type == other.flg_rate_type and
             self.mp_decomp_tp == other.mp_decomp_tp
         )
 
@@ -432,5 +446,6 @@ class MetricNode:
             self.componentMultiPartType,
             self.componentRatioPartType,
             hash(str(self.analyt_metadata)) if self.analyt_metadata else None,
+            self.flg_rate_type,
             self.mp_decomp_tp
         ))
