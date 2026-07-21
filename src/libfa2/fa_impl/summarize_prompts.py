@@ -255,6 +255,7 @@ Output: ONLY the section `## Краткое саммари`
 - 2-4 sentences, no bullets, no nesting
 - Single mention of root impact with scale
 - For rate factors: present baseline + actual values in % in same sentence
+- **CRITICAL: ALWAYS add markers — 🔴 BEFORE negative impacts, 🟢 BEFORE positive impacts. NEVER omit markers in summary.**
 - Use markdown: ## headers, **bold** for measure names, 🔴/🟢 markers
 - DO NOT output "## Ключевые факторы" or any bullet lists
 """
@@ -268,10 +269,18 @@ _BASE_FACTORS = _COMMON_FACTORS + """
 
 Output: one section `## Ключевые факторы`
 
+### CRITICAL: ALWAYS ADD MARKERS
+- 🔴 BEFORE every negative impact (🔴 factor, red emoji required)
+- 🟢 BEFORE every positive impact (🟢 factor, green emoji required)
+- Each bullet MUST start with the correct marker. NEVER omit markers.
+- If only 🔴-factors allowed (branch 3) → use only 🔴. If only 🟢 allowed (branch 2) → use only 🟢.
+
 ### Selection rules
+- **SOURCE OF TRUTH for all impact values: impact_to_top_lvl.**
+  ВСЕ значения impact/|impact| для сравнений, порогов, ratio — ТОЛЬКО из impact_to_top_lvl, НИКОГДА из deviation/deviation_amounts.
 - At the beginning count how many main axis blocks are there. That is how many main axis blocks must be in the output.
-- Include if |impact| >= 30% of largest OR >= significance threshold
-- If N-th factor and (N+1)-th differ < 15% → include both (up to 6 total)
+- Include if |impact_to_top_lvl| >= 30% of largest OR >= significance threshold
+- If N-th factor and (N+1)-th differ < 15% → include both (up to 6 total per axis)
 - If only 1 significant child → output 1 bullet (not a problem)
 - Always try to get to the root of negative impacts.
 - IF TREE HAS NO CHILDREN - DONT MENTION IT (Tree != Root)
@@ -297,7 +306,9 @@ Output: one section `## Ключевые факторы`
 
 ### Nested levels
 1. Component driver: "Главный драйвер — 🔴 <source> (−X.XX)"
-   - Applies algorithm 7.2: compress transit chains
+   - Apply algorithm 7.2: ratio = |child.impact_to_top_lvl| / |parent.impact_to_top_lvl|
+   - Single child ratio >= 0.90 → compress into parent
+   - Multiple siblings ratio < 2 → output 2-3 separate bullets
 2. Slice breakdown: "в том числе:" with 2-3 slice values
 
 ### For branch 3 (only 🔴):
@@ -323,7 +334,7 @@ Output: one section `## Ключевые факторы`
 _SHORT_SUMMARY_BRANCH_1 = _BASE_SUMMARY + """
 ## TASK (BRANCH 1)
 
-Root执行/перевыполняет план (positive impact), но есть 🔴-факторы.
+Root превышает/перевыполняет план (positive impact), но есть 🔴-факторы.
 Focus на 🔴-факторах и их компенсации.
 
 Output: 2-4 sentences
@@ -343,7 +354,7 @@ Output: 2-4 sentences
 _SHORT_SUMMARY_BRANCH_2 = _BASE_SUMMARY + """
 ## TASK (BRANCH 2)
 
-Root执行/перевыполняет план (positive impact), 🔴-факторов НЕТ.
+Root превышает/перевыполняет план (positive impact), 🔴-факторов НЕТ.
 
 Output: 2-4 sentences
 1. Root measure + actual value + **{{plan_alias}}** + total 🟢 deviation
@@ -372,7 +383,7 @@ Example:
 _KEY_FACTORS_BRANCH_1 = _BASE_FACTORS + """
 ## TASK (BRANCH 1)
 
-Root执行/перевыполняет план (positive impact), но есть 🔴-факторы.
+Root превышает/перевыполняет план (positive impact), но есть 🔴-факторы.
 Focus на 🔴-факторах и их компенсации. DONT FORGET TO MENTION 🟢-factors.
 
 Output: section `## Ключевые факторы`
@@ -391,7 +402,7 @@ Contents (in order):
      - Include up to 4 🟢-factors (all positive contributors that help offset 🔴)
    - Total 🟢-factors: 1-2 if significant, up to 4 only if combined compensation needed
    - All 🟢-factors sorted by desc
-   - Total bullets: up to 12 per axis branch(but not a quota)
+   - Total bullets: up to 12 per axis branch (overrides base "up to 6" — Branch 1 has both 🔴 + 🟢, hence more items)
    - First, include ALL slices from major business axes
    - Then, include other 🔴-factors by significance
    - DO NOT SKIP ANY BUSINESS AXES, ITS YOUR MAIN PRIORITY
@@ -445,6 +456,7 @@ Contents:
 Nested levels (ALWAYS expand if data allows):
 1. Component driver (2nd level bullet)
    - Apply algorithm 7.2:
+     - ratio = |child.impact_to_top_lvl| / |parent.impact_to_top_lvl|
      - Single child ratio >= 0.90 → compress
      - Multiple siblings ratio < 2 → output 2-3 separate bullets
 2. Slice breakdown (3rd level)
