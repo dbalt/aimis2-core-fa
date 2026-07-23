@@ -402,6 +402,10 @@ Contents (in order):
 Nested levels:
 - 2nd level: driver (components or algorithm 7.2)
 - 3rd level: slice breakdown if present
+
+Format:
+- 🔴 **Measure** — отклонение от **{{plan_alias}}** на −X.XX scale_full
+- 🟢 **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
 """
 
 _KEY_FACTORS_BRANCH_2 = _BASE_FACTORS + """
@@ -421,6 +425,9 @@ Contents:
 
 Format: 🟢 **Measure** — impact **+X.XX scale_full**. Optional driver sentence.
 Nested: slice breakdown if present.
+
+Format example:
+- 🟢 **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
 """
 
 _KEY_FACTORS_BRANCH_3 = _BASE_FACTORS + """
@@ -455,7 +462,7 @@ Nested levels (ALWAYS expand if data allows):
    - Add "в том числе:" with 2-3 largest 🔴 slice values
 
 Format:
-- Top level: 🔴 **Measure** — impact **−X.XX scale_full**
+- Top level: 🔴 **Measure** — отклонение от **{{plan_alias}}** на −X.XX scale_full
 - Nested: 🔴 <component> (−X.XX) or 🔴 <slice> (−X.XX)
 - Only 🔴 components in nesting, no 🟢
 """
