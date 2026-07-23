@@ -13,6 +13,14 @@ NULL_SLICE_LABEL = "без распределения"   # как показыв
 SEP_COMPONENTS = "*↳ по компонентам иерархии*"   # ярлык разделителя для компонент
 
 
+def _group_thousands(num_str: str) -> str:
+    """Группирует цифры целого числа по тройки, разделяя пробелами."""
+    num_str = num_str.lstrip('-')
+    rev = num_str[::-1]
+    chunks = [rev[i:i+3] for i in range(0, len(rev), 3)]
+    return ' '.join(chunks)[::-1]
+
+
 def _clean_name(s) -> str:
     if not s:
         return "" if s is None else str(s)
@@ -26,119 +34,88 @@ def _impact(node: Dict) -> float:
 def _infer_scale(values: List[float]) -> Tuple[float, str, str]:
     """
     Определяет оптимальный масштаб для всей таблицы на основе распределения значений.
-    
-    Использует медиану и процент значений в каждом диапазоне для выбора масштаба:
-    - Если большинство значений (>= 60%) < 1 млн, выбираем млн
-    - Если большинство значений < 1 тыс., выбираем тыс.
-    - Иначе выбираем млрд
-    
-    Возвращает:
-        (scale_factor, suffix_short, suffix_full)
-        например: (1_000_000_000, "млрд", "млрд руб.")
+
+    УСТАРЕЛО: теперь всегда используется миллионный масштаб.
+    Оставлен для обратной совместимости, но всегда возвращает млн.
     """
-    # Фильтруем ненулевые значения
-    non_zero_values = [abs(v) for v in values if v]
-    if not non_zero_values:
-        return 1_000_000, "млн", "млн руб."
-    
-    n = len(non_zero_values)
-    
-    # Считаем, сколько значений в каждом диапазоне
-    count_rub = sum(1 for v in non_zero_values if v < 1_000)
-    count_thou = sum(1 for v in non_zero_values if 1_000 <= v < 1_000_000)
-    count_mln = sum(1 for v in non_zero_values if 1_000_000 <= v < 1_000_000_000)
-    count_mld = sum(1 for v in non_zero_values if v >= 1_000_000_000)
-    
-    # Логика выбора масштаба:
-    # 1. Если >= 60% значений < 1 тыс. → используем тыс. или руб.
-    # 2. Если >= 60% значений < 1 млн → используем млн
-    # 3. Если >= 60% значений < 1 млрд → используем млрд
-    # 4. Иначе (много очень больших значений) → используем млрд
-    
-    threshold = n * 0.6  # 60% значений
-    
-    if count_rub >= threshold:
-        # Большинство < 1 тыс.
-        if count_mln + count_mld > 0:
-            return 1_000, "тыс.", "тыс. руб."
-        else:
-            return 1.0, "руб.", "руб."
-    elif count_thou >= threshold:
-        # Большинство в диапазоне тыс.
-        return 1_000, "тыс.", "тыс. руб."
-    elif count_mln >= threshold:
-        # Большинство < 1 млн
-        return 1_000_000, "млн", "млн руб."
-    elif count_mld >= threshold:
-        # Большинство >= 1 млрд
-        return 1_000_000_000, "млрд", "млрд руб."
-    else:
-        # Смешанное распределение — используем медиану для определения
-        sorted_vals = sorted(non_zero_values)
-        median = sorted_vals[n // 2]
-        
-        if median >= 1_000_000_000:
-            return 1_000_000_000, "млрд", "млрд руб."
-        elif median >= 1_000_000:
-            return 1_000_000, "млн", "млн руб."
-        elif median >= 1_000:
-            return 1_000, "тыс.", "тыс. руб."
-        else:
-            return 1.0, "руб.", "руб."
+    return 1_000_000, "млн", "млн руб."
 
 
 def _format_number(v: float, scale: float, component_type: Optional[str] = None, as_percentage: bool = False) -> str:
     """
-    Форматирует число с учётом масштаба и точности.
+    Форматирует число с динамическим suffix.
 
-    Параметры:
-        v: значение для форматирования
-        scale: масштаб для деления (если 0, не делить)
-        component_type: тип компонента ('rate', 'base', 'ratio_num', 'ratio_den')
-        as_percentage: если True, всегда форматировать как проценты (для rate/ratio_num/ratio_den)
-                       если False, использовать масштаб (для impact)
+    Базовая шкала — млн. В ячейках suffix меняется для малых значений:
+      - |v| >= 1 млн → без suffix (контекст из шапки)
+      - |v| < 1 млн → "тыс." с достаточной точностью (никогда не обнуляем)
 
-    Правила:
-        - Если as_percentage=True → проценты
-        - Иначе → с масштабированием
+    Для rate/ratio — всегда проценты.
+    Никогда не округляет ненулевое число до нуля.
     """
     if v is None:
         return ""
 
-    # Если явно указано как проценты
+    # --- Проценты (rate, ratio) ---
     if as_percentage:
         s = f"{abs(v) * 100:.3f}".replace(".", ",")
         sign = "-" if v < 0 else ""
         return sign + s.rstrip('0').rstrip(',') + "%"
 
-    # Ставки/доли показываем в процентах (без учёта масштаба)
     if 0 < abs(v) < 1 and not as_percentage:
         s = f"{abs(v) * 100:.3f}".replace(".", ",")
         sign = "-" if v < 0 else ""
         return sign + s.rstrip('0').rstrip(',') + "%"
 
-    # Если масштаб не задан (scale=0), используем 1
-    if scale == 0:
-        scale = 1
-
-    scaled = v / scale
-
-    # Для нулевых значений — показываем 0,0 (учитываем float-артефакты)
-    if abs(scaled) < 1e-10:
+    # --- Ноль ---
+    if abs(v) < 1e-10:
         return "0,0"
 
-    # Для очень маленьких чисел (меньше 1% от масштаба) — больше знаков после запятой
-    if 0 < abs(scaled) < 0.01:
-        s = f"{abs(scaled):.4f}".replace(".", ",")
-        # Убираем лишние нули в конце
-        s = s.rstrip('0').rstrip(',')
-        return ("-" if v < 0 else "") + s
+    # --- Определяем suffix и точность по абсолютному значению ---
+    abs_v = abs(v)
 
-    # Обычный формат с 1 знаком после запятой
-    s = f"{abs(scaled):,.1f}".replace(",", " ").replace(".", ",")
-    # Убираем лишние нули и точки
-    s = s.rstrip('0').rstrip(',')
-    return ("-" if v < 0 else "") + s
+    if abs_v >= 1_000_000:
+        decimals = 1
+        suffix = ""
+        scale_factor = 1_000_000
+    else:
+        # Все числа < 1 млн — форматируем в тысячах с достаточной точностью
+        # Чтобы не терять мелкие числа: 1 руб. = 0.001 тыс., 500 руб. = 0.5 тыс.
+        suffix = "тыс."
+        scale_factor = 1_000
+        # Считаем сколько знаков нужно:
+        # Если scaled < 0.01 → 4 знака, < 0.1 → 3 знака, < 1 → 2 знака
+        raw_scaled = abs(v) / scale_factor
+        if raw_scaled < 0.01:
+            decimals = 4
+        elif raw_scaled < 0.1:
+            decimals = 3
+        elif raw_scaled < 1:
+            decimals = 2
+        else:
+            decimals = 2
+
+    scaled = v / scale_factor
+
+    # --- Форматируем число ---
+    raw = f"{abs(scaled):.{decimals}f}"
+    if '.' in raw:
+        int_part, dec_part = raw.split('.')
+        dec_part = dec_part.rstrip('0')
+        if dec_part:
+            formatted = _group_thousands(int_part) + ',' + dec_part
+        else:
+            formatted = _group_thousands(int_part)
+    else:
+        formatted = _group_thousands(raw)
+
+    # --- Собираем ---
+    if suffix:
+        result = f"{formatted} {suffix}"
+    else:
+        result = formatted
+
+    sign = "-" if v < 0 else ""
+    return sign + result
 
 
 def _t_amount(v: float, scale: float, flg_rate_type: Optional[bool] = None) -> str:
@@ -215,24 +192,9 @@ async def render_factor_table(data: Dict) -> str:
     if not filtered_trees:
         return ""
 
-    # Сбор всех значений для определения оптимального масштаба
-    all_values: List[float] = []
-
-    def collect_values(node: Dict) -> None:
-        am = node.get("amounts") or {}
-        for key in ("plan", "fact", "deviation", "impact_to_top_lvl"):
-            val = am.get(key)
-            if val is not None:
-                all_values.append(float(val))
-        children = (node.get("details") or {}).get("top_factors") or []
-        for c in children:
-            collect_values(c)
-
-    for tree in filtered_trees:
-        collect_values(tree)
-
-    # Определение оптимального масштаба
-    scale_factor, scale_suffix, scale_full = _infer_scale(all_values)
+    # Базовый масштаб — всегда миллион (используется в _format_number как аргумент scale,
+    # но _format_number сам определяет реальный масштаб по abs(v))
+    scale_factor = 1_000_000
 
     counter = [0]
     rows: List[str] = []
@@ -272,9 +234,10 @@ async def render_factor_table(data: Dict) -> str:
     plan_label = data.get("plan_alias") or filtered_trees[0].get("plan_alias") or "План"
     fact_label = data.get("fact_alias") or filtered_trees[0].get("fact_alias") or "Факт"
 
+    # Фиксированный заголовок — всегда "млн руб."
     head = (f"### Детализация факторного анализа отклонений: "
             f"{_clean_name(filtered_trees[0].get('hieararchy_node', ''))}\n\n"
-            f"| # | Путь разложения | {plan_label}, {scale_suffix} | {fact_label}, {scale_suffix} | Влияние, {scale_suffix} |\n"
+            f"| # | Путь разложения | {plan_label}, млн руб. | {fact_label}, млн руб. | Влияние, млн руб. |\n"
             f"|---|----------------|----------:|----------:|----------------:|\n")
     return head + "\n".join(rows)
 
@@ -290,28 +253,10 @@ async def render_factor_table_wrapper(data):
 def _get_scale_info(data: Dict) -> Dict:
     """
     Возвращает информацию о масштабе для промптов.
-    Аналогична логике _infer_scale, но без форматирования чисел.
+    Всегда: миллионный масштаб.
     """
-    trees = data.get("data") or []
-    all_values: List[float] = []
-    
-    def collect_values(node: Dict) -> None:
-        am = node.get("amounts") or {}
-        for key in ("plan", "fact", "deviation", "impact_to_top_lvl"):
-            val = am.get(key)
-            if val is not None:
-                all_values.append(float(val))
-        children = (node.get("details") or {}).get("top_factors") or []
-        for c in children:
-            collect_values(c)
-    
-    for tree in trees:
-        collect_values(tree)
-
-    scale_factor, scale_suffix, scale_full = _infer_scale(all_values)
-    
     return {
-        "scale": scale_suffix,
-        "scale_full": scale_full,
-        "scale_factor": scale_factor
+        "scale": "млн",
+        "scale_full": "млн руб.",
+        "scale_factor": 1_000_000
     }

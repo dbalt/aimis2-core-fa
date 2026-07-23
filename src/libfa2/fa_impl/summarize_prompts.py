@@ -33,12 +33,15 @@ Each tree has:
 Знак числа + или − должен совпадать с маркером.
 Нет других эмодзи.
 
-### 2. DYNAMIC SCALING (обязательно)
-ВСЕ числа дели на scale_info.scale_factor (из JSON).
-Примеры:
-- scale = "млрд", scale_factor = 1000000000
-- scale = "млн", scale_factor = 1000000
-- scale = "тыс.", scale_factor = 1000
+### 2. SCALING (обязательно)
+Базовая шкала: млн руб. При форматировании чисел из JSON:
+- |v| >= 1 млн → X,XX млн (1 знак): 26,5
+- |v| < 1 млн → X тыс. с достаточной точностью:
+  - |v| >= 1 тыс. → 2 знака (500 тыс., 1,5 тыс.)
+  - |v| < 1 тыс. → больше знаков, чтобы не округлить до 0 (5 руб. = 0,005 тыс.)
+Действие: определи |v| из impact/plan/fact, выбери масштаб,
+примени деление и suffix. Разделитель дробной части — запятая.
+НИКОГДА не округляй ненулевое число до нуля.
 
 ### 3. NO TIME DYNAMICS (запрещено)
 НИКОГДА не пиши: "снижение", "снизился", "падение", "упал", "рост", "вырос", "увеличение", "прирост".
@@ -71,10 +74,9 @@ Each tree has:
 
 ### Numbers
 - `flg_rate_type: true` → план/факт = проценты (xxx.xxx%)
-- `flg_rate_type: false` или нет → деление на scale_factor + scale_full
+- `flg_rate_type: false` или нет → динамический suffix (см. правило 2 SCALING)
 - 0 < |v| < 1 и контекст процентный → xxx.xxx% или x.xxx п.п.
-- Иначе → деление на scale_factor + scale_full
-- Разделитель тысяч: неразрывный пробел (1 000)
+- Разделитель тысяч: пробел (1 000)
 - Десятичный разделитель: запятая (1,5)
 
 ### Markdown
@@ -112,7 +114,7 @@ Each tree has:
 1. ✅ Маркеры совпадают со знаками чисел
 2. ✅ В "Ключевых факторах" только прямые потомки корня
 3. ✅ Нет слов динамики ("снижение", "падение", "рост" и т.д.)
-4. ✅ Все числа разделены на scale_info.scale_factor
+4. ✅ Все числа отформатированы по правилу SCALING (млн/тыс.)
 5. ✅ В ветке 3 нет 🟢-факторов, в ветке 2 нет 🔴-факторов
 6. ✅ Нет дублирующихся узлов (родитель + доминирующий потомок)
 7. ✅ Транзитные цепочки сжаты (алгоритм 7.2)
@@ -125,9 +127,9 @@ Input format:
 {
     "data": [ tree1, tree2, ... ],  // ОДНО отклонение, разложенное по разным осям
     "scale_info": {
-        "scale": "млрд",        // единица измерения
-        "scale_full": "млрд руб.",
-        "scale_factor": 1000000000
+        "scale": "млн",
+        "scale_full": "млн руб.",
+        "scale_factor": 1000000
     }
 }
 
@@ -147,16 +149,19 @@ Each tree has:
 Знак числа + или − должен совпадать с маркером.
 Нет других эмодзи.
 
-### 2. DYNAMIC SCALING (обязательно)
-ВСЕ числа дели на scale_info.scale_factor (из JSON).
-Примеры:
-- scale = "млрд", scale_factor = 1000000000
-- scale = "млн", scale_factor = 1000000
-- scale = "тыс.", scale_factor = 1000
+### 2. SCALING (обязательно)
+Базовая шкала: млн руб. При форматировании чисел из JSON:
+- |v| >= 1 млн → X,XX млн (1 знак): 26,5
+- |v| < 1 млн → X тыс. с достаточной точностью:
+  - |v| >= 1 тыс. → 2 знака (500 тыс., 1,5 тыс.)
+  - |v| < 1 тыс. → больше знаков, чтобы не округлить до 0 (5 руб. = 0,005 тыс.)
+Действие: определи |v| из impact/plan/fact, выбери масштаб,
+примени деление и suffix. Разделитель дробной части — запятая.
+НИКОГДА не округляй ненулевое число до нуля.
 
 ### 3. NO TIME DYNAMICS (запрещено)
 НИКОГДА не пиши: "снижение", "снизился", "падение", "упал", "рост", "вырос", "увеличение", "прирост".
-Используй маркеры: 🔴 "прочие доходы (−0,84 млрд)" или 🟢 "процентный доход (+200 млн)".
+Используй маркеры: 🔴 "прочие доходы (−0,84 млн)" или 🟢 "процентный доход (+200 млн)".
 
 ### 4. ONLY DIRECT CHILDREN (обязательно)
 В "Ключевых факторах" — ТОЛЬКО прямые потомки корня (первый уровень top_factors).
@@ -184,10 +189,9 @@ Each tree has:
 
 ### Numbers
 - `flg_rate_type: true` → план/факт = проценты (xxx.xxx%)
-- `flg_rate_type: false` или нет → деление на scale_factor + scale_full
+- `flg_rate_type: false` или нет → динамический suffix (см. правило 2 SCALING)
 - 0 < |v| < 1 и контекст процентный → xxx.xxx% или x.xxx п.п.
-- Иначе → деление на scale_factor + scale_full
-- Разделитель тысяч: неразрывный пробел (1 000)
+- Разделитель тысяч: пробел (1 000)
 - Десятичный разделитель: запятая (1,5)
 
 ### Markdown
@@ -225,7 +229,7 @@ Each tree has:
 1. ✅ Маркеры совпадают со знаками чисел
 2. ✅ В "Ключевых факторах" только прямые потомки корня
 3. ✅ Нет слов динамики ("снижение", "падение", "рост" и т.д.)
-4. ✅ Все числа разделены на scale_info.scale_factor
+4. ✅ Все числа отформатированы по правилу SCALING (млн/тыс.)
 5. ✅ В ветке 3 нет 🟢-факторов, в ветке 2 нет 🔴-факторов
 6. ✅ Нет дублирующихся узлов (родитель + доминирующий потомок)
 7. ✅ Транзитные цепочки сжаты (алгоритм 7.2)
@@ -287,7 +291,7 @@ Output: one section `## Ключевые факторы`
   - **Priority order**: Major business axes > Core components > Product/feature breakdowns
 
 ### Structure
-- Top level: 🔴/🟢 **Measure name** — impact **X.XX scale_full**
+- Top level: 🔴/🟢 **Measure name** — impact (по правилу SCALING)
 - Nested 2nd level: driver (components or algorithm 7.2)
 - Nested 3rd level: slice breakdown (if present)
 
@@ -311,7 +315,7 @@ Output: one section `## Ключевые факторы`
 3. ✅ No duplicates (parent + dominant child)
 4. ✅ Transit chains compressed (algorithm 7.2)
 5. ✅ Top 6 limit respected (but not a quota)
-6. ✅ All numbers divided by scale_info.scale_factor
+6. ✅ All numbers formatted with SCALING rule (млн/тыс./руб.)
 """
 
 # ===========================================================================
@@ -398,6 +402,10 @@ Contents (in order):
 Nested levels:
 - 2nd level: driver (components or algorithm 7.2)
 - 3rd level: slice breakdown if present
+
+Format:
+- 🔴 **Measure** — отклонение от **{{plan_alias}}** на −X.XX scale_full
+- 🟢 **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
 """
 
 _KEY_FACTORS_BRANCH_2 = _BASE_FACTORS + """
@@ -417,6 +425,9 @@ Contents:
 
 Format: 🟢 **Measure** — impact **+X.XX scale_full**. Optional driver sentence.
 Nested: slice breakdown if present.
+
+Format example:
+- 🟢 **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
 """
 
 _KEY_FACTORS_BRANCH_3 = _BASE_FACTORS + """
@@ -451,7 +462,7 @@ Nested levels (ALWAYS expand if data allows):
    - Add "в том числе:" with 2-3 largest 🔴 slice values
 
 Format:
-- Top level: 🔴 **Measure** — impact **−X.XX scale_full**
+- Top level: 🔴 **Measure** — отклонение от **{{plan_alias}}** на −X.XX scale_full
 - Nested: 🔴 <component> (−X.XX) or 🔴 <slice> (−X.XX)
 - Only 🔴 components in nesting, no 🟢
 """
