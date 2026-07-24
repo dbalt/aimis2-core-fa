@@ -154,7 +154,8 @@ def calculate_query_prop_v2(hier:Hierarchy) -> Hierarchy:
                 n.query = Query({
                     'node_code': expanded,
                     'ind_id': MAP_IND[tp],
-                    'total_type': MAP_TOTAL_TP[tp]
+                    'total_type': MAP_TOTAL_TP[tp],
+                    'flg_correction':0,
                 })
 
         children = hier.get_children(n.id)

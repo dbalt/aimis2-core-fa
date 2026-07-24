@@ -5,6 +5,7 @@ from datetime import date
 from adhoc.template_lite.deserializer import get_from_template_lite_json
 from adhoc.template_lite.transform import transform_template_lite_to_hierarchy
 from adhoc.template_lite.transform_queries import calculate_query_prop, calculate_query_prop_v2
+from adhoc.template_lite.split_to_motivation_corr import split_to_motiv_adj
 from adhoc.template_lite.transform_analytical_structs import transform_analytical_structs
 from libfa2.hier_metadata import Query
 from libfa2.fa_impl.deviation_calc_metadata import DeviationCalcMetadata, SearchDevParameters, SourceParameters
@@ -28,6 +29,9 @@ logging.basicConfig(
     format='[%(asctime)s] {%(pathname)s:%(lineno)d} %(name)s %(levelname)s - %(message)s',
     datefmt='%H:%M:%S'
 )
+
+
+TABLE_NAME_USL_FACTS = 'missa_bidr.v_aimis__usl_facts_exp'
 
 
 class YoTreeNode:
@@ -191,55 +195,55 @@ def bubble_and_reduce_query_to_top(h:Hierarchy):
 
 
 
+#
+# async def setup_od_pao(kc:Redis):
+#     from sdk.tools.settings import env__init_keydb_instance
+#     from sdk.fa2026.client import FaClient
+#
+#     h1 = make_hier('odpao1')
+#     h2 = make_hier('odpao2')
+#
+#     total_cond = bubble_and_reduce_query_to_top(h2)
+#     root_h1 = h1.get_root()
+#     root_h1.query = Query(total_cond)
+#
+#     hier_lst = [
+#         h1, h2
+#     ]
+#
+#     meta = DeviationCalcMetadata(
+#         'odpao',
+#         SourceParameters(
+#             'missa_bidr.v_aimis__usl_facts_exp',
+#             'dt'
+#         ),
+#         SearchDevParameters(
+#             'val_plan',
+#             'val_fact',
+#             -1
+#         ),
+#         hier_lst
+#     )
+#
+#     meta_json = meta.to_json()
+#
+#     fac = FaClient(kc)
+#
+#     await fac.delete_metadata('odpao')
+#     await fac.save_metadata('odpao', meta_json)
+#     await kc.connection_pool.disconnect()
 
-async def setup_od_pao(kc:Redis):
-    from sdk.tools.settings import env__init_keydb_instance
-    from sdk.fa2026.client import FaClient
 
-    h1 = make_hier('odpao1')
-    h2 = make_hier('odpao2')
-
-    total_cond = bubble_and_reduce_query_to_top(h2)
-    root_h1 = h1.get_root()
-    root_h1.query = Query(total_cond)
-
-    hier_lst = [
-        h1, h2
-    ]
-
-    meta = DeviationCalcMetadata(
-        'odpao',
-        SourceParameters(
-            'missa_bidr.v_aimis__usl_facts_exp',
-            'dt'
-        ),
-        SearchDevParameters(
-            'val_plan',
-            'val_fact',
-            -1
-        ),
-        hier_lst
-    )
-
-    meta_json = meta.to_json()
-
-    fac = FaClient(kc)
-
-    await fac.delete_metadata('odpao')
-    await fac.save_metadata('odpao', meta_json)
-    await kc.connection_pool.disconnect()
-
-
-
-async def calc_od_pao(kc:Redis):
-    code = 'odpao'
-
-    from sdk.fa2026.client import FaClient
-    fac = FaClient(kc)
-    dt= date(2026,4,30)
-    await fac.delete_results(code,dt)
-    res = await fac.get_summary(code, dt)
-    print(res)
+#
+# async def calc_od_pao(kc:Redis):
+#     code = 'odpao'
+#
+#     from sdk.fa2026.client import FaClient
+#     fac = FaClient(kc)
+#     dt= date(2026,4,30)
+#     await fac.delete_results(code,dt)
+#     res = await fac.get_summary(code, dt)
+#     print(res)
 
 
 TB_SETUP = {
@@ -256,94 +260,96 @@ TB_SETUP = {
     'msk':'Московский банк',
 }
 
-async def setup_od_tb(kc:Redis):
+# async def setup_od_tb(kc:Redis):
+#
+#
+#     from sdk.fa2026.client import FaClient
+#
+#     h1 = make_hier('odtb1')
+#     h2 = make_hier('odtb2')
+#
+#     total_cond = bubble_and_reduce_query_to_top(h2)
+#     root_h1 = h1.get_root()
+#     root_h1.query = Query(total_cond)
+#
+#
+#
+#     for (tb_code, tbname) in TB_SETUP.items():
+#         hc1 = Hierarchy.from_json(h1.to_json())
+#         hc2 = Hierarchy.from_json(h2.to_json())
+#
+#         r1 = hc1.get_root()
+#         r1.name = f'{r1.name} ({tbname})'
+#
+#         r2 = hc2.get_root()
+#         r2.name = f'{r2.name} ({tbname})'
+#
+#         for n in hc1.nodes.values():
+#             if n.query:
+#                 dic = {}
+#                 dic.update(n.query.to_dict())
+#                 dic.update({
+#                     'tb': tbname
+#                 })
+#                 n.query = Query(dic)
+#
+#         for n in hc2.nodes.values():
+#             if n.query:
+#                 dic = {}
+#                 dic.update(n.query.to_dict())
+#                 dic.update({
+#                     'tb': tbname
+#                 })
+#                 n.query = Query(dic)
+#
+#         hier_lst = [
+#             hc1, hc2
+#         ]
+#
+#         code = f'odtb_{tb_code}'
+#
+#         meta = DeviationCalcMetadata(
+#             code,
+#             SourceParameters(
+#                 'missa_bidr.v_aimis__usl_facts_exp',
+#                 'dt'
+#             ),
+#             SearchDevParameters(
+#                 'val_plan',
+#                 'val_fact',
+#                 -1
+#             ),
+#             hier_lst
+#         )
+#
+#         meta_json = meta.to_json()
+#
+#         fac = FaClient(kc)
+#
+#         await fac.delete_metadata(code)
+#         await fac.save_metadata(code, meta_json)
+#
+#
+#
+#
+#
+#
+#
+#
+# async def calc_od_tb(kc:Redis):
+#     from sdk.tools.settings import env__init_keydb_instance
+#     from sdk.fa2026.client import FaClient
+#
+#     for tbcode in TB_SETUP.keys():
+#         code = f'odtb_{tbcode}'
+#
+#         fac = FaClient(kc)
+#         dt= date(2026,4,30)
+#         await fac.delete_results(code,dt)
+#         res = await fac.get_summary(code, dt)
+#         print(res)
 
 
-    from sdk.fa2026.client import FaClient
-
-    h1 = make_hier('odtb1')
-    h2 = make_hier('odtb2')
-
-    total_cond = bubble_and_reduce_query_to_top(h2)
-    root_h1 = h1.get_root()
-    root_h1.query = Query(total_cond)
-
-
-
-    for (tb_code, tbname) in TB_SETUP.items():
-        hc1 = Hierarchy.from_json(h1.to_json())
-        hc2 = Hierarchy.from_json(h2.to_json())
-
-        r1 = hc1.get_root()
-        r1.name = f'{r1.name} ({tbname})'
-
-        r2 = hc2.get_root()
-        r2.name = f'{r2.name} ({tbname})'
-
-        for n in hc1.nodes.values():
-            if n.query:
-                dic = {}
-                dic.update(n.query.to_dict())
-                dic.update({
-                    'tb': tbname
-                })
-                n.query = Query(dic)
-
-        for n in hc2.nodes.values():
-            if n.query:
-                dic = {}
-                dic.update(n.query.to_dict())
-                dic.update({
-                    'tb': tbname
-                })
-                n.query = Query(dic)
-
-        hier_lst = [
-            hc1, hc2
-        ]
-
-        code = f'odtb_{tb_code}'
-
-        meta = DeviationCalcMetadata(
-            code,
-            SourceParameters(
-                'missa_bidr.v_aimis__usl_facts_exp',
-                'dt'
-            ),
-            SearchDevParameters(
-                'val_plan',
-                'val_fact',
-                -1
-            ),
-            hier_lst
-        )
-
-        meta_json = meta.to_json()
-
-        fac = FaClient(kc)
-
-        await fac.delete_metadata(code)
-        await fac.save_metadata(code, meta_json)
-
-
-
-
-
-
-
-
-async def calc_od_tb(kc:Redis):
-    from sdk.tools.settings import env__init_keydb_instance
-    from sdk.fa2026.client import FaClient
-
-    for tbcode in TB_SETUP.keys():
-        code = f'odtb_{tbcode}'
-
-        fac = FaClient(kc)
-        dt= date(2026,4,30)
-        await fac.delete_results(code,dt)
-        res = await fac.get_summary(code, dt)
-        print(res)
 
 
 
@@ -364,14 +370,24 @@ async def setup_tbgosb_pao(prefix:str, kc:Redis):
     root_h1 = h1.get_root()
     root_h1.query = Query(total_cond)
 
+
+
+    h1 = split_to_motiv_adj(h1)
+    h2 = split_to_motiv_adj(h2)
+
     hier_lst = [
         h1, h2
     ]
 
+    t1 = mk_custom_tree(h1)
+    t2 = mk_custom_tree(h2)
+    #
+    # return
+
     meta = DeviationCalcMetadata(
         code,
         SourceParameters(
-            'missa_bidr.v_aimis__usl_facts_exp',
+            TABLE_NAME_USL_FACTS,
             'dt'
         ),
         SearchDevParameters(
@@ -439,6 +455,9 @@ async def setup_and_save_for_one_tb(prefix:str, kc:Redis, h1json:Dict, h2json:Di
     r2 = hc2.get_root()
     r2.name = f'{r2.name} ({tbname})'
 
+    hc1 = split_to_motiv_adj(hc1)
+    hc2 = split_to_motiv_adj(hc2)
+
     for n in hc1.nodes.values():
         if n.query:
             dic = {}
@@ -466,7 +485,7 @@ async def setup_and_save_for_one_tb(prefix:str, kc:Redis, h1json:Dict, h2json:Di
     meta = DeviationCalcMetadata(
         code,
         SourceParameters(
-            'missa_bidr.v_aimis__usl_facts_exp',
+            TABLE_NAME_USL_FACTS,
             'dt'
         ),
         SearchDevParameters(
@@ -509,16 +528,20 @@ async def calc_tbgosb_onetb(prefix:str, dt:date, kc:Redis, tbcode:str):
 
 
 def main():
+
+
+
+
     dt = date(2026, 4, 30)
 
     all_prefixes = [
         'od',
-        'rez',
-        'operpl',
-        'opex',
-        'chkd',
-        'chpda',
-        'chpdp'
+        # 'rez',
+        # 'operpl',
+        # 'opex',
+        # 'chkd',
+        # 'chpda',
+        # 'chpdp'
     ]
     # prefix = 'operpl'
 
@@ -533,21 +556,21 @@ def main():
         kc = env__init_keydb_instance()
 
         for prefix in all_prefixes:
-            async def _run():
-                try:
-                    await setup_tbgosb_pao(prefix, kc)
-                    await asyncio.sleep(0.1)
-                    await calc_tbgosb_pao(prefix, dt, kc)
-                except:
-                    print(f'SOME ERR {prefix} PAO')
+            # async def _run():
+            #     try:
+            #         await setup_tbgosb_pao(prefix, kc)
+            #         await asyncio.sleep(0.1)
+            #         await calc_tbgosb_pao(prefix, dt, kc)
+            #     except:
+            #         print(f'SOME ERR {prefix} PAO')
+            #
+            # await _run()
 
-            await _run()
 
-
-            # (h1_json, h2_json) = build_hierarchies_based_on_source_jsons(prefix)
-            # for (tb_code, tbname) in TB_SETUP.items():
-            #     await setup_and_save_for_one_tb(prefix, kc, h1_json, h2_json, tb_code, tbname)
-            #     await calc_tbgosb_onetb(prefix, dt, kc, tb_code)
+            (h1_json, h2_json) = build_hierarchies_based_on_source_jsons(prefix)
+            for (tb_code, tbname) in TB_SETUP.items():
+                await setup_and_save_for_one_tb(prefix, kc, h1_json, h2_json, tb_code, tbname)
+                await calc_tbgosb_onetb(prefix, dt, kc, tb_code)
 
 
             await asyncio.sleep(0.1)

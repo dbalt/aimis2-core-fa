@@ -244,7 +244,7 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
             )
 
             drill.components.append(chld_dc)
-            if deviation_calc_params.search_dev_params.is_negative(chld_dc.amts.deviation):
+            if deviation_calc_params.search_dev_params.is_negative(chld_dc.amts.deviation) or chld_dc.hier_ref.force_drill:
                 task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
 
         return

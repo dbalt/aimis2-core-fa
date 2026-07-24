@@ -89,6 +89,8 @@ class MetricNode:
     #: Тип декомпозиции для показателя типа MULTI (обязателен при type=MULTI)
     mp_decomp_tp: Optional[MultipartDecompositionType] = None
 
+    force_drill:Optional[bool] = None
+
     def is_root(self) -> bool:
         """
         Проверить, является ли узел корневым.
@@ -159,6 +161,8 @@ class MetricNode:
             result["flg_rate_type"] = self.flg_rate_type
         if self.mp_decomp_tp is not None:
             result["mp_decomp_tp"] = self.mp_decomp_tp.value
+        if self.force_drill is not None:
+            result['force_drill'] = self.force_drill
 
         return result
 
@@ -209,6 +213,9 @@ class MetricNode:
         # mp_decomp_tp включается только при type=MULTI
         if self.mp_decomp_tp is not None and self.type == MetricType.MULTI:
             result["mp_decomp_tp"] = self.mp_decomp_tp.value
+        if self.force_drill is not None:
+            result['force_drill'] = self.force_drill
+
 
         return result
 
@@ -304,6 +311,15 @@ class MetricNode:
             except ValueError:
                 raise ValueError(f"Неверное значение 'mp_decomp_tp': {data['mp_decomp_tp']}")
 
+
+        # force drill
+        force_drill = None
+        if "force_drill" in data and data["force_drill"] is not None:
+            try:
+                force_drill = data["force_drill"]
+            except ValueError:
+                raise ValueError(f"Неверное значение 'force_drill': {data['force_drill']}")
+
         return cls(
             id=node_id,
             code=code,
@@ -316,6 +332,7 @@ class MetricNode:
             analyt_metadata=analyt_metadata,
             flg_rate_type=flg_rate_type,
             mp_decomp_tp=mp_decomp_tp,
+            force_drill=force_drill
         )
 
     @classmethod
