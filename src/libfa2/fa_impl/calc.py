@@ -235,6 +235,10 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         lgr.info(f'SUM drill created for node id={current_node.id}, scheduling {len(factors)} child tasks')
 
         # Создаём DrillComponent для каждого значимого фактора и планируем дальнейшее погружение
+        # Если все факторы положительные — дриллим каждый (ищем негатив на глубине)
+        # Иначе — дриллим только отрицательные (как сейчас)
+        all_positive = all(f.deviation > 0 for f in factors)
+
         for f in factors:
             chld_dc = DrillComponent(
                 hier_ref=f.dims['node'],
@@ -244,7 +248,11 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
             )
 
             drill.components.append(chld_dc)
-            if deviation_calc_params.search_dev_params.is_negative(chld_dc.amts.deviation) or chld_dc.hier_ref.force_drill:
+            if all_positive:
+                # Все положительные — дриллим каждый, чтобы найти негатив на глубине
+                task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
+            elif deviation_calc_params.search_dev_params.is_negative(chld_dc.amts.deviation) or chld_dc.hier_ref.force_drill:
+                # Есть негативные — дриллим только их
                 task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
 
         return
@@ -523,7 +531,7 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
 
         lgr_step.debug(f'Algorithm step {current_step} returned {len(data_set)} rows')
 
-        (factors, dev_det_amts) = get_factors(data_set, deviation_calc_params.search_dev_params)
+        (factors, dev_det_amts) = get_factors(data_set, deviation_calc_params.search_dev_params, flg_all=False, flg_positive=True)
 
         lgr_step.debug(f'Algorithm step {current_step}: {len(factors)} factors, '
                        f'positive_contrib={dev_det_amts.positive_contrib}, negative_contrib={dev_det_amts.negative_contrib}')
@@ -535,6 +543,10 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
         )
 
         _dc.drills.append(drill)
+
+        # Если все факторы положительные — дриллим каждый (ищем негатив на глубине)
+        # Иначе — дриллим только отрицательные (как сейчас)
+        all_positive = all(f.deviation > 0 for f in factors)
 
         for f in factors:
             # Наследуем текущие аналитические разрезы + добавляем новые из фактора
@@ -550,12 +562,18 @@ async def make_analyt_drill(current_drill_component:DrillComponent, deviation_ca
 
             drill.components.append(chld_dc)
 
-            if len(next_steps) == 0:
-                # Шаги закончились — переходим к следующему типу погружения
-                task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
-            else:
-                # Есть ещё шаги — продолжаем аналитическую нарезку
-                task_group.create_task(_process_algorithm_step(chld_dc, next_steps.copy()))
+            if all_positive:
+                # Все положительные — дриллим каждый, чтобы найти негатив на глубине
+                if len(next_steps) == 0:
+                    task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
+                else:
+                    task_group.create_task(_process_algorithm_step(chld_dc, next_steps.copy()))
+            elif deviation_calc_params.search_dev_params.is_negative(chld_dc.amts.deviation) or chld_dc.hier_ref.force_drill:
+                # Есть негативные — дриллим только их
+                if len(next_steps) == 0:
+                    task_group.create_task(make_next_drill(chld_dc, deviation_calc_params, data_access_client, task_group))
+                else:
+                    task_group.create_task(_process_algorithm_step(chld_dc, next_steps.copy()))
 
         lgr_step.info(f'Algorithm step {current_step} completed: {len(factors)} child components scheduled')
 
