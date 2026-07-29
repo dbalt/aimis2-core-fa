@@ -335,8 +335,13 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         # По идее надо от родителя идти
 
         if total_impact != current_impact:
-            ratio_impact = ratio_impact * total_impact/current_impact
-            base_impact = base_impact * total_impact/current_impact
+            if current_impact != 0:
+                ratio_impact = ratio_impact * total_impact/current_impact
+                base_impact = base_impact * total_impact/current_impact
+            else:
+                lgr.warning(
+                    f"current_impact is 0 for MULTI node {current_node.code} (id={current_node.id})"
+                )
 
         lgr.debug(f'MULTI final impacts: ratio={ratio_impact}, base={base_impact}, calculation metod: {current_node.mp_decomp_tp}')
 
