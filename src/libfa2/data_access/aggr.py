@@ -38,8 +38,8 @@ class DataRow:
 
     @classmethod
     def from_dict(cls, row:Dict[str,Any],params:'SearchDevParameters')->'DataRow':
-        plan_val = row[params.plan_column]
-        fact_val = row[params.fact_column]
+        plan_val = row[params.plan_column] or 0
+        fact_val = row[params.fact_column] or 0
         dims = {k:v for (k,v) in row.items() if k != params.plan_column and k != params.fact_column}
         it = DataRow(dims, plan_val, fact_val)
         return it

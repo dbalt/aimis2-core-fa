@@ -182,16 +182,6 @@ async def render_factor_table(data: Dict) -> str:
     if not trees:
         return ""
 
-    # Фильтрация деревьев: оставляем только те, у которых есть дети
-    filtered_trees = []
-    for tree in trees:
-        children = (tree.get("details") or {}).get("top_factors") or []
-        if len(children) > 0:
-            filtered_trees.append(tree)
-
-    if not filtered_trees:
-        return ""
-
     # Базовый масштаб — всегда миллион (используется в _format_number как аргумент scale,
     # но _format_number сам определяет реальный масштаб по abs(v))
     scale_factor = 1_000_000
@@ -226,17 +216,17 @@ async def render_factor_table(data: Dict) -> str:
             for c in children:
                 walk(c, depth + 1, node, len(children) == 1)
 
-    for ti, tree in enumerate(filtered_trees):
+    for ti, tree in enumerate(trees):
         if ti > 0:
             rows.append("|   | | | | |")          # разделитель между деревьями
         walk(tree, 0, None, False)
 
-    plan_label = data.get("plan_alias") or filtered_trees[0].get("plan_alias") or "План"
-    fact_label = data.get("fact_alias") or filtered_trees[0].get("fact_alias") or "Факт"
+    plan_label = data.get("plan_alias") or trees[0].get("plan_alias") or "План"
+    fact_label = data.get("fact_alias") or trees[0].get("fact_alias") or "Факт"
 
     # Фиксированный заголовок — всегда "млн руб."
     head = (f"### Детализация факторного анализа отклонений: "
-            f"{_clean_name(filtered_trees[0].get('hieararchy_node', ''))}\n\n"
+            f"{_clean_name(trees[0].get('hieararchy_node', ''))}\n\n"
             f"| # | Путь разложения | {plan_label}, млн руб. | {fact_label}, млн руб. | Влияние, млн руб. |\n"
             f"|---|----------------|----------:|----------:|----------------:|\n")
     return head + "\n".join(rows)
