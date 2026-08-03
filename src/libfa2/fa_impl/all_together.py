@@ -1,6 +1,7 @@
 from typing import Tuple, Dict, List, Callable
 from datetime import date
 from .deviation_calc_metadata import DeviationCalcMetadata
+from .motiv_correction import get_motiv_correction_data
 from ..data_access import DataMgmt, DataAccess
 
 from sdk.giga.client import GigaChatClientPartV2
@@ -32,11 +33,37 @@ async def calculate_and_summarize_deviation(
 
     async with asyncio.TaskGroup() as tg:
         tsk_lst = [tg.create_task(calculate_deviations(x, data_access)) for x in calc_params_lst]
+        
+        if deviation_calc_metadata.motiv_correction is not None:
+            tsk_lst.append(tg.create_task(
+                get_motiv_correction_data(
+                    deviation_calc_metadata.motiv_correction,
+                    dt,
+                    data_access,
+                    deviation_calc_metadata.source_params,
+                    deviation_calc_metadata.search_dev_params,
+                )
+            ))
 
-    drills = [x.result() for x in tsk_lst]
+    # Распаковываем результаты: первые N — drills, последний (если есть) — мотив. кор
+    drills = [t.result() for t in tsk_lst[:-1]] if len(tsk_lst) > len(calc_params_lst) else [t.result() for t in tsk_lst]
+    
+    # Получаем мотив. корректировку (если была добавлена задача)
+    motiv_res = None
+    if len(tsk_lst) > len(calc_params_lst):
+        motiv_res = tsk_lst[-1].result()
+
+    if motiv_res is not None and not motiv_res.ok:
+        lgr.warning(f'Failed to load motiv correction: {motiv_res.err}')
+        motiv_row = None
+    elif motiv_res is not None:
+        motiv_row = motiv_res.data
+    else:
+        motiv_row = None
+
     lgr.info(f'Deviation calculation completed: code={code}, dt={dt}')
 
-    data_lst = [collect_for_summary(x) for x in drills]
+    data_lst = [collect_for_summary(x, motiv_correction_row=motiv_row) for x in drills]
     lgr.debug(f'Collected data for summary')
 
     lgr.info(f'Starting summarization: code={code}, dt={dt}')

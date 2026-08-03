@@ -178,7 +178,27 @@ async def build_branch_report(
         return Res.mk_error(f"Failed build deviations detailed table. error: {table_res['ex']}")
 
     # Сборка финального отчёта: short_summary + key_factors + table
-    return Res.mk_result(f"{short_summary_res.data}\n\n\n{key_factors_res.data}\n\n\n{table_res['table']}")
+    final_report = f"{short_summary_res.data}\n\n\n{key_factors_res.data}\n\n\n{table_res['table']}"
+
+    # Детерминированный блок мотивационной корректировки
+    motiv = data.get("motiv_correction")
+    if motiv is not None and (motiv.get("plan", 0) != 0 or motiv.get("fact", 0) != 0):
+        root = _root_node(data)
+        amounts = root.get("amounts", {})
+        
+        plan_before = amounts.get("plan", 0) - motiv.get("plan", 0)
+        fact_before = amounts.get("fact", 0) - motiv.get("fact", 0)
+        motiv_plan = motiv.get("plan", 0)
+        motiv_fact = motiv.get("fact", 0)
+
+        motiv_text = (
+            f"\n\n⚠️ Итоговые значения плана и факта указаны с учётом мотивационной корректировки.\n"
+            f"Данные до корректировки: план {plan_before}, факт {fact_before}.\n"
+            f"Мотивационная корректировка: план {motiv_plan}, факт {motiv_fact}."
+        )
+        final_report += motiv_text
+
+    return Res.mk_result(final_report)
 
 
 # ===========================================================================

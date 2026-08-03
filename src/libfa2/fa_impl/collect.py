@@ -1,5 +1,6 @@
-from .units import DrillComponent, EnumDrillType
-from typing import List, Dict
+from .units import DrillComponent, EnumDrillType, _rnd
+from ..data_access.aggr import DataRow
+from typing import List, Dict, Optional
 from sdk.core.tools import search_first_in_lst_or
 
 
@@ -27,16 +28,34 @@ def _has_negative_in_tree(dc: DrillComponent) -> bool:
     return False
 
 
-def collect_for_summary(root_drill_component:DrillComponent)->Dict:
-
+def collect_for_summary(
+    root_drill_component: DrillComponent,
+    motiv_correction_row: Optional[DataRow] = None,
+) -> Dict:
     data = {}
     map = {}
 
-    # NOTE (known issue): map — мутатный общий словарь для всей рекурсии.
-    # На глубоких уровнях ключи могут перезаписываться, если на разных
-    # уровнях hier_ref.analyt_metadata содержит измерения с одинаковыми column.
-    # На практике не влияет, т.к. analyt_metadata заполнен только для
-    # корневых узлов иерархии (dc.hier_ref для листов обычно None).
+    # Применяем мотивационную корректировку к корневому узлу
+    if motiv_correction_row is not None and (
+        motiv_correction_row.plan != 0 or motiv_correction_row.fact != 0
+    ):
+        root_dc = root_drill_component
+        m_plan = motiv_correction_row.plan
+        m_fact = motiv_correction_row.fact
+        m_dev = m_fact - m_plan
+
+        root_dc.amts.plan += m_plan
+        root_dc.amts.fact += m_fact
+        root_dc.amts.deviation += m_dev
+        root_dc.amts.impact = root_dc.amts.deviation
+
+        data["motiv_correction"] = {
+            "plan": _rnd(m_plan),
+            "fact": _rnd(m_fact),
+            "deviation": _rnd(m_dev),
+            "label": "мотивационной корректировки",
+        }
+
     def _update_map_dim_names_to_columns(dc:DrillComponent):
         if dc.hier_ref.analyt_metadata:
             for dim in dc.hier_ref.analyt_metadata.dimensions.values():

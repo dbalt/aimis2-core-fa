@@ -7,6 +7,7 @@ from sdk.core.logging import get_logger
 
 from .deviation_calc_params import DeviationCalcParams
 from .units import SearchDevParameters, SourceParameters
+from .motiv_correction import MotivCorrectionMetadata
 from ..hier_metadata import Hierarchy
 
 
@@ -19,6 +20,7 @@ class DeviationCalcMetadata:
     search_dev_params: SearchDevParameters
     hier_lst: List[Hierarchy]
     aliases: dict | None = None
+    motiv_correction: MotivCorrectionMetadata | None = None
 
     # ---- serialization: dict ----
 
@@ -34,6 +36,8 @@ class DeviationCalcMetadata:
         }
         if self.aliases:
             d["aliases"] = self.aliases
+        if self.motiv_correction is not None:
+            d["motiv_correction"] = self.motiv_correction.to_dict()
         return d
 
     @classmethod
@@ -42,12 +46,18 @@ class DeviationCalcMetadata:
         lgr.info("Deserializing DeviationCalcMetadata from dict")
         hier_lst = [Hierarchy.from_json(h) for h in data["hier_lst"]]
         lgr.debug("Restored %d hierarchies", len(hier_lst))
+        
+        motiv_correction = None
+        if "motiv_correction" in data and data["motiv_correction"] is not None:
+            motiv_correction = MotivCorrectionMetadata.from_dict(data["motiv_correction"])
+        
         return cls(
             code=data.get("code"),
             source_params=SourceParameters.from_dict(data["source_params"]),
             search_dev_params=SearchDevParameters.from_dict(data["search_dev_params"]),
             hier_lst=hier_lst,
             aliases=data.get("aliases"),
+            motiv_correction=motiv_correction,
         )
 
     # ---- serialization: json dict ----
@@ -61,6 +71,10 @@ class DeviationCalcMetadata:
         result["hier_lst"] = [h.to_json() for h in self.hier_lst]
         if self.aliases:
             result["aliases"] = self.aliases
+        if self.motiv_correction is not None:
+            mc_json = self.motiv_correction.to_json()
+            if mc_json:
+                result["motiv_correction"] = mc_json
         return result
 
     @classmethod
