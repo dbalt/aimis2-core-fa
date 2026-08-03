@@ -5,7 +5,16 @@
       "id": 1,
       "name": "Операционный доход до резервов",
       "role": "podstatya",
-      "parent": null
+      "parent": null,
+      "node_type": "sum",
+      "query": null,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "X_02",
+          "node_code": "X_02"
+        }
+      ]
     },
     {
       "id": 3,
@@ -98,7 +107,7 @@
     },
     {
       "id": 16,
-      "name": "Кредиты ЮЛ",
+      "name": "СДО Кредиты ЮЛ",
       "role": "baza",
       "parent": 6,
       "upr_cube_codes": [
@@ -237,6 +246,11 @@
       "upr_cube_codes": [
         {
           "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_02_Rtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.02.10",
           "node_code": "PL_10_36_30"
         }
@@ -328,7 +342,7 @@
     },
     {
       "id": 37,
-      "name": "Счета до востребования",
+      "name": "СДО Счета до востребования",
       "role": "baza",
       "parent": 33,
       "upr_cube_codes": [
@@ -347,7 +361,7 @@
     },
     {
       "id": 39,
-      "name": "Срочные инструменты привлечения",
+      "name": "СДО Срочные инструменты привлечения",
       "role": "baza",
       "parent": 34,
       "upr_cube_codes": [
@@ -366,7 +380,7 @@
     },
     {
       "id": 41,
-      "name": "Счета эскроу",
+      "name": "СДО Счета эскроу",
       "role": "baza",
       "parent": 35,
       "upr_cube_codes": [
@@ -385,7 +399,7 @@
     },
     {
       "id": 43,
-      "name": "Средства до востребования",
+      "name": "СДО Средства до востребования",
       "role": "baza",
       "parent": 29,
       "upr_cube_codes": [
@@ -404,7 +418,7 @@
     },
     {
       "id": 45,
-      "name": "Срочные инструменты привлечения",
+      "name": "СДО Срочные инструменты привлечения",
       "role": "baza",
       "parent": 30,
       "upr_cube_codes": [
@@ -423,7 +437,7 @@
     },
     {
       "id": 47,
-      "name": "Счета эскроу",
+      "name": "СДО Счета эскроу",
       "role": "baza",
       "parent": 32,
       "upr_cube_codes": [
@@ -544,8 +558,8 @@
       "upr_cube_codes": [
         {
           "type_code": "PL",
-          "fin_code": "A.05.02.03.04",
-          "node_code": "PL_17_03_01"
+          "fin_code": "A.05.02.03.03",
+          "node_code": "PL_11_56_16"
         },
         {
           "type_code": "PL",
@@ -572,6 +586,16 @@
         },
         {
           "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_08_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_12_53_22_Rtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.05.01.03.06",
           "node_code": "PL_14_59_11"
         },
@@ -579,6 +603,11 @@
           "type_code": "PL",
           "fin_code": "A.05.02.03.04",
           "node_code": "PL_17_03_01"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_17_14_18_Rtech"
         },
         {
           "type_code": "PL",
@@ -714,8 +743,18 @@
       "upr_cube_codes": [
         {
           "type_code": "PL",
+          "fin_code": "A.05.01.01.03.03",
+          "node_code": "PL_04_03_02"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.05.01.01.03.04",
           "node_code": "PL_04_03_03"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_03_Rtech"
         },
         {
           "type_code": "PL",
@@ -754,6 +793,11 @@
         },
         {
           "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_15_59_31_Rtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.05.02.01.08",
           "node_code": "PL_17_01_01"
         },
@@ -771,6 +815,11 @@
           "type_code": "PL",
           "fin_code": "A.05.02.01.07",
           "node_code": "PL_17_06_19"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_17_20_22_Rtech"
         },
         {
           "type_code": "PL",
@@ -826,6 +875,11 @@
       "role": "podstatya",
       "parent": 48,
       "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_20_Rtech"
+        },
         {
           "type_code": "PL",
           "fin_code": "A.05.03",
@@ -908,8 +962,233 @@
       "upr_cube_codes": [
         {
           "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_02_Xtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.08",
           "node_code": "R_09"
+        }
+      ]
+    },
+    {
+      "id": 83,
+      "name": "Счета Ностро и прочие счета до востребования",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.01",
+          "node_code": "PL_01_02_01"
+        }
+      ]
+    },
+    {
+      "id": 84,
+      "name": "Прочие",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.03.03",
+          "node_code": "PL_01_03_04"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_01_03_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.07",
+          "node_code": "PL_01_08"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_01_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 86,
+      "name": "Расходы на выплату вознаграждений торгово-сервисным предприятиям",
+      "role": "podstatya",
+      "parent": 50,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.05.01.03.01.02",
+          "node_code": "PL_04_11_05"
+        }
+      ]
+    },
+    {
+      "id": 87,
+      "name": "Расчетные операции юридических лиц (тех. остаток)",
+      "role": "podstatya",
+      "parent": 68,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_11_43_51_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 88,
+      "name": "Комиссии по платежам и переводам физических лиц (тех. остаток)",
+      "role": "podstatya",
+      "parent": 63,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_12_53_56_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "name": "Interchange «us on us» (тех. остаток)",
+      "role": "podstatya",
+      "parent": 54,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_11_02_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "name": "Эквайринг (тех. остаток)",
+      "role": "podstatya",
+      "parent": 50,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_11_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_16_38_19_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "name": "Чистый процентный доход (тех. остаток)",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_01_Xtech"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "name": "Чистый процентный доход от капитала ",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.04",
+          "node_code": "R_16_35_28"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "name": "Чистый процентный доход от риска",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.03",
+          "node_code": "R_02b"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Субординированный долг",
+      "role": "podstatya",
+      "parent": 19,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.02.06",
+          "node_code": "R_12_44_32"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "name": "Средства физических лиц (тех. остаток)",
+      "role": "podstatya",
+      "parent": 23,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_02_03_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "name": "Чистый комиссионный доход (тех. остаток) ",
+      "role": "podstatya",
+      "parent": 48,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_05_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "name": "Фондирование резервов",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.06",
+          "node_code": "R_16_55_32"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "name": "Средства юридических лиц (тех. остаток)",
+      "role": "podstatya",
+      "parent": 22,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_02_02_Rtech"
         }
       ]
     }

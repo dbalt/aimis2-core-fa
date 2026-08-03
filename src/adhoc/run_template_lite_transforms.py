@@ -1,6 +1,8 @@
+import asyncio
 import datetime
 from asyncio import TaskGroup
 from datetime import date
+import json, hashlib
 from lib2to3.fixes.fix_print import parend_expr
 
 from wrapt import with_signature
@@ -13,7 +15,7 @@ from adhoc.template_lite.transform_analytical_structs import transform_analytica
 from libfa2.analyt_struct_metadata import Algorithm
 from libfa2.hier_metadata import Query
 from libfa2.fa_impl.deviation_calc_metadata import DeviationCalcMetadata, SearchDevParameters, SourceParameters
-from libfa2.hier_metadata.hierarchy import Hierarchy, MetricNode, MultipartDecompositionType, MetricType
+from libfa2.hier_metadata.hierarchy import Hierarchy, MetricNode, MultipartDecompositionType, MetricType, ComponentMultiPartType, ComponentRatioPartType
 from libfa2.data_access.conditions import ConditionBase, ConditionSet, ConditionOr, ConditionAnd, reduce_condition
 from functools import reduce
 
@@ -26,6 +28,8 @@ from coredis import Redis as KeyDBClient
 from typing import Tuple,List,Dict, Iterable
 
 
+from adhoc.custom_vas_map import make_maps
+
 
 
 import logging
@@ -36,7 +40,33 @@ logging.basicConfig(
 )
 
 
-TABLE_NAME_USL_FACTS = 'missa_bidr.v_aimis__usl_facts_exp'
+# TABLE_NAME_USL_FACTS = 'missa_bidr.v_aimis__usl_facts_exp'
+TABLE_NAME_USL_FACTS = 'missa_bidr.v_aimis__usl_facts'
+
+
+
+LOCK = asyncio.Lock()
+class Mgr():
+    def __init__(self, MAX:int = 5):
+        self._MAX:int = MAX
+        self._current:int = 0
+
+    def incr(self):
+        print(f'incr {self._current} -> {self._current + 1}')
+        self._current += 1
+
+    def decr(self):
+        print(f'decr {self._current} -> {self._current - 1}')
+        self._current -= 1
+
+    def check(self)->bool:
+        return self._current < self._MAX
+
+MGR = Mgr()
+
+
+
+
 
 
 class YoTreeNode:
@@ -82,7 +112,7 @@ def mk_custom_tree(hier:Hierarchy):
 
 
 
-def make_hier(code:str)->Hierarchy:
+def _make_hier(code:str)->Hierarchy:
     lgr = get_logger()
 
     path = FileTools.path_concat(
@@ -303,11 +333,17 @@ def build_universal_metadata_hierarchy(code:str, biz_block_lst:List[str] = None,
 
     h2 = make_hier(f'{file_name_prefix}2')
 
+    q = bubble_and_reduce_query_to_top(h2)
+
+
+
+    h2_root = h2.get_root()
+    h2_root.query = Query(q)
+
     if gosb is None:
         h1 = make_hier(f'{file_name_prefix}1')
         hiers = [h1, h2]
 
-        q = bubble_and_reduce_query_to_top(h2)
         h1_root = h1.get_root()
         h1_root.query = Query(q)
 
@@ -324,10 +360,13 @@ def build_universal_metadata_hierarchy(code:str, biz_block_lst:List[str] = None,
                     node.analyt_metadata = None
                     return
 
+
             for child_node in h2.get_children(node.id):
                 visit_node(child_node)
 
         visit_node(h2.get_root())
+
+
 
 
     query_mixin = {}
@@ -364,10 +403,92 @@ def build_universal_metadata_hierarchy(code:str, biz_block_lst:List[str] = None,
         hiers
     )
 
+
+
+
+
+
+
+
+
+
+
+    for h in hiers:
+
+        hier = h
+        def visit_node_ng(node: MetricNode):
+            if node.componentMultiPartType == ComponentMultiPartType.RATE:
+                node.flg_rate_type = True
+
+            for child_node in hier.get_children(node.id):
+                visit_node_ng(child_node)
+
+
+        root = h.get_root()
+        visit_node_ng(root)
+        if root.query:
+            q_dic = root.query.to_dict()
+            if 'flg_correction' in q_dic:
+                del q_dic['flg_correction']
+                root.query = Query(q_dic)
+
     return meta
 
 
+class Saver(object):
+    lgr = get_logger()
+    MAX_IN_ONE_FILE:int = 100
+
+    def __init__(self):
+        self._buffer:List[Tuple[str,str,str]] = []
+        self._current_idx = 1
+
+
+    def flush(self):
+        filename = f'insert_p{self._current_idx}.sql'
+        self._current_idx += 1
+        self.lgr.info(f'Writing file {filename} ...')
+
+        sql = '''
+insert into missa_aimis.t_aimis__fa__metadata (code, metadata)
+values 
+        '''
+        value_parts = []
+        for (code, hsh, meta) in self._buffer:
+            value_parts.append(f'(\'{code}\', \'{meta}\')')
+
+        self._buffer.clear()
+
+        value_parts_str = ',\n'.join(value_parts)
+
+        sql = f'{sql} {value_parts_str};'
+
+        FileTools.write_to_file(filename, sql)
+
+    def save(self, code:str, json_hash:str, meta:DeviationCalcMetadata):
+        self._buffer.append(
+            (code, json_hash, meta.to_json_str(),)
+        )
+
+        if len(self._buffer) >= self.MAX_IN_ONE_FILE:
+            self.flush()
+
+
+
+
+SAVER = Saver()
+
+
+
+
+
 async def save_metadata(full_code:str, meta:DeviationCalcMetadata, fac:FaClient):
+
+    (code, json) = full_code.split('@')
+
+    SAVER.save(code, json, meta)
+    return
+
     res = await fac.delete_metadata(full_code)
     if not res.ok: raise Exception(res.err)
 
@@ -387,14 +508,117 @@ async def recalc_summaries(full_code:str, dt:date, fac:FaClient):
 
 
 
+class HierCache:
+    def __init__(self):
+        self._cache:Dict[str, str] = {}
+
+    def get_hier(self, name:str)->Hierarchy:
+
+        if name not in self._cache:
+            hier = _make_hier(name)
+            self._cache[name] = hier.to_json_string()
+            return hier
+
+        return Hierarchy.from_json_string(self._cache[name])
+
+HIER_CACHE = HierCache()
+
+def make_hier(code:str)->Hierarchy:
+    return HIER_CACHE.get_hier(code)
+
+
+
+
+(MAP_BB, MAP_TB_GOSB) = make_maps()
+
+MAP_PREFIXES = {
+    'od': 'tbgosb_od',
+    'rez': 'tbgosb_rez',
+    'operpl': 'tbgosb_operpl',
+    'opex': 'tbgosb_opex',
+    'chkd': 'tbgosb_chkd',
+    'chpda': 'tbgosb_chpda',
+    'chpdp': 'tbgosb_chpdp'
+}
+
+
 def get_full_code(code:str, biz_block_lst:List[str] = None, tb:str = None, gosb:str = None):
-    parts = [code]
-    if biz_block_lst: parts.append(', '.join(biz_block_lst))
-    if tb: parts.append(tb)
-    if gosb: parts.append(gosb)
-    res = ';'.join(parts)
-    res = f'[{res}]'
-    return res
+
+    src_for_hash = {
+        'deviation_type': 'fact',
+        'indicator_code': MAP_PREFIXES[code],
+        'scalcmethod': 'Факт vs План',
+        'speriodtype': 'ytd'
+    }
+
+    bad = False
+
+    if biz_block_lst:
+        bbt = sorted(biz_block_lst)
+        bbt = tuple(bbt)
+        tgt = MAP_BB.get(bbt, '_NOT_FOUND_')
+
+        if tgt == '_NOT_FOUND_':
+            print('dbg')
+
+        src_for_hash.update({
+            'data_point': tgt,
+        })
+
+    if gosb:
+        tgt = MAP_TB_GOSB.get(('', gosb), '_NOT_FOUND_')
+
+        if tgt == '_NOT_FOUND_' or gosb.startswith('Аппарат') or gosb == 'Головное отделение Московский банк':
+            print('dbg')
+            bad = True
+
+        src_for_hash.update({
+            'deprt': tgt,
+        })
+
+    elif tb:
+
+        tgt = MAP_TB_GOSB.get((tb, ''), '_NOT_FOUND_')
+
+        if tgt == '_NOT_FOUND_':
+            print('dbg')
+            bad = True
+
+        src_for_hash.update({
+            'deprt': tgt,
+        })
+
+    else:
+        src_for_hash.update({
+            'deprt': 'ТБ',
+        })
+
+
+    KEY_LST = ('data_point', 'deprt', 'deviation_type', 'indicator_code', 'scalcmethod', 'speriodtype')
+
+
+    def make_params_and_hash(payload, key_lst) -> Tuple[str, str]:
+        params = {}
+        for k in key_lst:
+            v = payload.get(k)
+            if v:
+                params[k] = v
+        params_json = json.dumps(params, sort_keys=True, ensure_ascii=False)
+        code = hashlib.md5(params_json.encode('utf-8')).hexdigest()
+        return (code, params_json)
+
+
+    (code, params_json) = make_params_and_hash(src_for_hash, KEY_LST)
+
+    return (code, params_json, bad)
+
+    # parts = [code]
+    # if biz_block_lst: parts.append(', '.join(biz_block_lst))
+    # if tb: parts.append(tb)
+    # if gosb: parts.append(gosb)
+    # res = ';'.join(parts)
+    # res = f'[{res}]'
+    # return res
 
 async def calc_full(kc:KeyDBClient, dt:date, code:str, biz_block_lst:List[str] = None, tb:str = None, gosb:str = None):
     l = get_logger()
@@ -402,7 +626,12 @@ async def calc_full(kc:KeyDBClient, dt:date, code:str, biz_block_lst:List[str] =
 
     fac = FaClient(kc)
 
-    full_code = get_full_code(code, biz_block_lst, tb, gosb)
+    (full_code, jsonstr, is_bad) = get_full_code(code, biz_block_lst, tb, gosb)
+
+    if is_bad:
+        return
+
+    full_code = f'{full_code}@{jsonstr}'
 
     try:
 
@@ -410,6 +639,9 @@ async def calc_full(kc:KeyDBClient, dt:date, code:str, biz_block_lst:List[str] =
         meta:DeviationCalcMetadata = build_universal_metadata_hierarchy(code, biz_block_lst, tb, gosb)
         l.info('metadata ok')
 
+        # print(f'Meta BUILD for {full_code}')
+
+        #
         l.info('Save metadata to db ...')
         await save_metadata(full_code, meta, fac)
         l.info('metadata saved')
@@ -420,7 +652,9 @@ async def calc_full(kc:KeyDBClient, dt:date, code:str, biz_block_lst:List[str] =
         # l.info(f'#Summary#: {res}')
     except Exception as e:
         l.warning(repr(e))
-
+    finally:
+        async with LOCK:
+            MGR.decr()
 
 
 
@@ -530,21 +764,6 @@ async def calc_full(kc:KeyDBClient, dt:date, code:str, biz_block_lst:List[str] =
 #
 #
 
-class Mgr():
-    def __init__(self, MAX:int = 10):
-        self._MAX:int = MAX
-        self._current:int = 0
-
-    def incr(self):
-        print(f'incr {self._current} -> {self._current + 1}')
-        self._current += 1
-
-    def decr(self):
-        print(f'decr {self._current} -> {self._current - 1}')
-        self._current -= 1
-
-    def check(self)->bool:
-        return self._current < self._MAX
 
 
 def main():
@@ -560,17 +779,16 @@ def main():
 
     all_prefixes = [
         'od',
-        # 'rez',
-        # 'operpl',
-        # 'opex',
-        # 'chkd',
-        # 'chpda',
-        # 'chpdp'
+        'rez',
+        'operpl',
+        'opex',
+        'chkd',
+        'chpda',
+        'chpdp'
     ]
     # prefix = 'operpl'
 
     import asyncio
-
 
 
 
@@ -588,30 +806,23 @@ def main():
             for (tb, gosb) in TB_GOSB_SETUP:
                 if src_tb == tb: yield gosb
 
-        mgr = Mgr()
+
 
         tasks:Set[asyncio.Task] = set()
 
-
-        lock = asyncio.Lock()
-
-
-        async def task_done_callback(t:asyncio.Task):
-            async with lock:
-                mgr.decr()
-                tasks.discard(t)
-
         async def place_task(coro, tg:TaskGroup):
-            while True:
-                async with lock:
-                    if mgr.check():
-                        t = tg.create_task(coro)
-                        tasks.add(t)
-                        mgr.incr()
-                        t.add_done_callback(task_done_callback)
-                        break
-                await asyncio.sleep(0.1)
-            print('TASK PLACED')
+            await coro
+
+            # while True:
+            #     async with LOCK:
+            #         if MGR.check():
+            #             t = tg.create_task(coro)
+            #             tasks.add(t)
+            #             MGR.incr()
+            #             t.add_done_callback(tasks.discard)
+            #             break
+            #     await asyncio.sleep(0.1)
+            # print('TASK PLACED')
 
 
         async with asyncio.TaskGroup() as tg:
@@ -642,6 +853,9 @@ def main():
 
 
         print('yo')
+
+        SAVER.flush()
+
         return
 
             # async def _run():
@@ -673,6 +887,7 @@ def main():
         #     await calc_tbgosb_pao(prefix, dt, kc)
         #     await setup_tbgosb_tb(prefix, kc)
         #     await calc_tbgosb_tb(prefix, dt, kc)
+
 
     asyncio.run(run())
 

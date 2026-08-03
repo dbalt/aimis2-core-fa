@@ -133,8 +133,8 @@ def calculate_query_prop_v2(hier:Hierarchy) -> Hierarchy:
     }
 
     MAP_TOTAL_TP = {
-        'PL': 1,
-        'BS': 1
+        'PL': 3,
+        'BS': 3
     }
 
     def process_node(n:MetricNode):

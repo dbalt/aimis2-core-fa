@@ -5,19 +5,34 @@
       "id": 1,
       "name": "Чистый процентный доход от активов",
       "role": "podstatya",
-      "parent": null
+      "parent": null,
+      "node_type": "sum",
+      "query": null,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01",
+          "node_code": "R_01"
+        }
+      ]
     },
     {
-      "id": 2,
+      "id": 3,
       "name": "Блок/Подблок(Сегмент КИБ)",
       "role": "razrez",
       "parent": 1
     },
     {
-      "id": 3,
+      "id": 4,
+      "name": "Чистый процентный доход от активов",
+      "role": "podstatya",
+      "parent": 3
+    },
+    {
+      "id": 5,
       "name": "Кредиты банкам",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 4,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -27,10 +42,10 @@
       ]
     },
     {
-      "id": 4,
+      "id": 6,
       "name": "Кредиты юридическим лицам",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 4,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -40,10 +55,10 @@
       ]
     },
     {
-      "id": 5,
+      "id": 7,
       "name": "Кредиты физическим лицам",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 4,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -53,10 +68,10 @@
       ]
     },
     {
-      "id": 6,
+      "id": 8,
       "name": "Ценные бумаги",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 4,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -66,10 +81,10 @@
       ]
     },
     {
-      "id": 7,
+      "id": 9,
       "name": "Прочие активы",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 4,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -79,22 +94,22 @@
       ]
     },
     {
-      "id": 8,
+      "id": 11,
       "name": "Продукт ЕК",
       "role": "razrez",
-      "parent": 5
+      "parent": 7
     },
     {
-      "id": 9,
+      "id": 14,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 4
+      "parent": 6
     },
     {
-      "id": 10,
-      "name": "Кредиты ЮЛ",
+      "id": 16,
+      "name": "СДО Кредиты ЮЛ",
       "role": "baza",
-      "parent": 4,
+      "parent": 6,
       "upr_cube_codes": [
         {
           "type_code": "BS",
@@ -104,16 +119,16 @@
       ]
     },
     {
-      "id": 11,
+      "id": 17,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 8
+      "parent": 11
     },
     {
-      "id": 12,
+      "id": 18,
       "name": "СДО кредиты ФЛ",
       "role": "baza",
-      "parent": 8,
+      "parent": 11,
       "upr_cube_codes": [
         {
           "type_code": "BS",
@@ -124,6 +139,60 @@
           "type_code": "BS",
           "fin_code": "B.01.06.02.02",
           "node_code": "R_11_11_25"
+        }
+      ]
+    },
+    {
+      "id": 83,
+      "name": "Счета Ностро и прочие счета до востребования",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.01",
+          "node_code": "PL_01_02_01"
+        }
+      ]
+    },
+    {
+      "id": 84,
+      "name": "Прочие",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.03.03",
+          "node_code": "PL_01_03_04"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_01_03_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.07",
+          "node_code": "PL_01_08"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_01_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "name": "Фондирование резервов",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.01.06",
+          "node_code": "R_16_55_32"
         }
       ]
     }
