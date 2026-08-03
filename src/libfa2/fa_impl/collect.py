@@ -81,6 +81,8 @@ def collect_for_summary(root_drill_component:DrillComponent)->Dict:
                 det['top_factors'] = tf
 
                 for x in drill.components:
+                    if not _has_negative_in_tree(x):
+                        continue
                     xd = {}
                     tf.append(xd)
                     _process_drill_component(x, xd)
