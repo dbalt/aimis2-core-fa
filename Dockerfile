@@ -15,7 +15,7 @@ RUN microdnf install -y gcc gcc-c++ libffi-devel zlib-devel libjpeg-turbo-devel 
     && python3.12 -m ensurepip \
     && python3.12 -m pip install --upgrade pip \
     && python3.12 -m pip install patchelf nuitka --index-url=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple --trusted-host=sberosc.sigma.sbrf.ru \
-    && python3.12 -m pip install --no-cache-dir -r /tmp_bld/requirements.txt --index-url=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple --trusted-host=sberosc.sigma.sbrf.ru \
+    && python3.12 -m pip install --no-cache-dir -r /tmp_bld/pip_req.core_fa --index-url=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple --trusted-host=sberosc.sigma.sbrf.ru \
     && python3.12 -m nuitka \
         --standalone \
         --output-dir=/app \
