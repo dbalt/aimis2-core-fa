@@ -127,7 +127,26 @@ def classify(obj: Dict) -> int:
 
 
 # ===========================================================================
-#              С Б О Р К А   О Т Ч Ё Т А   ( н о в а я   л о г и к а )
+#              С Б О Р К А   О Т Ч Ё Т А   (  н о в а я   л о г и к а )
+# ===========================================================================
+#                      В С П О М О Г А Т Е Л Ь Н Ы Е   Ф У Н К Ц И И
+# ===========================================================================
+
+def _format_num_with_space(v: float) -> str:
+    """Форматирует число с пробелами как разделителями тысяч."""
+    rounded = round(v)
+    abs_v = abs(rounded)
+    sign = "-" if rounded < 0 else ""
+    digits = str(abs_v)
+    parts = []
+    while len(digits) > 3:
+        parts.insert(0, digits[-3:])
+        digits = digits[:-3]
+    if digits:
+        parts.insert(0, digits)
+    return sign + " ".join(parts)
+
+
 # ===========================================================================
 async def build_branch_report(
         data: Dict,
@@ -177,26 +196,33 @@ async def build_branch_report(
     if table_res['ex']:
         return Res.mk_error(f"Failed build deviations detailed table. error: {table_res['ex']}")
 
-    # Сборка финального отчёта: short_summary + key_factors + table
-    final_report = f"{short_summary_res.data}\n\n\n{key_factors_res.data}\n\n\n{table_res['table']}"
+    # Сборка финального отчёта: short_summary + key_factors + [motiv_block] + table
+    final_report = f"{short_summary_res.data}\n\n\n{key_factors_res.data}"
 
-    # Детерминированный блок мотивационной корректировки
+    # Детерминированный блок мотивационной корректировки — между ключевыми факторами и таблицей
     motiv = data.get("motiv_correction")
     if motiv is not None and (motiv.get("plan", 0) != 0 or motiv.get("fact", 0) != 0):
-        root = _root_node(data)
-        amounts = root.get("amounts", {})
-        
+        root_node_data = _root_node(data)
+        amounts = root_node_data.get("amounts", {})
+
         plan_before = amounts.get("plan", 0) - motiv.get("plan", 0)
         fact_before = amounts.get("fact", 0) - motiv.get("fact", 0)
         motiv_plan = motiv.get("plan", 0)
         motiv_fact = motiv.get("fact", 0)
 
         motiv_text = (
-            f"\n\n⚠️ Итоговые значения плана и факта указаны с учётом мотивационной корректировки.\n"
-            f"Данные до корректировки: план {plan_before}, факт {fact_before}.\n"
-            f"Мотивационная корректировка: план {motiv_plan}, факт {motiv_fact}."
+            f"\n\n⚠️ Итоговые значения {plan_alias.lower()} и {fact_alias.lower()} "
+            f"указаны с учётом мотивационной корректировки.\n"
+            f"Данные до корректировки: {plan_alias.lower()} {_format_num_with_space(plan_before)}, "
+            f"{fact_alias.lower()} {_format_num_with_space(fact_before)}.\n"
+            f"Мотивационная корректировка: "
+            f"{plan_alias.lower()} {_format_num_with_space(motiv_plan)}, "
+            f"{fact_alias.lower()} {_format_num_with_space(motiv_fact)}."
         )
         final_report += motiv_text
+
+    # Таблица — в самом конце
+    final_report += f"\n\n\n{table_res['table']}"
 
     return Res.mk_result(final_report)
 

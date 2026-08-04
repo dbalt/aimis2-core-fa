@@ -26,7 +26,7 @@ from sdk.core.logging import get_logger
 
 @dataclass
 class DataRow:
-    dims:Dict[str,Any] = field(default_factory=Dict)
+    dims:Dict[str,Any] = field(default_factory=dict)
     plan:float = 0
     fact:float = 0
 

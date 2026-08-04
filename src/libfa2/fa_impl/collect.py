@@ -49,13 +49,6 @@ def collect_for_summary(
         root_dc.amts.deviation += m_dev
         root_dc.amts.impact = root_dc.amts.deviation
 
-        data["motiv_correction"] = {
-            "plan": _rnd(m_plan),
-            "fact": _rnd(m_fact),
-            "deviation": _rnd(m_dev),
-            "label": "мотивационной корректировки",
-        }
-
     def _update_map_dim_names_to_columns(dc:DrillComponent):
         if dc.hier_ref.analyt_metadata:
             for dim in dc.hier_ref.analyt_metadata.dimensions.values():
@@ -99,12 +92,26 @@ def collect_for_summary(
                 tf = []
                 det['top_factors'] = tf
 
-                for x in drill.components:
-                    if not _has_negative_in_tree(x):
-                        continue
-                    xd = {}
-                    tf.append(xd)
-                    _process_drill_component(x, xd)
+                # Если на уровне ВСЕ факторы положительные — ищем скрытый негатив
+                # (фильтруем ветки без негатива).
+                # В остальных случаях (микс или негативные) — старая логика:
+                # включаем все компоненты без фильтрации.
+                all_pos = all(x.amts.impact > 0 for x in drill.components)
+
+                if all_pos:
+                    # Поиск скрытого негатива — пропускаем ветки без негатива
+                    for x in drill.components:
+                        if not _has_negative_in_tree(x):
+                            continue
+                        xd = {}
+                        tf.append(xd)
+                        _process_drill_component(x, xd)
+                else:
+                    # Микс/негатив — старая логика, без фильтрации
+                    for x in drill.components:
+                        xd = {}
+                        tf.append(xd)
+                        _process_drill_component(x, xd)
             # else: has_negative=False → ветка без негатива, details НЕ включаем
 
     _process_drill_component(root_drill_component, data)

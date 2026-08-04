@@ -72,6 +72,17 @@ async def calculate_and_summarize_deviation(
         "data": data_lst
     }
 
+    # Добавляем motiv_correction на корневой уровень data
+    if motiv_row is not None and (motiv_row.plan != 0 or motiv_row.fact != 0):
+        m_dev = motiv_row.fact - motiv_row.plan
+        from .units import _rnd
+        data["motiv_correction"] = {
+            "plan": _rnd(motiv_row.plan),
+            "fact": _rnd(motiv_row.fact),
+            "deviation": _rnd(m_dev),
+            "label": "мотивационной корректировки",
+        }
+
     aliases = deviation_calc_metadata.aliases or {}
     if aliases.get("plan_alias"):
         data["plan_alias"] = aliases["plan_alias"]
