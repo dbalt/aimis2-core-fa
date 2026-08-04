@@ -81,6 +81,8 @@ async def calculate_and_summarize_deviation(
             "fact": _rnd(motiv_row.fact),
             "deviation": _rnd(m_dev),
             "label": "мотивационной корректировки",
+            "has_plan": motiv_row.plan != 0,
+            "has_fact": motiv_row.fact != 0,
         }
 
     aliases = deviation_calc_metadata.aliases or {}
