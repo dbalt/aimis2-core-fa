@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 summarize.py — многовариантная саммаризация факторного анализа
 ================================================================
@@ -127,7 +125,7 @@ def classify(obj: Dict) -> int:
 
 
 # ===========================================================================
-#              С Б О Р К А   О Т Ч Ё Т А   ( н о в а я   л о г и к а )
+#              С Б О Р К А   О Т Ч Ё Т А   (  н о в а я   л о г и к а )
 # ===========================================================================
 async def build_branch_report(
         data: Dict,
@@ -151,8 +149,10 @@ async def build_branch_report(
     # Подставляем алиасы вместо {{plan_alias}}/{{fact_alias}} в промпты
     summary_prompt = summary_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
     factors_prompt = factors_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
+    motiv_prompt = SummarizerPrompt.MOTIV_PROMPT.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
 
     tsks = []
+    has_motiv = False
     async with asyncio.TaskGroup() as tg:
         tsks.append(tg.create_task(
             _base_llm_processing_function(
@@ -167,8 +167,37 @@ async def build_branch_report(
         tsks.append(tg.create_task(
             render_factor_table_wrapper(data)
         ))
+        # LLM-запрос для мотивационной корректировки
+        motiv = data.get("motiv_correction")
+        if motiv is not None and (motiv.get("plan", 0) != 0 or motiv.get("fact", 0) != 0):
+            has_motiv = True
+            root_node_data = _root_node(data)
+            amounts = root_node_data.get("amounts", {})
+            plan_before = amounts.get("plan", 0) - motiv.get("plan", 0)
+            fact_before = amounts.get("fact", 0) - motiv.get("fact", 0)
 
-    short_summary_res, key_factors_res, table_res = (t.result() for t in tsks)
+            motiv_data = {
+                "motiv_correction": {
+                    "plan": motiv.get("plan", 0),
+                    "fact": motiv.get("fact", 0),
+                    "label": motiv.get("label", ""),
+                    "has_plan": motiv.get("has_plan", motiv.get("plan", 0) != 0),
+                    "has_fact": motiv.get("has_fact", motiv.get("fact", 0) != 0),
+                },
+                "plan_before": plan_before,
+                "fact_before": fact_before,
+                "scale_info": scale_info,
+            }
+            tsks.append(tg.create_task(
+                _base_llm_processing_function(
+                    motiv_prompt, motiv_data, await llm_client_gen_fn(), model_summary
+                )
+            ))
+        else:
+            # Заглушка: возвращает Res.mk_result("") — пустой motiv_block
+            tsks.append(tg.create_task(asyncio.sleep(0, Res.mk_result(""))))
+
+    short_summary_res, key_factors_res, table_res, motiv_res = (t.result() for t in tsks)
 
     if not short_summary_res.ok:
         return Res.mk_error(f"Failed build short_summary. err: {short_summary_res.err}")
@@ -177,8 +206,17 @@ async def build_branch_report(
     if table_res['ex']:
         return Res.mk_error(f"Failed build deviations detailed table. error: {table_res['ex']}")
 
-    # Сборка финального отчёта: short_summary + key_factors + table
-    return Res.mk_result(f"{short_summary_res.data}\n\n\n{key_factors_res.data}\n\n\n{table_res['table']}")
+    # Сборка финального отчёта: short_summary + key_factors + [motiv_block] + table
+    final_report = f"{short_summary_res.data}\n\n\n{key_factors_res.data}"
+
+    # Мотивационная корректировка — результат LLM
+    if motiv_res.ok and motiv_res.data:
+        final_report += f"\n\n\n{motiv_res.data}"
+
+    # Таблица — в самом конце
+    final_report += f"\n\n\n{table_res['table']}"
+
+    return Res.mk_result(final_report)
 
 
 # ===========================================================================
