@@ -5,19 +5,34 @@
       "id": 1,
       "name": "Чистый процентный доход от пассивов",
       "role": "podstatya",
-      "parent": null
+      "parent": null,
+      "node_type": "sum",
+      "query": null,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.02",
+          "node_code": "R_02"
+        }
+      ]
     },
     {
-      "id": 2,
+      "id": 3,
       "name": "Блок/Подблок(Сегмент КИБ)",
       "role": "razrez",
       "parent": 1
     },
     {
-      "id": 3,
+      "id": 19,
+      "name": "Чистый процентный доход от пассивов",
+      "role": "podstatya",
+      "parent": 3
+    },
+    {
+      "id": 20,
       "name": "Государственное финансирование",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 19,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -27,10 +42,10 @@
       ]
     },
     {
-      "id": 4,
+      "id": 21,
       "name": "Средства банков",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 19,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -40,22 +55,22 @@
       ]
     },
     {
-      "id": 5,
+      "id": 22,
       "name": "Средства юридических лиц",
       "role": "podstatya",
-      "parent": 2
+      "parent": 19
     },
     {
-      "id": 6,
+      "id": 23,
       "name": "Средства физических лиц",
       "role": "podstatya",
-      "parent": 2
+      "parent": 19
     },
     {
-      "id": 7,
+      "id": 24,
       "name": "Облигации",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 19,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -65,10 +80,10 @@
       ]
     },
     {
-      "id": 8,
+      "id": 25,
       "name": "Начисленные проценты",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 19,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -78,10 +93,10 @@
       ]
     },
     {
-      "id": 9,
+      "id": 26,
       "name": "Прочие обязательства",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 19,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -91,10 +106,10 @@
       ]
     },
     {
-      "id": 10,
+      "id": 27,
       "name": "Собственные средства",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 19,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -104,11 +119,16 @@
       ]
     },
     {
-      "id": 11,
+      "id": 28,
       "name": "Прочие",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 19,
       "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_02_Rtech"
+        },
         {
           "type_code": "PL",
           "fin_code": "A.02.10",
@@ -117,10 +137,10 @@
       ]
     },
     {
-      "id": 12,
+      "id": 29,
       "name": "Средства до востребования",
       "role": "podstatya",
-      "parent": 5,
+      "parent": 22,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -130,10 +150,10 @@
       ]
     },
     {
-      "id": 13,
+      "id": 30,
       "name": "Срочные инструменты привлечения",
       "role": "podstatya",
-      "parent": 5,
+      "parent": 22,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -143,10 +163,10 @@
       ]
     },
     {
-      "id": 14,
+      "id": 32,
       "name": "Счета эскроу",
       "role": "podstatya",
-      "parent": 5,
+      "parent": 22,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -156,10 +176,10 @@
       ]
     },
     {
-      "id": 15,
+      "id": 33,
       "name": "Счета до востребования",
       "role": "podstatya",
-      "parent": 6,
+      "parent": 23,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -169,10 +189,10 @@
       ]
     },
     {
-      "id": 16,
+      "id": 34,
       "name": "Срочные инструменты привлечения",
       "role": "podstatya",
-      "parent": 6,
+      "parent": 23,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -182,10 +202,10 @@
       ]
     },
     {
-      "id": 17,
+      "id": 35,
       "name": "Счета эскроу",
       "role": "podstatya",
-      "parent": 6,
+      "parent": 23,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -195,16 +215,16 @@
       ]
     },
     {
-      "id": 18,
+      "id": 36,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 15
+      "parent": 33
     },
     {
-      "id": 19,
-      "name": "Счета до востребования",
+      "id": 37,
+      "name": "СДО \"Счета до востребования\"",
       "role": "baza",
-      "parent": 15,
+      "parent": 33,
       "upr_cube_codes": [
         {
           "type_code": "BS",
@@ -214,16 +234,16 @@
       ]
     },
     {
-      "id": 20,
+      "id": 38,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 16
+      "parent": 34
     },
     {
-      "id": 21,
-      "name": "Срочные инструменты привлечения",
+      "id": 39,
+      "name": "СДО \"Срочные инструменты привлечения\"",
       "role": "baza",
-      "parent": 16,
+      "parent": 34,
       "upr_cube_codes": [
         {
           "type_code": "BS",
@@ -233,16 +253,16 @@
       ]
     },
     {
-      "id": 22,
+      "id": 40,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 17
+      "parent": 35
     },
     {
-      "id": 23,
-      "name": "Счета эскроу",
+      "id": 41,
+      "name": "СДО \"Счета эскроу\"",
       "role": "baza",
-      "parent": 17,
+      "parent": 35,
       "upr_cube_codes": [
         {
           "type_code": "BS",
@@ -252,16 +272,16 @@
       ]
     },
     {
-      "id": 24,
+      "id": 42,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 12
+      "parent": 29
     },
     {
-      "id": 25,
-      "name": "Средства до востребования",
+      "id": 43,
+      "name": "СДО \"Средства до востребования\"",
       "role": "baza",
-      "parent": 12,
+      "parent": 29,
       "upr_cube_codes": [
         {
           "type_code": "BS",
@@ -271,16 +291,16 @@
       ]
     },
     {
-      "id": 26,
+      "id": 44,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 13
+      "parent": 30
     },
     {
-      "id": 27,
-      "name": "Срочные инструменты привлечения",
+      "id": 45,
+      "name": "СДО \"Срочные инструменты привлечения\"",
       "role": "baza",
-      "parent": 13,
+      "parent": 30,
       "upr_cube_codes": [
         {
           "type_code": "BS",
@@ -290,21 +310,60 @@
       ]
     },
     {
-      "id": 28,
+      "id": 46,
       "name": "Маржа",
       "role": "tarif",
-      "parent": 14
+      "parent": 32
     },
     {
-      "id": 29,
-      "name": "Счета эскроу",
+      "id": 47,
+      "name": "СДО \"Счета эскроу\"",
       "role": "baza",
-      "parent": 14,
+      "parent": 32,
       "upr_cube_codes": [
         {
           "type_code": "BS",
           "fin_code": "B.02.03.03",
           "node_code": "R_02_02_02_07"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Субординированный долг",
+      "role": "podstatya",
+      "parent": 19,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.02.06",
+          "node_code": "R_12_44_32"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "name": "Средства физических лиц (тех. остаток)",
+      "role": "podstatya",
+      "parent": 23,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_02_03_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "name": "Средства юридических лиц (тех. остаток)",
+      "role": "podstatya",
+      "parent": 22,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_02_02_Rtech"
         }
       ]
     }

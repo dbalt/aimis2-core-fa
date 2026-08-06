@@ -5,7 +5,16 @@
       "id": 1,
       "name": "Расходы по созданию резервов",
       "role": "podstatya",
-      "parent": null
+      "parent": null,
+      "node_type": "sum",
+      "query": null,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.09",
+          "node_code": "R_09b"
+        }
+      ]
     },
     {
       "id": 3,
@@ -75,6 +84,37 @@
           "type_code": "PL",
           "fin_code": "A.09.06",
           "node_code": "R_12_15_45"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Резерв на возможные потери по счетам НОСТРО",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.09.01",
+          "node_code": "PL_17_43_15"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Прочее",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_09b_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.09.07",
+          "node_code": "PL_18_15_32"
         }
       ]
     }

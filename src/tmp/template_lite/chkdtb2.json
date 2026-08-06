@@ -3,33 +3,73 @@
   "nodes": [
     {
       "id": 1,
-      "name": "ЧКД+ ",
+      "name": "ЧКД+",
       "role": "podstatya",
-      "parent": null
+      "parent": null,
+      "node_type": "sum",
+      "query": null,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.02.15.02.02",
+          "node_code": "PL_08_40_14"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.02.01.08",
+          "node_code": "PL_16_42_27"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.02.01.05",
+          "node_code": "PL_16_54_35"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.05",
+          "node_code": "R_04"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.04",
+          "node_code": "R_09_03_10"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.07",
+          "node_code": "R_10_25_53"
+        }
+      ]
     },
     {
-      "id": 2,
+      "id": 3,
       "name": "Блок/Подблок(Сегмент КИБ)",
       "role": "razrez",
       "parent": 1
     },
     {
-      "id": 3,
-      "name": "Операции с банковскими картами",
-      "role": "podstatya",
-      "parent": 2
-    },
-    {
-      "id": 4,
-      "name": "Эквайринг",
+      "id": 48,
+      "name": "Чистый комиссионный доход",
       "role": "podstatya",
       "parent": 3
     },
     {
-      "id": 5,
+      "id": 49,
+      "name": "Операции с банковскими картами ",
+      "role": "podstatya",
+      "parent": 48
+    },
+    {
+      "id": 50,
+      "name": "Эквайринг ",
+      "role": "podstatya",
+      "parent": 49
+    },
+    {
+      "id": 51,
       "name": "Комиссионный доход по эквайрингу",
       "role": "podstatya",
-      "parent": 4,
+      "parent": 50,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -39,10 +79,10 @@
       ]
     },
     {
-      "id": 6,
+      "id": 52,
       "name": "Интерчейндж",
       "role": "podstatya",
-      "parent": 4,
+      "parent": 50,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -52,10 +92,10 @@
       ]
     },
     {
-      "id": 7,
+      "id": 53,
       "name": "Комиссии эквайера платежным системам",
       "role": "podstatya",
-      "parent": 4,
+      "parent": 50,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -65,16 +105,16 @@
       ]
     },
     {
-      "id": 8,
+      "id": 54,
       "name": "Interchange «us on us»",
       "role": "podstatya",
-      "parent": 4
+      "parent": 50
     },
     {
-      "id": 9,
+      "id": 55,
       "name": "Терр. распределение по карте",
       "role": "podstatya",
-      "parent": 8,
+      "parent": 54,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -84,10 +124,10 @@
       ]
     },
     {
-      "id": 10,
+      "id": 56,
       "name": "Терр. распределение по ЮЛ",
       "role": "podstatya",
-      "parent": 8,
+      "parent": 54,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -97,10 +137,10 @@
       ]
     },
     {
-      "id": 11,
+      "id": 57,
       "name": "Обслуживание карты и переводы со счета",
       "role": "podstatya",
-      "parent": 3,
+      "parent": 49,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -110,15 +150,15 @@
       ]
     },
     {
-      "id": 12,
-      "name": "Программы лояльности",
+      "id": 59,
+      "name": "Программы лояльности ",
       "role": "podstatya",
-      "parent": 3,
+      "parent": 49,
       "upr_cube_codes": [
         {
           "type_code": "PL",
-          "fin_code": "A.05.02.03.04",
-          "node_code": "PL_17_03_01"
+          "fin_code": "A.05.02.03.03",
+          "node_code": "PL_11_56_16"
         },
         {
           "type_code": "PL",
@@ -128,10 +168,10 @@
       ]
     },
     {
-      "id": 13,
+      "id": 60,
       "name": "Прочие операции с банковскими картами",
       "role": "podstatya",
-      "parent": 3,
+      "parent": 49,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -145,6 +185,16 @@
         },
         {
           "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_08_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_12_53_22_Rtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.05.01.03.06",
           "node_code": "PL_14_59_11"
         },
@@ -152,6 +202,11 @@
           "type_code": "PL",
           "fin_code": "A.05.02.03.04",
           "node_code": "PL_17_03_01"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_17_14_18_Rtech"
         },
         {
           "type_code": "PL",
@@ -171,22 +226,22 @@
       ]
     },
     {
-      "id": 14,
+      "id": 62,
       "name": "Расчетно-кассовое обслуживание",
       "role": "podstatya",
-      "parent": 2
+      "parent": 48
     },
     {
-      "id": 15,
-      "name": "Платежи и переводы ФЛ",
+      "id": 63,
+      "name": "Платежи и переводы ФЛ ",
       "role": "podstatya",
-      "parent": 14
+      "parent": 62
     },
     {
-      "id": 16,
+      "id": 64,
       "name": "Комиссии по платежам",
       "role": "podstatya",
-      "parent": 15,
+      "parent": 63,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -196,10 +251,10 @@
       ]
     },
     {
-      "id": 17,
+      "id": 66,
       "name": "Комиссии по переводам",
       "role": "podstatya",
-      "parent": 15,
+      "parent": 63,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -209,16 +264,16 @@
       ]
     },
     {
-      "id": 18,
+      "id": 68,
       "name": "Расчетные операции юридических лиц",
       "role": "podstatya",
-      "parent": 14
+      "parent": 62
     },
     {
-      "id": 19,
+      "id": 69,
       "name": "Безналичные операции корпоративных клиентов",
       "role": "podstatya",
-      "parent": 18,
+      "parent": 68,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -228,10 +283,10 @@
       ]
     },
     {
-      "id": 20,
+      "id": 70,
       "name": "Cash management",
       "role": "podstatya",
-      "parent": 18,
+      "parent": 68,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -241,10 +296,10 @@
       ]
     },
     {
-      "id": 21,
+      "id": 71,
       "name": "Зарплатные проекты",
       "role": "podstatya",
-      "parent": 18,
+      "parent": 68,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -254,10 +309,10 @@
       ]
     },
     {
-      "id": 22,
+      "id": 72,
       "name": "Кассовые операции",
       "role": "podstatya",
-      "parent": 14,
+      "parent": 62,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -267,10 +322,10 @@
       ]
     },
     {
-      "id": 23,
+      "id": 73,
       "name": "Ведение счетов",
       "role": "podstatya",
-      "parent": 14,
+      "parent": 62,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -280,15 +335,25 @@
       ]
     },
     {
-      "id": 24,
-      "name": "Прочие РКО",
+      "id": 74,
+      "name": "Прочие РКО ",
       "role": "podstatya",
-      "parent": 14,
+      "parent": 62,
       "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.05.01.01.03.03",
+          "node_code": "PL_04_03_02"
+        },
         {
           "type_code": "PL",
           "fin_code": "A.05.01.01.03.04",
           "node_code": "PL_04_03_03"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_03_Rtech"
         },
         {
           "type_code": "PL",
@@ -327,6 +392,11 @@
         },
         {
           "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_15_59_31_Rtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.05.02.01.08",
           "node_code": "PL_17_01_01"
         },
@@ -347,6 +417,11 @@
         },
         {
           "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_17_20_22_Rtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.05.01.01.09",
           "node_code": "PL_18_53_10"
         },
@@ -363,10 +438,10 @@
       ]
     },
     {
-      "id": 25,
-      "name": "Конверсия и фин.рынки",
+      "id": 75,
+      "name": "Конверсия и фин.рынки ",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 48,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -381,10 +456,10 @@
       ]
     },
     {
-      "id": 26,
+      "id": 76,
       "name": "Гарантии и ТФиДО",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 48,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -394,11 +469,16 @@
       ]
     },
     {
-      "id": 27,
-      "name": "Агентские и прочие доходы",
+      "id": 77,
+      "name": "Агентские и прочие доходы ",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 48,
       "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_20_Rtech"
+        },
         {
           "type_code": "PL",
           "fin_code": "A.05.03",
@@ -442,36 +522,98 @@
       ]
     },
     {
-      "id": 28,
-      "name": "Страховые премии и резервы ",
+      "id": 86,
+      "name": "Расходы на выплату вознаграждений торгово-сервисным предприятиям",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 50,
       "upr_cube_codes": [
         {
           "type_code": "PL",
-          "fin_code": "A.07",
-          "node_code": "R_10_25_53"
+          "fin_code": "A.05.01.03.01.02",
+          "node_code": "PL_04_11_05"
         }
       ]
     },
     {
-      "id": 29,
-      "name": "Расчеты по брокерскому обслуживанию ",
+      "id": 87,
+      "name": "Расчетные операции юридических лиц (тех. остаток)",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 68,
       "upr_cube_codes": [
         {
           "type_code": "PL",
-          "fin_code": "A.08.02.01.05",
-          "node_code": "PL_16_54_35"
+          "fin_code": "",
+          "node_code": "PL_11_43_51_Rtech"
         }
       ]
     },
     {
-      "id": 30,
+      "id": 88,
+      "name": "Комиссии по платежам и переводам физических лиц (тех. остаток)",
+      "role": "podstatya",
+      "parent": 63,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_12_53_56_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 93,
+      "name": "Interchange «us on us» (тех. остаток)",
+      "role": "podstatya",
+      "parent": 54,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_11_02_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 94,
+      "name": "Эквайринг (тех. остаток)",
+      "role": "podstatya",
+      "parent": 50,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_11_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_16_38_19_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "name": "Чистый комиссионный доход (тех. остаток) ",
+      "role": "podstatya",
+      "parent": 48,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_04_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_05_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 109,
       "name": "Доп.вознаграждение за операции через УКП ",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 3,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -481,10 +623,23 @@
       ]
     },
     {
-      "id": 31,
+      "id": 110,
+      "name": "Страховые премии и резервы ",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.07",
+          "node_code": "R_10_25_53"
+        }
+      ]
+    },
+    {
+      "id": 111,
       "name": "Продукты УБ ",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 3,
       "upr_cube_codes": [
         {
           "type_code": "PL",
@@ -494,15 +649,48 @@
       ]
     },
     {
-      "id": 33,
+      "id": 113,
       "name": "Доходы от небанковского бизнеса",
       "role": "podstatya",
-      "parent": 2,
+      "parent": 3,
       "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_09_03_10_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.04.02",
+          "node_code": "PL_09_03_11"
+        },
         {
           "type_code": "PL",
           "fin_code": "A.08.04.01",
           "node_code": "PL_09_03_do"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.04.03",
+          "node_code": "PL_13_09_14"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.04.04",
+          "node_code": "PL_17_23_58"
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "name": "Расчеты по брокерскому обслуживанию ",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.08.02.01.05",
+          "node_code": "PL_16_54_35"
         }
       ]
     }

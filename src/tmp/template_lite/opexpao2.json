@@ -1,11 +1,60 @@
 {
-  "metricName": "Операционные расходы Т",
+  "metricName": "Операционные расходы ТБ",
   "nodes": [
     {
       "id": 1,
       "name": "Операционные расходы ТБ",
       "role": "podstatya",
-      "parent": null
+      "parent": null,
+      "node_type": "sum",
+      "query": null,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.07",
+          "node_code": "PL_10_57_47"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_10_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.05",
+          "node_code": "R_10_57_46"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.01",
+          "node_code": "R_13_30_53"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.09",
+          "node_code": "R_18_27_41"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.08",
+          "node_code": "R_18_27_42"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02",
+          "node_code": "R_20_10_40"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.03",
+          "node_code": "R_20_10_46"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.04",
+          "node_code": "R_20_11_03"
+        }
+      ]
     },
     {
       "id": 3,
@@ -252,8 +301,28 @@
       "upr_cube_codes": [
         {
           "type_code": "PL",
+          "fin_code": "A.10.04.07",
+          "node_code": "PL_11_16_34"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_11_03_Rtech"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.10.04.08",
           "node_code": "PL_20_26_11"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.04.05",
+          "node_code": "PL_20_26_13"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.04.06",
+          "node_code": "PL_20_26_14"
         }
       ]
     },
@@ -707,21 +776,8 @@
       "upr_cube_codes": [
         {
           "type_code": "PL",
-          "fin_code": "A.10.02.06.01",
-          "node_code": "PL_11_04_08"
-        }
-      ]
-    },
-    {
-      "id": 86,
-      "name": "Представительские расходы",
-      "role": "podstatya",
-      "parent": 5,
-      "upr_cube_codes": [
-        {
-          "type_code": "PL",
-          "fin_code": "A.10.02.06.02",
-          "node_code": "PL_11_04_10"
+          "fin_code": "A.10.02.06",
+          "node_code": "R_20_20_56"
         }
       ]
     },
@@ -735,58 +791,6 @@
           "type_code": "PL",
           "fin_code": "A.10.02.07",
           "node_code": "PL_20_23_19"
-        }
-      ]
-    },
-    {
-      "id": 88,
-      "name": "Канцелярские расходы",
-      "role": "podstatya",
-      "parent": 5,
-      "upr_cube_codes": [
-        {
-          "type_code": "PL",
-          "fin_code": "A.10.02.08.01",
-          "node_code": "PL_11_06_28"
-        }
-      ]
-    },
-    {
-      "id": 89,
-      "name": "Типографские расходы",
-      "role": "podstatya",
-      "parent": 5,
-      "upr_cube_codes": [
-        {
-          "type_code": "PL",
-          "fin_code": "A.10.02.08.02",
-          "node_code": "PL_11_06_29"
-        }
-      ]
-    },
-    {
-      "id": 90,
-      "name": "Форменная/специальная одежда",
-      "role": "podstatya",
-      "parent": 5,
-      "upr_cube_codes": [
-        {
-          "type_code": "PL",
-          "fin_code": "A.10.02.08.03",
-          "node_code": "PL_11_06_31"
-        }
-      ]
-    },
-    {
-      "id": 91,
-      "name": "Подписка, переводы, нотариат и пр.",
-      "role": "podstatya",
-      "parent": 5,
-      "upr_cube_codes": [
-        {
-          "type_code": "PL",
-          "fin_code": "A.10.02.08.05",
-          "node_code": "PL_11_06_36"
         }
       ]
     },
@@ -813,6 +817,16 @@
           "type_code": "PL",
           "fin_code": "A.10.02.10.02",
           "node_code": "PL_11_07_58"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.10.03",
+          "node_code": "PL_11_08_01"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_23_21_Rtech"
         }
       ]
     },
@@ -863,8 +877,386 @@
       "upr_cube_codes": [
         {
           "type_code": "PL",
+          "fin_code": "A.10.02.02.04",
+          "node_code": "PL_10_38_39"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.02.07",
+          "node_code": "PL_10_38_42"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.03.01",
+          "node_code": "PL_10_41_09"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.03.06",
+          "node_code": "PL_10_41_26"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.03.08",
+          "node_code": "PL_10_41_30"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.03.09",
+          "node_code": "PL_10_41_32"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.04.03",
+          "node_code": "PL_10_44_48"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.04.05",
+          "node_code": "PL_10_44_59"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.05.03",
+          "node_code": "PL_10_59_37"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.05.04",
+          "node_code": "PL_10_59_38"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.05.06",
+          "node_code": "PL_10_59_42"
+        },
+        {
+          "type_code": "PL",
           "fin_code": "A.10.02.14",
           "node_code": "PL_16_12_46"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.02.06",
+          "node_code": "PL_16_42_58"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.15",
+          "node_code": "PL_18_31_27"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_10_40_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_20_46_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_20_49_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_20_50_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_20_51_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_20_54_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.02.03",
+          "node_code": "R_10_38_37"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.08",
+          "node_code": "R_20_20_53"
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "name": "Прочая амортизация",
+      "role": "podstatya",
+      "parent": 7,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.03.06",
+          "node_code": "PL_15_32_36"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.03.09",
+          "node_code": "PL_16_48_58"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_10_46_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.03.07",
+          "node_code": "PL_20_24_33"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.03.08",
+          "node_code": "PL_20_24_42"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.03.11",
+          "node_code": "PL_20_24_43"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "name": "Целевое финансирование ДЗО",
+      "role": "podstatya",
+      "parent": 5,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.02.09",
+          "node_code": "PL_20_20_60"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Операционные расходы (тех. остаток)",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_10_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "name": "Ошибки прошлых лет вне сметы ",
+      "role": "podstatya",
+      "parent": 11,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.05.03",
+          "node_code": "PL_20_27_56"
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "name": "Чрезвычайные расходы",
+      "role": "podstatya",
+      "parent": 11,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.05.04",
+          "node_code": "PL_20_27_54"
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "name": "Прочие",
+      "role": "podstatya",
+      "parent": 11,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_10_57_46_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.05.07",
+          "node_code": "PL_13_38_10"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.05.06",
+          "node_code": "PL_20_27_52"
+        }
+      ]
+    },
+    {
+      "id": 107,
+      "name": "Капитализация",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.01.01.02",
+          "node_code": "R_20_44_79"
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "name": "Расходы на содержание персонала (тех. остаток)",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_10_10_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "name": "Прочее",
+      "role": "podstatya",
+      "parent": 4,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_13_30_53_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.01.02.02",
+          "node_code": "PL_20_07_52"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.01.02.07",
+          "node_code": "PL_20_09_44"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_20_10_25_Rtech"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.01.02.05",
+          "node_code": "PL_20_14_44"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.01.02.09",
+          "node_code": "PL_20_25_21"
+        },
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.01.02.08",
+          "node_code": "PL_20_39_12"
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "name": "Блок УБ",
+      "role": "podstatya",
+      "parent": 12,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.08.02",
+          "node_code": "R_18_28_36"
+        }
+      ]
+    },
+    {
+      "id": 111,
+      "name": "Блок B2C",
+      "role": "podstatya",
+      "parent": 12,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.08.03",
+          "node_code": "R_18_28_42"
+        }
+      ]
+    },
+    {
+      "id": 112,
+      "name": "Блок GR",
+      "role": "podstatya",
+      "parent": 12,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.08.04",
+          "node_code": "R_18_28_37"
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "name": "Блок КИБ",
+      "role": "podstatya",
+      "parent": 12,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.08.10",
+          "node_code": "R_18_28_44"
+        }
+      ]
+    },
+    {
+      "id": 114,
+      "name": "Платы (тех. остаток)",
+      "role": "podstatya",
+      "parent": 12,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "",
+          "node_code": "PL_18_27_42_Rtech"
+        }
+      ]
+    },
+    {
+      "id": 115,
+      "name": "Внутреннее распределение расходов по продуктам экосистемы",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.07",
+          "node_code": "PL_10_57_47"
+        }
+      ]
+    },
+    {
+      "id": 116,
+      "name": "Операционные расходы по видам",
+      "role": "podstatya",
+      "parent": 3,
+      "upr_cube_codes": [
+        {
+          "type_code": "PL",
+          "fin_code": "A.10.09",
+          "node_code": "R_18_27_41"
         }
       ]
     }
