@@ -170,7 +170,7 @@ pipeline {
 
                     withCredentials([string(credentialsId: "${sberosc_ci}", variable: 'TOKEN')]) {
                         withDockerRegistry([credentialsId: "${tuz_ci}", url: "https://${docker_url}/ci${as_code}/ci${fp_code}/"]) {
-                            sh "docker build -t ${docker_url}/ci${as_code}/ci${fp_code}/${appComponent}:D-${vers}_${appComponent}${BUILD_ID}${tagSuffix} --build-arg TOKEN=${TOKEN} -f Dockerfile --label \"GIT_COMMIT=${env.GIT_COMMIT}\" ."
+                            sh "docker build -t ${docker_url}/ci${as_code}/ci${fp_code}/${appComponent}:D-${vers}_${appComponent}${BUILD_ID}${tagSuffix} --build-arg TOKEN=${TOKEN} -f Dockerfile__${appComponent} --label \"GIT_COMMIT=${env.GIT_COMMIT}\" ."
                         }
                     }
 
