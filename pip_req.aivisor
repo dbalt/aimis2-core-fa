@@ -1,1 +1,2 @@
 coredis==5.4.0
+jsonpatch
