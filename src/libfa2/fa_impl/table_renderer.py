@@ -150,7 +150,7 @@ def _sep_label(dtype: str) -> str:
 
 
 def _path_cell(node: Dict, depth: int, parent: Optional[Dict]) -> str:
-    indent = "&emsp;" * depth
+    indent = ".&emsp;" * depth
     name = _clean_name(node.get("hieararchy_node", ""))
 
     # Часть 1 — название показателя
@@ -212,7 +212,7 @@ async def render_factor_table(data: Dict) -> str:
         )
         if has_children:
             dtype = (node.get("details") or {}).get("type") or ""
-            rows.append(f"|   | {'&emsp;' * depth}{_sep_label(dtype)} | | | |")
+            rows.append(f"|   | {'.&emsp;' * depth}{_sep_label(dtype)} | | | |")
             for c in children:
                 walk(c, depth + 1, node, len(children) == 1)
 
