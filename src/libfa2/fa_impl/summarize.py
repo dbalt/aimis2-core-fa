@@ -209,9 +209,9 @@ async def build_branch_report(
     # Сборка финального отчёта: short_summary + key_factors + [motiv_block] + table
     final_report = f"{short_summary_res.data}\n\n\n{key_factors_res.data}"
 
-    # Мотивационная корректировка — результат LLM
+    # Мотивационная корректировка — результат LLM (с явным заголовком-разделителем)
     if motiv_res.ok and motiv_res.data:
-        final_report += f"\n\n\n{motiv_res.data}"
+        final_report += f"\n\n\n## Влияние мотивационной корректировки\n\n\n{motiv_res.data}"
 
     # Таблица — в самом конце
     final_report += f"\n\n\n{table_res['table']}"
