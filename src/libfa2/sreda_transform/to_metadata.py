@@ -10,8 +10,7 @@
 
 from __future__ import annotations
 
-import json
-from typing import Any, Optional
+from typing import Optional
 
 from ..hier_metadata import Hierarchy, MetricNode, MetricType
 from ..hier_metadata.query import Query
@@ -27,6 +26,7 @@ from ..sreda_models import (
     AnalytStep,
     DrillStepComponent,
     QueryFilterDetail,
+    build_filter_dict,
     map_metric_type,
     map_multi_part_type,
     map_mp_decomposition_type,
@@ -42,9 +42,9 @@ class SredaToDeviationCalcConverter:
     def __init__(
         self,
         client: SredaAPIClient,
-        metric_guide_id: str,
-        query_guide_id: str,
-        step_guide_id: str,
+        metric_guide_id: Optional[str] = None,
+        query_guide_id: Optional[str] = None,
+        step_guide_id: Optional[str] = None,
         metrics_source: str = "missa_bidr.t_aimis_fa__metrics_bsp",
         rep_dt_column: str = "rep_dt",
         plan_column: str = "val_plan",
@@ -69,6 +69,9 @@ class SredaToDeviationCalcConverter:
         """
         Загрузить полное дерево из API Среды и трансформировать в DeviationCalcMetadata.
 
+        GUID справочников можно передать в __init__ либо опустить — тогда они
+        будут найдены автоматически (discover_guides), без хардкода.
+
         Args:
             code: Системный код метаданных (default: берётся из первого record).
             aliases: Маппинг старых кодов → новых.
@@ -82,6 +85,11 @@ class SredaToDeviationCalcConverter:
             self._query_guide_id,
             self._step_guide_id,
         )
+
+        # Убедиться, что у нас есть все GUID справочников для дочерних
+        # запросов (если не были переданы, они найдены внутри build_full_tree).
+        resolved = self._resolve_guide_ids(tree)
+        self._metric_guide_id, self._query_guide_id, self._step_guide_id = resolved
 
         scenarios = tree.get("scenarios", [])
         if not scenarios:
@@ -136,6 +144,19 @@ class SredaToDeviationCalcConverter:
             len(dcm.hier_lst),
         )
         return Res.mk_result(dcm)
+
+    def _resolve_guide_ids(self, tree: dict) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        """
+        Определить GUID справочников ФА из уже собранного дерева.
+
+        build_full_tree возвращает их в tree['guides'], либо используем явно
+        переданные в __init__.
+        """
+        resolved = (tree.get("guides") or {})
+        metric_guide = self._metric_guide_id or resolved.get("metric_guide")
+        query_guide = self._query_guide_id or resolved.get("query_guide")
+        step_guide = self._step_guide_id or resolved.get("step_guide")
+        return metric_guide, query_guide, step_guide
 
     def _build_hierarchy(
         self,
@@ -282,21 +303,7 @@ class SredaToDeviationCalcConverter:
             return None
 
         details = [QueryFilterDetail.from_api_record(f) for f in filters]
-        result: dict[str, Any] = {}
-
-        for d in sorted(details, key=lambda x: x.rank):
-            val = d.value
-            if isinstance(val, str) and val.startswith("["):
-                try:
-                    val = json.loads(val)
-                except (json.JSONDecodeError, TypeError):
-                    pass
-            else:
-                try:
-                    val = int(val)
-                except (ValueError, TypeError):
-                    pass
-            result[d.col_name] = val
+        result = build_filter_dict(details)
 
         return Query(result) if result else None
 

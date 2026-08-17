@@ -30,6 +30,20 @@ SREDA_DEFAULT_HOST = "https://sredamo.apps.a623plp0.k8s.delta.sbrf.ru"
 SREDA_ENDPOINT_TEMPLATE = "/api/metadata/guide/{guide_id}"
 SREDA_TIMEOUT = httpx.Timeout(30.0)
 
+# Автопоиск guide-идентификаторов по схеме метаданных Среды.
+# Корень дерева схемы — жестко заданный системный идентификатор (не GUID данных).
+SREDA_METADATA_ROOT_ID = "00000000-0000-0000-0000-000000000000"
+SREDA_TREE_ENDPOINT = "/api/metadata/v3/tree/{node_id}"
+
+# Имена справочников ФА в схеме. Глобально уникальны (префикс «ФА») и
+# используются как маркеры при авто-поиске вместо хардкода GUID.
+SREDA_GUIDE_NAMES = {
+    "metric_guide": "ФАИерархииПоказателей",
+    "query_guide": "ФАФильтрыЗапроса",
+    "step_guide": "ФАШагАлгоритмаАналитическогоРазложения",
+}
+SREDA_GUIDE_CLASS_NAME = "Guide"
+
 
 @dataclass
 class SredaClientConfig:
@@ -238,27 +252,110 @@ class SredaAPIClient:
 
         return []
 
+    def _fetch_tree(self, node_id: str) -> list[dict[str, Any]]:
+        """
+        Получить дочерние узлы дерева схемы метаданных Среды.
+
+        GET /api/metadata/v3/tree/{node_id} → список дочерних объектов.
+        """
+        url = (
+            f"{self._config.host}"
+            f"{SREDA_TREE_ENDPOINT.format(node_id=node_id)}"
+        )
+        response = self._get_session().get(url)
+        if response.status_code != 200:
+            raise SredaHTTPError(node_id, response.status_code, response.text)
+        payload = response.json()
+        return payload if isinstance(payload, list) else []
+
+    def discover_guides(self) -> dict[str, str]:
+        """
+        Найти guide_id справочников ФА автоматически, без хардкода GUID.
+
+        Проходит по дереву схемы метаданных (/api/metadata/v3/tree):
+          1. Корень → ищем узел класса Guide («Справочники»).
+          2. Список справочников → ищем по заданным именам (префикс «ФА»).
+
+        Returns:
+            dict вида {"metric_guide": str, "query_guide": str, "step_guide": str}.
+        """
+        root_nodes = self._fetch_tree(SREDA_METADATA_ROOT_ID)
+        guide_class_id: Optional[str] = None
+        for node in root_nodes:
+            if node.get("class") == SREDA_GUIDE_CLASS_NAME:
+                guide_class_id = node.get("id")
+                break
+
+        if not guide_class_id:
+            raise SredaAPIError(
+                "Не найден класс Guide в схеме метаданных Среды"
+            )
+
+        guides = self._fetch_tree(guide_class_id)
+
+        found: dict[str, str] = {}
+        wanted = set(SREDA_GUIDE_NAMES.values())
+        for node in guides:
+            name = node.get("name")
+            if name in wanted:
+                gid = node.get("id")
+                if gid:
+                    key = next(
+                        (k for k, v in SREDA_GUIDE_NAMES.items() if v == name),
+                        None,
+                    )
+                    if key:
+                        found[key] = gid
+
+        missing = set(SREDA_GUIDE_NAMES) - set(found)
+        if missing:
+            raise SredaAPIError(
+                "Не удалось найти справочники ФА в схеме Среды: "
+                + ", ".join(sorted(missing))
+            )
+
+        logger.info(
+            "Автопоиск guide_id: metric=%s, query=%s, step=%s",
+            found["metric_guide"],
+            found["query_guide"],
+            found["step_guide"],
+        )
+        return found
+
     def build_full_tree(
         self,
-        metric_guide_id: str,
-        query_guide_id: str,
-        step_guide_id: str,
+        metric_guide_id: Optional[str] = None,
+        query_guide_id: Optional[str] = None,
+        step_guide_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Собрать полное дерево сценариев: метрики + query-фильтры + drill-шаги + дети.
 
-        GUID передаются как параметры, не захардкожены.
+        GUID можно передать явно либо опустить — тогда они будут найдены
+        автоматически через discover_guides() (без хардкода).
 
         Args:
-            metric_guide_id:  GUID guide таблицы metric_hier.
-            query_guide_id:   GUID guide таблицы query_guide.
-            step_guide_id:    GUID guide таблицы drill_steps.
+            metric_guide_id:  GUID guide таблицы metric_hier (опционально).
+            query_guide_id:   GUID guide таблицы query_guide (опционально).
+            step_guide_id:    GUID guide таблицы drill_steps (опционально).
 
         Returns:
             dict с ключом 'scenarios': каждый сценарий содержит
             'record', 'query_filters', 'drill_steps', 'children'.
         """
-        meta_data = self.fetch_guide(metric_guide_id)
+        if metric_guide_id and query_guide_id and step_guide_id:
+            metric_guide, query_guide, step_guide = (
+                metric_guide_id,
+                query_guide_id,
+                step_guide_id,
+            )
+        else:
+            discovered = self.discover_guides()
+            metric_guide = metric_guide_id or discovered["metric_guide"]
+            query_guide = query_guide_id or discovered["query_guide"]
+            step_guide = step_guide_id or discovered["step_guide"]
+
+        meta_data = self.fetch_guide(metric_guide)
         top_records = meta_data.get("rows", [])
 
         scenarios: list[dict[str, Any]] = []
@@ -270,7 +367,7 @@ class SredaAPIClient:
             query_filters: list[dict] = []
             query_ref = record.get("query")
             if query_ref:
-                query_filters = self.fetch_query_filters(query_ref, query_guide_id)
+                query_filters = self.fetch_query_filters(query_ref, query_guide)
 
             # Resolve drill steps from analyt_steps tabular part
             drill_steps: list[dict] = []
@@ -281,13 +378,13 @@ class SredaAPIClient:
                     step_uuid = step_item.get("step")
                     if step_uuid:
                         components = self.fetch_step_algorithm(
-                            step_uuid, step_guide_id
+                            step_uuid, step_guide
                         )
                         step_item["_components"] = components
                 drill_steps = tp[analyt_tab]
 
             # Recursive children
-            children = self.fetch_children(rid, metric_guide_id)
+            children = self.fetch_children(rid, metric_guide)
 
             scenarios.append(
                 {
@@ -298,4 +395,12 @@ class SredaAPIClient:
                 }
             )
 
-        return {"scenarios": scenarios}
+        # Провайдим использованные guide_id, чтобы не переоткрывать автопоиск.
+        return {
+            "scenarios": scenarios,
+            "guides": {
+                "metric_guide": metric_guide,
+                "query_guide": query_guide,
+                "step_guide": step_guide,
+            },
+        }

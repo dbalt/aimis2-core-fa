@@ -6,7 +6,8 @@
 создавать `MetricNode` из каждой записи, строить `Hierarchy`, `Query`,
 `AnalyticalStructureMetadata` и возвращать `Res[DeviationCalcMetadata]`.
 
-GUID guide передаются как параметры `SredaAPIClient.__init__()`, не захардкожены.
+GUID guide могут быть переданы как параметры конвертера либо найдены автоматически
+через `SredaAPIClient.discover_guides()` (ручка `/api/metadata/v3/tree`), без хардкода.
 
 #### Scenario: Успешная трансформация полного дерева
 
@@ -151,3 +152,34 @@ GUID guide передаются как параметры `SredaAPIClient.__init
 
 - **WHEN** вызывается `MetricNode.from_dict({"analyt_steps": [...], "api_uuid": "abc-123", ...})`
 - **THEN** создаётся `MetricNode` с корректно десериализованными `analyt_steps` и `api_uuid`
+
+---
+
+## POTENTIAL (не реализовано)
+
+> Открытый вопрос для согласования. Сейчас `transform()` разворачивает **все** корневые
+> сценарии (`scenarios`) в `hier_lst`. Возможная альтернатива — разворачивать **только один**
+> конкретный сценарий, выбранный по приходящему извне GUID сценария (`record.id`)
+> или по коду (`record.name`).
+
+### Требование (candidate): выбор одного сценария по GUID
+
+- **WHEN** в `transform(..., scenario_guid="...")` передан GUID конкретного сценария
+- **THEN** в `hier_lst` попадает **только** `Hierarchy`, построенная из записи с `record.id == scenario_guid`
+- **THEN** остальные корневые записи пропускаются (в `hier_lst` не попадают)
+
+#### Scenario: передан GUID существующего сценария
+
+- **WHEN** `scenarios` содержит запись с `record.id == scenario_guid`
+- **THEN** строится одна `Hierarchy` для этого сценария
+- **THEN** `hier_lst` содержит ровно одну иерархию
+
+#### Scenario: GUID не найден
+
+- **WHEN** в `scenarios` нет записи с `record.id == scenario_guid`
+- **THEN** возвращается `Res.mk_error(...)` (либо пропуск с `logger.warning` — уточнить)
+
+#### Scenario: GUID не передан
+
+- **WHEN** `scenario_guid` отсутствует / `None`
+- **THEN** поведение остаётся текущим — разворачиваются все `scenarios`
