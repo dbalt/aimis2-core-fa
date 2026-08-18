@@ -60,6 +60,17 @@
 - [x] 2.12 Реализовать `_resolve_scenario(state, hier_id, scenario_guide)` —
       связка сценарий по GUID → source_params из ФАПараметрыИсточников
 
+#### Оптимизация (объединение запросов)
+- [x] 2.13 Реализовать `fetch_children_batch(parent_ids, guide_id)` — мульти-parent
+      `where.parent=[...]` одним запросом (проверено: массив интерпретируется как IN)
+- [x] 2.14 Реализовать `_build_batch_tree(root_id, guide_id)` — обход детей BFS по уровням,
+      один запрос на уровень (глубина не ограничена; совместимый формат `_children`/`_depth`)
+- [x] 2.15 Перевести `build_full_tree` на `_build_batch_tree` вместо рекурсивного
+      `fetch_children` (15 → 4 запроса на обход детей)
+- [x] 2.16 Загружать справочники query/step целиком один раз на экземпляр
+      (`_load_query_guide`, кэш step), резолв по индексу `id`; сброс в `close()`
+- [x] 2.17 Проверить что полный конвертер сократился: 27 → 15 HTTP (−44%)
+
 ## 3. Пакет sreda_models/ (dataclass-модели)
 
 - [x] 3.1 Создать пакет `libfa2/sreda_models/` с `__init__.py`

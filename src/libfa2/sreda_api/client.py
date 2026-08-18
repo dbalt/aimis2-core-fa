@@ -83,6 +83,11 @@ class SredaAPIClient:
         self._config = config or SredaClientConfig()
         self._ssl_ctx = self._build_ssl_context()
         self._session: Optional[httpx.Client] = None
+        # Лениво загружаемые справочники query/step — загружаются целиком ОДИН раз
+        # на экземпляр и резолвятся локально, чтобы не делать запрос на каждый узел.
+        # Это объединение запросов (не долговременный кэш): сбрасываются в close().
+        self._query_guide_cache: Optional[dict[str, dict]] = None
+        self._step_guide_cache: Optional[dict[str, dict]] = None
 
     def login(self) -> None:
         """
@@ -175,7 +180,9 @@ class SredaAPIClient:
         return self._session
 
     def close(self) -> None:
-        """Close the underlying httpx session."""
+        """Close the underlying httpx session and reset per-instance справочники."""
+        self._query_guide_cache = None
+        self._step_guide_cache = None
         if self._session:
             self._session.close()
             self._session = None
@@ -269,25 +276,113 @@ class SredaAPIClient:
 
         return _recurse(parent_id, depth=0)
 
+    def fetch_children_batch(
+        self, parent_ids: list[str], guide_id: str
+    ) -> list[dict[str, Any]]:
+        """
+        Получить детей нескольких родительских узлов **одним** запросом.
+
+        API платформы Среды поддерживает WHERE `{"parent": [<id>, ...]}` — array
+        интерпретируется как «IN» (мульти-родитель). Это позволяет собирать
+        целый уровень дерева за один HTTP-запрос вместо N (по одному на родителя).
+
+        Args:
+            parent_ids: Список UUID родительских узлов.
+            guide_id:   GUID guide таблицы метрик.
+
+        Returns:
+            Плоский список записей, у которых `parent` ∈ parent_ids.
+        """
+        data = self.fetch_guide(guide_id, where={"parent": list(parent_ids)})
+        return data.get("rows", [])
+
+    def _build_batch_tree(
+        self,
+        root_id: str,
+        guide_id: str,
+        max_depth: int = 5,
+    ) -> list[dict[str, Any]]:
+        """
+        Собрать поддерево root_id по уровням (BFS), без «запроса на узел».
+
+        Каждый уровень вложенности обходится ОДНИМ запросом
+        (through `fetch_children_batch`); глубина не ограничена схемой —
+        цикл идёт, пока есть родители текущего уровня (до max_depth).
+
+        Возвращает список прямых детей root_id, каждый с вложенными
+        `_children` и полем `_depth` (0 для прямых детей, 1+ для внуков).
+
+        Форматом сохраняется совместимость со старым рекурсивным
+        `fetch_children`: тот же вложенный вид, но без сетевого обхода
+        каждого отдельного узла.
+        """
+        # Уровень 0: прямые дети корня.
+        level = self.fetch_guide(guide_id, where={"parent": root_id}).get("rows", [])
+        by_id: dict[str, dict[str, Any]] = {}
+        for r in level:
+            r["_children"] = []
+            r["_depth"] = 0
+            by_id[r["id"]] = r
+
+        parent_ids = [r["id"] for r in level]
+        depth = 0
+        while parent_ids and depth < max_depth:
+            children_rows = self.fetch_children_batch(parent_ids, guide_id)
+            depth += 1
+            if not children_rows:
+                break
+
+            for r in children_rows:
+                r["_children"] = []
+                r["_depth"] = depth
+                by_id[r["id"]] = r
+
+            # Прикрепить каждого ребёнка к его родителю и подготовить след. уровень.
+            next_parents: list[str] = []
+            for r in children_rows:
+                pid = r.get("parent")
+                parent_node = by_id.get(pid)
+                if parent_node is not None:
+                    parent_node["_children"].append(r)
+                next_parents.append(r["id"])
+            parent_ids = next_parents
+
+        return level
+
+    def _load_query_guide(self, query_guide_id: str) -> dict[str, dict]:
+        """
+        Загрузить справочник query_guide целиком один раз на экземпляр.
+
+        Справочник маленький (десятки записей), поэтому вместо запроса на
+        каждый query UUID загружаем его полностью и делаем индекс по id.
+        Повторные вызовы в пределах сборки не повторяют HTTP-запрос.
+        """
+        if self._query_guide_cache is None:
+            rows = self.fetch_guide(query_guide_id).get("rows", [])
+            self._query_guide_cache = {r["id"]: r for r in rows}
+        return self._query_guide_cache
+
     def fetch_query_filters(
         self, query_uuid: str, query_guide_id: str
     ) -> list[dict]:
         """
         Получить query-фильтры для заданного query UUID.
 
+        Справочник запрашивается один раз на экземпляр (объединение запросов),
+        конкретный id извлекается локально по индексу.
+
         Args:
-            query_uuid:     UUID записи query (поле query в metric_hier).
+            query_uuid:     UUID query (поле query в metric_hier).
             query_guide_id: GUID guide таблицы query_guide.
 
         Returns:
             Список записей из TabularParts.t_aimis_fa__query_filters__details.
         """
-        data = self.fetch_guide(query_guide_id, where={"id": query_uuid})
-        rows = data.get("rows", [])
-        if not rows:
+        row = self._load_query_guide(query_guide_id).get(query_uuid)
+        if row is None:
             return []
 
-        tp = rows[0].get("TabularParts", {})
+        tp = row.get("TabularParts", {})
         tab_name = "t_aimis_fa__query_filters__details"
         return tp.get(tab_name, []) if tab_name in tp else []
 
@@ -297,6 +392,9 @@ class SredaAPIClient:
         """
         Получить DrillStepComponent из step_guide.
 
+        Аналогично query_guide — справочник загружается один раз на экземпляр
+        и резолвится по id локально.
+
         Args:
             step_uuid:     Значение поля `step` из analyt_steps metric_hier.
             step_guide_id: GUID таблицы шагов алгоритмов.
@@ -304,16 +402,17 @@ class SredaAPIClient:
         Returns:
             Список записей из TabularParts.t_aimis_fa__analyt_drill_steps__components.
         """
-        data = self.fetch_guide(step_guide_id)
-        rows = data.get("rows", [])
+        if self._step_guide_cache is None:
+            rows = self.fetch_guide(step_guide_id).get("rows", [])
+            self._step_guide_cache = {r["id"]: r for r in rows}
 
-        for row in rows:
-            if row["id"] == step_uuid:
-                tp = row.get("TabularParts", {})
-                tab_name = "t_aimis_fa__analyt_drill_steps__components"
-                return tp.get(tab_name, []) if tab_name in tp else []
+        row = self._step_guide_cache.get(step_uuid)
+        if row is None:
+            return []
 
-        return []
+        tp = row.get("TabularParts", {})
+        tab_name = "t_aimis_fa__analyt_drill_steps__components"
+        return tp.get(tab_name, []) if tab_name in tp else []
 
     def _fetch_tree(self, node_id: str) -> list[dict[str, Any]]:
         """
@@ -479,8 +578,8 @@ class SredaAPIClient:
             if scenario_guide:
                 scenario_meta = self._resolve_scenario(source_map, rid, scenario_guide)
 
-            # Recursive children
-            children = self.fetch_children(rid, metric_guide)
+            # Recursive children (BFS по уровням — один запрос на уровень дерева)
+            children = self._build_batch_tree(rid, metric_guide)
 
             scenario_entry: dict[str, Any] = {
                 "record": record,
