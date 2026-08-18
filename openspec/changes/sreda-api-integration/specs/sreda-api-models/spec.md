@@ -224,6 +224,13 @@ JSON-строки и числа, и возвращать словарь `{col_na
 
 - **WHEN** `details = [QueryFilterDetail(col_name="node_code", value='["PL_01_03_01", "PL_14_45_08"]', rank=3)]`
 - **THEN** `build_filter_dict(details)` возвращает `{"node_code": ["PL_01_03_01", "PL_14_45_08"]}`
+- **THEN** строка парсится через `json.loads()`
+
+#### Scenario: Сбор filter_dict из Python-литерала (одиночные кавычки)
+
+- **WHEN** `details = [QueryFilterDetail(col_name="node_code", value="['PL_01_02_02', 'PL_14_45_08']", rank=3)]`
+- **THEN** `build_filter_dict(details)` возвращает `{"node_code": ["PL_01_02_02", "PL_14_45_08"]}`
+- **THEN** если `json.loads()` не может разобрать (одиночные кавычки), используется `ast.literal_eval`
 
 #### Scenario: Сбор filter_dict из нескольких компонентов
 

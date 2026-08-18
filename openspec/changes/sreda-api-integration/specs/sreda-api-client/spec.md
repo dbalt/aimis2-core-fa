@@ -1,5 +1,35 @@
 ## ADDED Requirements
 
+### Requirement: SredaAPIClient MUST поддерживать программную авторизацию (POST /api/auth/login)
+
+Клиент MUST уметь получать cookie SID автоматически через `POST /api/auth/login`
+вместо ручного таскания SID в конфигурации. Креды задаются в `SredaClientConfig`
+поля `login`, `password`; при ответе 501 запрос повторяется с заголовком `Origin`
+(из `config.origin`).
+
+#### Scenario: Авторизация с кредами возвращает cookie
+
+- **WHEN** в `SredaClientConfig` заданы `login` и `password`
+- **THEN** `SredaAPIClient.login()` вызывает `POST /api/auth/login` с телом `{"login","password"}`
+- **THEN** при ответе 200 cookie SID сохраняются в сессию (доступны для последующих запросов)
+
+#### Scenario: Авторизация при ответе 501 с fallback на Origin
+
+- **WHEN** первый `POST /api/auth/login` возвращает 501 и задан `origin`
+- **THEN** клиент повторяет запрос с заголовком `Origin: <origin>`
+- **THEN** если второй ответ 200 — cookie сохраняются в сессию
+
+#### Scenario: Авто-логин при первом использовании сессии
+
+- **WHEN** в конфиге заданы креды, `auto_login=True` и нет готовых `cookies`
+- **THEN** при первом вызове `_get_session()` выполняется `login()`
+- **THEN** если в конфиге переданы готовые `cookies` — они приоритетнее, авто-логин не выполняется
+
+#### Scenario: Ошибка авторизации
+
+- **WHEN** креды не заданы или сервер возвращает статус != 200
+- **THEN** бросается `SredaAPIError` с описанием
+
 ### Requirement: SredaAPIClient MUST поддерживать mTLS-аутентификацию и GET-запросы к API Среды
 
 Средне-клиент MUST подключаться к API платформы «Среда» с использованием mTLS (cert.pem + chain.pem + private.key)
@@ -97,25 +127,67 @@
 - **WHEN** вызывается `fetch_step_algorithm("nonexistent-uuid", "3f3292e9-...")`
 - **THEN** возвращается пустой список `[]`
 
+### Requirement: SredaAPIClient MUST поддерживать авто-поиск справочников (discover_guides)
+
+Клиент MUST находить guide_id справочников ФА автоматически, без хардкода GUID,
+проходя дерево схемы метаданных через `GET /api/metadata/v3/tree`.
+
+#### Scenario: Авто-поиск всех пяти справочников ФА
+
+- **WHEN** вызывается `discover_guides()`
+- **THEN** от корня схемы (`SREDA_METADATA_ROOT_ID`) ищется класс `Guide`
+- **THEN** в списке справочников по имени находятся:
+  - `ФАИерархииПоказателей` → `metric_guide`
+  - `ФАФильтрыЗапроса` → `query_guide`
+  - `ФАШагАлгоритмаАналитическогоРазложения` → `step_guide`
+  - `ФАСценарии` → `scenario_guide`
+  - `ФАПараметрыИсточников` → `src_params_guide`
+- **THEN** возвращается `dict` с этими пятью ключами
+
+#### Scenario: Класс Guide не найден
+
+- **WHEN** в корне схемы нет узла класса `Guide`
+- **THEN** бросается `SredaAPIError`
+
+#### Scenario: Справочник отсутствует в схеме
+
+- **WHEN** в списке справочников нет одного из ФА-гайдов
+- **THEN** бросается `SredaAPIError` с перечислением пропущенных справочников
+
 ### Requirement: SredaAPIClient MUST поддерживать сбор полного дерева
 
-GUID передаются как параметры `__init__`, не захардкожены.
+GUID можно передать явно либо опустить — тогда они находятся автоматически через
+`discover_guides()`, без хардкода.
 
-Клиент MUST собрать полный сценарий: метрику, query-фильтры, drill-шаги и детей.
+Клиент MUST собрать полный сценарий: метрику, query-фильтры, drill-шаги, детей,
+а также метаданные сценария из `ФАСценарии` и параметры его источника из
+`ФАПараметрыИсточников`.
 
 #### Scenario: Сбор полного дерева
 
-- **WHEN** вызывается `build_full_tree(metric_q="fde17d36-...", query_q="b3c03b04-...", step_q="3f3292e9-...")`
+- **WHEN** вызывается `build_full_tree()`
 - **THEN** для каждой записи в `rows` метрики:
   - Загружаются query-фильтры (если `query` не null)
   - Загружаются drill-шаги из `t_aimis_fa__metric_hier__analyt_steps`
   - Для каждого шага загружаются компоненты из step_guide
   - Загружаются дети через `fetch_children`
-- **THEN** возвращается `dict` с ключом `scenarios: [...]`
+- **THEN** через `_resolve_scenario` по GUID (`scenario__hiers.hier == record.id`)
+  находится сценарий в `ФАСценарии`
+- **THEN** по `scenario.source` (GUID) из `ФАПараметрыИсточников` берутся параметры источника
 - **THEN** каждый сценарий содержит `record`, `query_filters`, `drill_steps`, `children`
+- **THEN** при наличии связки — также `scenario` и `source_params`
+- **THEN** возвращается `dict` с ключами `scenarios` и `guides` (все 5 найденных id)
 
 #### Scenario: Сбор дерева для сценария без query и drill
 
-- **WHEN** вызывается `build_full_tree()` для узла с `query=null`
+- **WHEN** `build_full_tree()` для узла с `query=null`
 - **THEN** `query_filters = []`
 - **THEN** `drill_steps = []`
+
+#### Scenario: Связка сценария по GUID (`_resolve_scenario`)
+
+- **WHEN** иерархия `record.id` совпадает с `hier` в `t_aimis_fa__scenario__hiers`
+- **THEN** возвращается `{'scenario': {...}, 'source_params': {...}}`
+- **THEN** `source_params` берётся из `ФАПараметрыИсточников` по `scenario.source`
+- **WHEN** сценарий не найден
+- **THEN** возвращается `None`

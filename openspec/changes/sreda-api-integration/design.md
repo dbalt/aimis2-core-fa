@@ -6,16 +6,21 @@
 REST API:
 
 - `/api/metadata/guide/{guide_id}` — справочники иерархии (metric_hier), фильтры (query_guide),
-  и алгоритмы аналитического разложения (drill_steps).
+  алгоритмы аналитического разложения (drill_steps), сценарии (ФАСценарии),
+  параметры источников (ФАПараметрыИсточников).
 - mTLS-аутентификация (cert.pem + chain.pem + private.key) + cookie SID.
-- Данные структурированы в формате `{rows, cols, TabularParts, Refs}`.
+  SID получается программно через `POST /api/auth/login` (с fallback на Origin).
+- Автопоиск справочников через `/api/metadata/v3/tree` — без хардкода GUID.
 
 Проведено полное исследование API (см. `src/sreda_api_research.md`):
-- 3 работающих GUID: `fde17d36` (metric_hier), `b3c03b04` (query_guide), `3f3292e9` (drill_steps).
+- 5 работающих справочников: `ФАИерархииПоказателей`, `ФАФильтрыЗапроса`,
+  `ФАШагАлгоритмаАналитическогоРазложения`, `ФАСценарии`, `ФАПараметрыИсточников`.
 - Enum-значения API возвращаются как строки: `"SUM"`, `"RATE"`, `"DENOMINATOR"`, `"1"`.
 - Числовые значения (`node_type=2`) — временный баг API, игнорируются.
 - 2 корневых сценария, 11 query-фильтров, 5 drill-step алгоритмов.
 - Дерево иерархии: 2 уровня глубины, 14 узлов.
+- Связка «сценарий ↔ источник» по GUID: `metric_hier[id] ⇔ scenario__hiers.hier
+  ⇔ ФАСценарии.source ⇔ ФАПараметрыИсточников[id]`.
 
 ## Goals / Non-Goals
 
@@ -34,7 +39,7 @@ REST API:
 - Параллельная загрузка из API — один синхронный запрос к guide.
 - Кэширование результатов — каждый вызов делает свежий запрос.
 - Обратная конвертация (`reverse()`) — DeviationCalcMetadata → API JSON.
-- Вынесение GUID в env-переменные — GUID передаются как параметры.
+- Вынесение GUID в env-переменные — справочники находятся автоматически (`discover_guides()`).
 - `raw_api_tree` в DeviationCalcMetadata — без модификации ядра.
 - README и внешняя документация — в следующей итерации.
 
@@ -87,16 +92,37 @@ REST API:
 **Alternative:** Создать отдельный `Algorithm` для каждого `step`. Не нужно —
 все шаги одного сценария объединяются в один `Algorithm` с расширенным `drill_order`.
 
-### 5. GUID передаются как параметры, не захардкожены
+### 5. Автопоиск справочников по имени (discover_guides), без хардкода GUID
 
-**Decision:** `SredaAPIClient.__init__()` принимает `metric_guide_id`, `query_guide_id`,
-`step_guide_id` как обязательные параметры.
+**Decision:** `SredaAPIClient` определяет guide_id справочников автоматически через
+`discover_guides()`: корень схемы (`/api/metadata/v3/tree`) → класс `Guide` →
+по именам ищет 5 справочников. GUID можно передать явно как fallback, но по умолчанию
+не обязательны.
 
-**Rationale:** GUID могут отличаться между окружениями (dev/test/prod). Хардкод
-не позволяет тестировать без подмены классов.
+**Rationale:** GUID различаются между окружениями и вручную менять каждый вызов — ошибкоопасно.
+Имена справочников уникальны (префикс «ФА»), поэтому идентификация по имени надёжна.
 
 **Alternative:** Вынести GUID в env-переменные (`SREDA_METRIC_GUID`). Не нужно —
-для первой итерации параметры `__init__` достаточны.
+автопоиск убирает потребность в env-параметрах.
+
+### 5a. Программная авторизация через POST /api/auth/login
+
+**Decision:** `SredaAPIClient` получает cookie SID через `POST /api/auth/login`
+(поля `login`/`password` в `SredaClientConfig`), авто-логин при первом использовании
+сессии. При ответе 501 повторяет запрос с заголовком `Origin`.
+
+**Rationale:** Ручное таскание SID в конфиге — не обслуживаемо. Креды тестовые
+(`testfa`/`123`), в коде берутся из env с fallback, в репозиторий не коммитятся.
+
+### 5b. Расчётный контур (source/plan/fact/aliases) — из API
+
+**Decision:** `SourceParameters`, `SearchDevParameters` и `aliases` заполняются из API:
+`ФАСценарии` → `ФАПараметрыИсточников` через связку по GUID (`_resolve_scenario`).
+Дефолты конвертера остаются как fallback при отсутствии данных.
+
+**Rationale:** Это закрывает требование «всё должно приходить из апи»: имя источника,
+колонки периода/плана/факта и их подписи (`col_*`) действительно экспонируются
+платформой. Раньше эти значения брались из дефолтов конвертера.
 
 ### 6. `api_uuid` в MetricNode вместо `raw_api_tree` в DCM
 
@@ -130,8 +156,9 @@ REST API:
 
 ### Фаза 2: sreda_api (HTTP-клиент)
 1. Создать `sreda_api/exceptions.py` и `client.py`.
-2. Реализовать `SredaAPIClient` с mTLS, `fetch_guide`, `fetch_children`, `build_full_tree`.
-3. Тесты на модули пакетов (без сетевых вызовов).
+2. Реализовать `SredaAPIClient`: mTLS, `login()` (POST /api/auth/login), `fetch_guide`,
+   `fetch_children`, `discover_guides()`, `build_full_tree`, `_resolve_scenario()`.
+3. Тесты на модули пакетов (без сетевых вызовов, с моком fetch/session).
 
 ### Фаза 3: sreda_models (dataclass-модели)
 1. Создать `sreda_models/` — `AnalytStep`, `DrillStepComponent`, `QueryFilterDetail`.

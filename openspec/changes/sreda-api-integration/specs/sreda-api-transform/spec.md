@@ -15,8 +15,19 @@ GUID guide могут быть переданы как параметры кон
 - **WHEN** в `sreda_tree` есть `scenarios` с полями `record`, `query_filters`, `drill_steps`, `children`
 - **THEN** для каждой записи `record` создаётся `MetricNode` с `id`, `code`, `name`, `type` (через `enum_mapper`), `parent`, `query`, `analyt_metadata`, `analyt_steps`, `api_uuid`
 - **THEN** из `MetricNode` собирается `Hierarchy` через `add_node()`
-- **THEN** создаются `SourceParameters` и `SearchDevParameters` из параметров конвертера
-- **THEN** возвращается `Res.mk_result(DeviationCalcMetadata(code, source_params, search_dev_params, hier_lst))`
+- **THEN** `SourceParameters` и `SearchDevParameters` заполняются из `source_params` и `scenario`
+  (ФАПараметрыИсточников / ФАСценарии), с fallback на параметры конвертера при отсутствии в API
+- **THEN** `aliases` заполняются из `col_plan_alias`/`col_fact_alias` (если в JSON не переданы явно)
+- **THEN** возвращается `Res.mk_result(DeviationCalcMetadata(code, source_params, search_dev_params, hier_lst, aliases))`
+
+#### Scenario: Трансформация заполняет контур из ФАПараметрыИсточников
+
+- **WHEN** первый сценарий имеет `source_params` с `source_name`, `col_rep_dt`, `col_plan`, `col_fact`,
+  `col_plan_alias`, `col_fact_alias` и `scenario` с `sign_negative_impact`
+- **THEN** `SourceParameters(source_name=..., rep_dt_column=col_rep_dt)`
+- **THEN** `SearchDevParameters(plan_column=col_plan, fact_column=col_fact, sign_negative_impact=scenario.sign_negative_impact)`
+- **THEN** `aliases = {"plan_alias": col_plan_alias, "fact_alias": col_fact_alias}` (если явные не переданы)
+- **THEN** явно переданные `transform(..., aliases=...)` приоритетнее взятых из API
 
 #### Scenario: Transform с пустым деревом
 
@@ -56,6 +67,12 @@ GUID guide могут быть переданы как параметры кон
 - **WHEN** `query_filters = [{"col_name": "node_code", "value": '["PL_01_03_01", "PL_14_45_08"]', "rank": 1}]`
 - **THEN** создаётся `Query({"node_code": ["PL_01_03_01", "PL_14_45_08"]})`
 - **THEN** строка `'["PL_01_03_01", "PL_14_45_08"]'` парсится через `json.loads()`
+
+#### Scenario: Построение Query с Python-литералом node_code
+
+- **WHEN** `query_filters = [{"col_name": "node_code", "value": "['PL_01_02_02', 'PL_14_45_08']", "rank": 1}]`
+- **THEN** создаётся `Query({"node_code": ["PL_01_02_02", "PL_14_45_08"]})`
+- **THEN** если `json.loads()` не срабатывает (одиночные кавычки), значение парсится через `ast.literal_eval`
 
 #### Scenario: Построение Query при отсутствии фильтров
 

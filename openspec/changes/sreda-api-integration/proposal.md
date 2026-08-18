@@ -10,8 +10,10 @@
 
 ## What Changes
 
-1. **Новый пакет `sreda_api/`** — HTTP-клиент для API платформы «Среда» с mTLS, cookie SID,
-   рекурсивным обходом иерархии, получением drill-step алгоритмов.
+1. **Новый пакет `sreda_api/`** — HTTP-клиент для API платформы «Среда» с mTLS,
+   программной авторизацией (`POST /api/auth/login`), авто-поиском справочников
+   (`discover_guides`), рекурсивным обходом иерархии, drill-step алгоритмами
+   и связкой сценарий ↔ источник.
 2. **Новый пакет `sreda_models/`** — dataclass-модели для данных из API: `AnalytStep`,
    `DrillStepComponent`, `QueryFilterDetail` с методами сериализации/десериализации.
    Отдельный модуль `enum_mapper.py` — маппинг строковых значений API → enum-классы проекта.
@@ -22,16 +24,18 @@
 
 **Не входит в текущую итерацию:**
 - Обратная конвертация (`reverse()`) — DeviationCalcMetadata → API JSON
-- Вынесение GUID в env-переменные
 - `raw_api_tree` в DeviationCalcMetadata
 - README и внешняя документация
+- Кэширование результатов discovery на экземпляр клиента (реализовано без кэша)
 
 ## Capabilities
 
 ### New Capabilities
 
-- `sreda-api-client`: mTLS HTTP-клиент для платформы «Среда» с поддержкой guide_id,
-  табличных частей, рекурсивного обхода иерархии и drill-step алгоритмов.
+- `sreda-api-client`: mTLS HTTP-клиент для платформы «Среда» с программной авторизацией
+  (`POST /api/auth/login`), авто-поиском справочников (`discover_guides`), поддержкой
+  табличных частей, рекурсивного обхода иерархии, drill-step алгоритмов и связки
+  сценарий ↔ источник (ФАСценарии → ФАПараметрыИсточников).
 - `sreda-api-models`: dataclass-модели для сериализации/десериализации данных из API Среды
   (AnalytStep, DrillStepComponent, QueryFilterDetail) + модуль маппинга enum-значений.
 - `sreda-api-transform`: конвертер API → DeviationCalcMetadata с поддержкой drill-down

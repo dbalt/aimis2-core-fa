@@ -28,6 +28,7 @@ logger = get_logger()
 
 SREDA_DEFAULT_HOST = "https://sredamo.apps.a623plp0.k8s.delta.sbrf.ru"
 SREDA_ENDPOINT_TEMPLATE = "/api/metadata/guide/{guide_id}"
+SREDA_LOGIN_ENDPOINT = "/api/auth/login"
 SREDA_TIMEOUT = httpx.Timeout(30.0)
 
 # Автопоиск guide-идентификаторов по схеме метаданных Среды.
@@ -41,8 +42,13 @@ SREDA_GUIDE_NAMES = {
     "metric_guide": "ФАИерархииПоказателей",
     "query_guide": "ФАФильтрыЗапроса",
     "step_guide": "ФАШагАлгоритмаАналитическогоРазложения",
+    "scenario_guide": "ФАСценарии",
+    "src_params_guide": "ФАПараметрыИсточников",
 }
 SREDA_GUIDE_CLASS_NAME = "Guide"
+
+# Табличная часть ФАСценарии, связывающая сценарий с иерархиями metric_hier.
+SREDA_SCENARIO_HIERS_TAB = "t_aimis_fa__scenario__hiers"
 
 
 @dataclass
@@ -54,6 +60,14 @@ class SredaClientConfig:
         default_factory=lambda: Path(__file__).resolve().parent / "cert_aimis_gen"
     )
     cookies: dict[str, str] = field(default_factory=dict)
+
+    # Креды для автоматического логина через POST /api/auth/login.
+    # Если заданы (auto_login=True), SID получается программно вместо ручного таскания cookie.
+    login: Optional[str] = None
+    password: Optional[str] = None
+    # Origin для fallback: если /api/auth/login отдаёт 501, запрос повторяется с этим заголовком.
+    origin: Optional[str] = None
+    auto_login: bool = True
 
     def __post_init__(self) -> None:
         if not self.cert_dir.exists():
@@ -69,6 +83,46 @@ class SredaAPIClient:
         self._config = config or SredaClientConfig()
         self._ssl_ctx = self._build_ssl_context()
         self._session: Optional[httpx.Client] = None
+
+    def login(self) -> None:
+        """
+        Авторизоваться через POST /api/auth/login и сохранить cookie в сессию.
+
+        Если /api/auth/login отдаёт 501 — повторяем запрос с заголовком Origin
+        (fallback на случай, когда эндпоинт требует CORS-контекст).
+
+        Raises:
+            SredaAPIError: если креды не заданы или авторизация не удалась.
+        """
+        if not self._config.login or not self._config.password:
+            raise SredaAPIError(
+                "Не заданы креды для авторизации (login/password)"
+            )
+
+        session = self._get_session()
+        body = {
+            "login": self._config.login,
+            "password": self._config.password,
+        }
+        response = session.post(
+            f"{self._config.host}{SREDA_LOGIN_ENDPOINT}", json=body
+        )
+
+        if response.status_code == 501 and self._config.origin:
+            logger.info("login вернул 501, повторяю с Origin")
+            response = session.post(
+                f"{self._config.host}{SREDA_LOGIN_ENDPOINT}",
+                json=body,
+                headers={"Origin": self._config.origin},
+            )
+
+        if response.status_code != 200:
+            raise SredaAPIError(
+                f"Авторизация Среды не удалась: status={response.status_code}"
+            )
+
+        session.cookies.update(response.cookies)
+        logger.info("Авторизация Среды выполнена")
 
     def _build_ssl_context(self) -> ssl.SSLContext:
         """
@@ -102,13 +156,22 @@ class SredaAPIClient:
         return ctx
 
     def _get_session(self) -> httpx.Client:
-        """Lazy init httpx session."""
+        """Lazy init httpx session (и автологин при необходимости)."""
         if self._session is None:
             self._session = httpx.Client(
                 verify=self._ssl_ctx,
                 timeout=SREDA_TIMEOUT,
                 cookies=self._config.cookies,
             )
+            # Если креды заданы и нет готовой cookie из конфига —
+            # логинимся программно, чтобы не тащить SID вручную.
+            if (
+                self._config.auto_login
+                and self._config.login
+                and self._config.password
+                and not self._config.cookies
+            ):
+                self.login()
         return self._session
 
     def close(self) -> None:
@@ -327,6 +390,8 @@ class SredaAPIClient:
         metric_guide_id: Optional[str] = None,
         query_guide_id: Optional[str] = None,
         step_guide_id: Optional[str] = None,
+        scenario_guide_id: Optional[str] = None,
+        src_params_guide_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Собрать полное дерево сценариев: метрики + query-фильтры + drill-шаги + дети.
@@ -338,10 +403,14 @@ class SredaAPIClient:
             metric_guide_id:  GUID guide таблицы metric_hier (опционально).
             query_guide_id:   GUID guide таблицы query_guide (опционально).
             step_guide_id:    GUID guide таблицы drill_steps (опционально).
+            scenario_guide_id:  GUID guide ФАСценарии (опционально).
+            src_params_guide_id: GUID guide ФАПараметрыИсточников (опционально).
 
         Returns:
-            dict с ключом 'scenarios': каждый сценарий содержит
-            'record', 'query_filters', 'drill_steps', 'children'.
+            dict с ключами 'scenarios' и 'guides'. Каждый сценарий содержит
+            'record', 'query_filters', 'drill_steps', 'children' и, при наличии,
+            'scenario' (метаданные сценария из ФАСценарии) и 'source_params'
+            (параметры источника из ФАПараметрыИсточников).
         """
         if metric_guide_id and query_guide_id and step_guide_id:
             metric_guide, query_guide, step_guide = (
@@ -351,9 +420,31 @@ class SredaAPIClient:
             )
         else:
             discovered = self.discover_guides()
-            metric_guide = metric_guide_id or discovered["metric_guide"]
-            query_guide = query_guide_id or discovered["query_guide"]
-            step_guide = step_guide_id or discovered["step_guide"]
+            metric_guide = metric_guide_id or discovered.get("metric_guide")
+            query_guide = query_guide_id or discovered.get("query_guide")
+            step_guide = step_guide_id or discovered.get("step_guide")
+
+        scenario_guide = scenario_guide_id
+        src_params_guide = src_params_guide_id
+        if (not scenario_guide or not src_params_guide):
+            try:
+                discovered = self.discover_guides()
+                scenario_guide = scenario_guide or discovered.get("scenario_guide")
+                src_params_guide = src_params_guide or discovered.get("src_params_guide")
+            except Exception:
+                # Справочники сценариев/источников не обязательны — без них
+                # сценарий просто не получит source-параметров из API.
+                scenario_guide = None
+                src_params_guide = None
+
+        # Предзагружаем справочник параметров источников по GUID источника.
+        source_map: dict[str, dict[str, Any]] = {}
+        if src_params_guide:
+            src_data = self.fetch_guide(src_params_guide)
+            for src_row in src_data.get("rows", []):
+                sid = src_row.get("id")
+                if sid:
+                    source_map[sid] = src_row
 
         meta_data = self.fetch_guide(metric_guide)
         top_records = meta_data.get("rows", [])
@@ -383,17 +474,25 @@ class SredaAPIClient:
                         step_item["_components"] = components
                 drill_steps = tp[analyt_tab]
 
+            # Resolve scenario (ФАСценарии) и параметры источника
+            scenario_meta: Optional[dict[str, Any]] = None
+            if scenario_guide:
+                scenario_meta = self._resolve_scenario(source_map, rid, scenario_guide)
+
             # Recursive children
             children = self.fetch_children(rid, metric_guide)
 
-            scenarios.append(
-                {
-                    "record": record,
-                    "query_filters": query_filters,
-                    "drill_steps": drill_steps,
-                    "children": children,
-                }
-            )
+            scenario_entry: dict[str, Any] = {
+                "record": record,
+                "query_filters": query_filters,
+                "drill_steps": drill_steps,
+                "children": children,
+            }
+            if scenario_meta:
+                scenario_entry["scenario"] = scenario_meta["scenario"]
+                scenario_entry["source_params"] = scenario_meta["source_params"]
+
+            scenarios.append(scenario_entry)
 
         # Провайдим использованные guide_id, чтобы не переоткрывать автопоиск.
         return {
@@ -402,5 +501,46 @@ class SredaAPIClient:
                 "metric_guide": metric_guide,
                 "query_guide": query_guide,
                 "step_guide": step_guide,
+                "scenario_guide": scenario_guide,
+                "src_params_guide": src_params_guide,
             },
         }
+
+    def _resolve_scenario(
+        self,
+        source_map: dict[str, dict[str, Any]],
+        hierarchy_id: str,
+        scenario_guide: str,
+    ) -> Optional[dict[str, Any]]:
+        """
+        Найти запись ФАСценарии, привязанную к иерархии metric_hier, и вернуть
+        метаданные сценария + параметры его источника.
+
+        Связка по GUID: в ТабличнаяЧасть t_aimis_fa__scenario__hiers подиерархиями
+        поле `hier` = id корневого узла metric_hier. Если несколько сценариев
+        ссылаются на одну иерархию — берётся первый (rank ASC).
+
+        Args:
+            source_map:      mapping id ФАПараметрыИсточников → запись источника.
+            hierarchy_id:    id корневого узла metric_hier (иерархия).
+            scenario_guide:  GUID guide ФАСценарии.
+
+        Returns:
+            dict {'scenario': {...}, 'source_params': {...}} или None.
+        """
+        data = self.fetch_guide(scenario_guide)
+        rows = data.get("rows", [])
+        rows.sort(key=lambda r: r.get("code") or 0)
+
+        for scenario in rows:
+            tp = scenario.get("TabularParts", {})
+            hiers = tp.get(SREDA_SCENARIO_HIERS_TAB, [])
+            for hrow in hiers:
+                if hrow.get("hier") == hierarchy_id:
+                    source_guid = scenario.get("source")
+                    src = source_map.get(source_guid) if source_guid else None
+                    return {
+                        "scenario": scenario,
+                        "source_params": src,
+                    }
+        return None

@@ -119,6 +119,9 @@ class SredaToDeviationCalcConverter:
         if not hiers:
             return Res.mk_error("No valid hierarchies built from sreda_tree")
 
+        # Параметры расчётного контура берём из API (ФАСценарии → ФАПараметрыИсточников):
+        # источник данных, колонки план/факт/периода и их подписи. Если в API нет —
+        # используем значения по умолчанию из конфигурации конвертера (fallback).
         source_params = SourceParameters(
             source_name=self._metrics_source,
             rep_dt_column=self._rep_dt_column,
@@ -128,13 +131,50 @@ class SredaToDeviationCalcConverter:
             fact_column=self._fact_column,
             sign_negative_impact=self._sign_negative_impact,
         )
+        api_aliases: dict[str, str] = {}
+
+        first = scenarios[0]
+        sc = first.get("scenario") or {}
+        src = first.get("source_params") or {}
+
+        if src.get("source_name"):
+            source_params = SourceParameters(
+                source_name=src["source_name"],
+                rep_dt_column=src.get("col_rep_dt") or self._rep_dt_column,
+            )
+        if src.get("col_plan") and src.get("col_fact"):
+            search_dev_params = SearchDevParameters(
+                plan_column=src["col_plan"],
+                fact_column=src["col_fact"],
+                sign_negative_impact=(
+                    sc.get("sign_negative_impact")
+                    if sc.get("sign_negative_impact") is not None
+                    else self._sign_negative_impact
+                ),
+            )
+        if src.get("col_plan_alias") or src.get("col_fact_alias"):
+            api_aliases = {
+                **(
+                    {"plan_alias": src["col_plan_alias"]}
+                    if src.get("col_plan_alias")
+                    else {}
+                ),
+                **(
+                    {"fact_alias": src["col_fact_alias"]}
+                    if src.get("col_fact_alias")
+                    else {}
+                ),
+            }
+
+        # Явно переданные aliases приоритетнее взятых из API.
+        effective_aliases = aliases if aliases is not None else (api_aliases or None)
 
         dcm = DeviationCalcMetadata(
             code=meta_code,
             source_params=source_params,
             search_dev_params=search_dev_params,
             hier_lst=hiers,
-            aliases=aliases,
+            aliases=effective_aliases,
             motiv_correction=None,
         )
 
