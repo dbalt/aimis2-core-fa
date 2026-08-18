@@ -38,8 +38,10 @@ class DataRow:
 
     @classmethod
     def from_dict(cls, row:Dict[str,Any],params:'SearchDevParameters')->'DataRow':
-        plan_val = row[params.plan_column] or 0
-        fact_val = row[params.fact_column] or 0
+        # Приводим факт/план к float: sum()/numeric-колонки из БД могут вернуть
+        # decimal.Decimal, который не участвует в float += в get_factors/calc.
+        plan_val = float(row[params.plan_column]) if row.get(params.plan_column) is not None else 0.0
+        fact_val = float(row[params.fact_column]) if row.get(params.fact_column) is not None else 0.0
         dims = {k:v for (k,v) in row.items() if k != params.plan_column and k != params.fact_column}
         it = DataRow(dims, plan_val, fact_val)
         return it
