@@ -13,6 +13,7 @@ from .query import Query
 
 if TYPE_CHECKING:
     from libfa2.analyt_struct_metadata import AnalyticalStructureMetadata
+    from libfa2.sreda_models import AnalytStep
 
 
 @dataclass
@@ -91,6 +92,12 @@ class MetricNode:
 
     force_drill:Optional[bool] = None
 
+    #: Шаги аналитического разложения (из tabular part Среды)
+    analyt_steps: list["AnalytStep"] = field(default_factory=list)
+
+    #: UUID узла из API Среды
+    api_uuid: Optional[str] = None
+
     def is_root(self) -> bool:
         """
         Проверить, является ли узел корневым.
@@ -163,6 +170,10 @@ class MetricNode:
             result["mp_decomp_tp"] = self.mp_decomp_tp.value
         if self.force_drill is not None:
             result['force_drill'] = self.force_drill
+        if self.analyt_steps:
+            result["analyt_steps"] = [step.to_dict() for step in self.analyt_steps]
+        if self.api_uuid is not None:
+            result["api_uuid"] = self.api_uuid
 
         return result
 
@@ -215,7 +226,10 @@ class MetricNode:
             result["mp_decomp_tp"] = self.mp_decomp_tp.value
         if self.force_drill is not None:
             result['force_drill'] = self.force_drill
-
+        if self.analyt_steps:
+            result["analyt_steps"] = [step.to_dict() for step in self.analyt_steps]
+        if self.api_uuid is not None:
+            result["api_uuid"] = self.api_uuid
 
         return result
 
@@ -320,6 +334,15 @@ class MetricNode:
             except ValueError:
                 raise ValueError(f"Неверное значение 'force_drill': {data['force_drill']}")
 
+        # Обработка analyt_steps
+        analyt_steps = []
+        if "analyt_steps" in data and data["analyt_steps"]:
+            from libfa2.sreda_models import AnalytStep
+            analyt_steps = [AnalytStep.from_dict(s) for s in data["analyt_steps"]]
+
+        # Обработка api_uuid
+        api_uuid = data.get("api_uuid")
+
         return cls(
             id=node_id,
             code=code,
@@ -332,7 +355,9 @@ class MetricNode:
             analyt_metadata=analyt_metadata,
             flg_rate_type=flg_rate_type,
             mp_decomp_tp=mp_decomp_tp,
-            force_drill=force_drill
+            force_drill=force_drill,
+            analyt_steps=analyt_steps,
+            api_uuid=api_uuid,
         )
 
     @classmethod
@@ -392,7 +417,10 @@ class MetricNode:
         if self.type is None:
             # Листовой узел
             if not self.has_query():
-                errors.append(f"Листовой узел (id={self.id}, code={self.code}) должен иметь query")
+                if self.componentMultiPartType is not None:
+                    pass  # Допускаем лист без query
+                else:
+                    errors.append(f"Листовой узел (id={self.id}, code={self.code}) должен иметь query")
         elif self.type == MetricType.MULTI:
             # Узел типа MULTI обязан иметь query
             if not self.has_query():

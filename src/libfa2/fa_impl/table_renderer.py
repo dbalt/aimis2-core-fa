@@ -78,21 +78,10 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
         suffix = ""
         scale_factor = 1_000_000
     else:
-        # Все числа < 1 млн — форматируем в тысячах с достаточной точностью
-        # Чтобы не терять мелкие числа: 1 руб. = 0.001 тыс., 500 руб. = 0.5 тыс.
+        # Все числа < 1 млн — форматируем в тысячах, округление до 1 знака
         suffix = "тыс."
         scale_factor = 1_000
-        # Считаем сколько знаков нужно:
-        # Если scaled < 0.01 → 4 знака, < 0.1 → 3 знака, < 1 → 2 знака
-        raw_scaled = abs(v) / scale_factor
-        if raw_scaled < 0.01:
-            decimals = 4
-        elif raw_scaled < 0.1:
-            decimals = 3
-        elif raw_scaled < 1:
-            decimals = 2
-        else:
-            decimals = 2
+        decimals = 1
 
     scaled = v / scale_factor
 
@@ -227,7 +216,7 @@ async def render_factor_table(data: Dict) -> str:
     # Фиксированный заголовок — всегда "млн руб."
     head = (f"### Детализация факторного анализа отклонений: "
             f"{_clean_name(trees[0].get('hieararchy_node', ''))}\n\n"
-            f"| # | Путь разложения | {plan_label}, млн руб. | {fact_label}, млн руб. | Влияние, млн руб. |\n"
+            f"| # | Структура факторов | {plan_label}, млн руб. | {fact_label}, млн руб. | Влияние, млн руб. |\n"
             f"|---|----------------|----------:|----------:|----------------:|\n")
     return head + "\n".join(rows)
 
