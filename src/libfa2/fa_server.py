@@ -83,9 +83,9 @@ class FaServerImpl(BaseAppServerPart):
         results_res = await self._data_mgmt.get_results(code, dt)
         if results_res.ok:
             lgr.info(f'Cached results found for code={code}, dt={dt}')
-            _, summary = results_res.data
+            data, summary = results_res.data
             lgr.debug(f'CACHED summary length={len(summary)}')
-            return {'summary': summary}
+            return {'summary': summary, 'data': data}
 
         lgr.info(f'No cached results, proceeding to calculate: code={code}, dt={dt}')
 
@@ -124,9 +124,9 @@ class FaServerImpl(BaseAppServerPart):
         if not save_res.ok:
             lgr.warning(f'Failed to save results for code={code}, dt={dt}: {save_res.err}')
 
-        # Step 8: return summary
-        lgr.info(f'Returning summary: code={code}, dt={dt}')
-        return {'summary': summary}
+        # Step 8: return summary and data
+        lgr.info(f'Returning summary and data: code={code}, dt={dt}')
+        return {'summary': summary, 'data': data}
 
     async def _handle_delete_metadata(self, payload: Dict) -> AsyncIterable[Dict]:
         lgr = get_logger()
