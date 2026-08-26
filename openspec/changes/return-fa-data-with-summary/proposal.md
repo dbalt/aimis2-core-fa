@@ -29,4 +29,7 @@
 - **FaClient.get_summary()**: возвращаемый тип меняется с `Res[str]` на `Res[dict]` — **BREAKING** для потребителей. Потребители берут значения по ключам: `result.data['summary'], result.data['data']`.
 - **aimis-sdk** (`sdk/fa2026/client.py`): не имеет openspec, изменение вносится вручную.
 - **aimis-backend** (`src/mbi/fa2026/client.py`): копия `FaClient`, отдельный openspec change.
+- **Потребители `get_summary()` (все исправлены — переход на `result.data['summary']`):**
+  - Production: `aimis2-core-fa/src/aivisor/server.py`, `aimis-backend/src/mbi/navi_signal/server.py`
+  - Adhoc: `adhoc_opextb_summaries.py`, `adhoc_rozn_summaries.py`, `adhoc_test_fa_client.py`, `run_export_all_mds.py`, `run_template_lite_transforms.py`
 - **Затронутые репозитории**: `aimis2-core-fa`, `aimis-sdk`, `aimis-backend`.

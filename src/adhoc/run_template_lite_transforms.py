@@ -503,7 +503,7 @@ async def recalc_summaries(full_code:str, dt:date, fac:FaClient):
     res = await fac.get_summary(full_code, dt)
     if not res.ok: raise Exception(res.err)
 
-    return res.data
+    return res.data['summary']
 
 
 

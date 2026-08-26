@@ -34,5 +34,13 @@
 
 ## Risks / Trade-offs
 
-- **[BREAKING] FaClient.get_summary() меняет возвращаемый тип** → потребители, использующие `result.data` как строку, сломаются. Смягчение: потребители берут `result.data['summary']` — переход на ключи. Production-потребитель один (SignalNaviWorker), обновляется в рамках связанного change в aimis-backend.
-- **[Риск] adhoc-скрипты** → используют `FaClient.get_summary()` напрямую. Смягчение: adhoc не production, обновляются по мере необходимости.
+- **[BREAKING] FaClient.get_summary() меняет возвращаемый тип** → потребители, использующие `result.data` как строку, сломаются. Смягчение: все потребители обновлены одновременно — переход на доступ по ключам `result.data['summary']`.
+- **Production-потребители (исправлены):**
+  - `aimis2-core-fa/src/aivisor/server.py` — `return summary_res.data['summary']`
+  - `aimis-backend/src/mbi/navi_signal/server.py` — `'message': summary_res.data['summary']`
+- **Adhoc-скрипты (исправлены):**
+  - `aimis2-core-fa/src/adhoc/adhoc_opextb_summaries.py`
+  - `aimis2-core-fa/src/adhoc/adhoc_rozn_summaries.py`
+  - `aimis2-core-fa/src/adhoc/adhoc_test_fa_client.py`
+  - `aimis2-core-fa/src/adhoc/run_export_all_mds.py`
+  - `aimis2-core-fa/src/adhoc/run_template_lite_transforms.py`

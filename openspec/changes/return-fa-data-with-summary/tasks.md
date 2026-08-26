@@ -18,3 +18,13 @@
 - [x] 3.3 Добавить unit-тест: `get_summary()` возвращает `Res[dict]` с ключами `summary` и `data`.
 - [x] 3.4 Добавить unit-тест: `result.data['summary']` возвращает строку, `result.data['data']` возвращает dict.
 - [x] 3.5 Запустить тесты aimis-backend.
+
+## 4. Фикс потребителей — переход на доступ по ключам
+
+- [x] 4.1 `aimis2-core-fa/src/aivisor/server.py:121`: `return summary_res.data` → `return summary_res.data['summary']`.
+- [x] 4.2 `aimis-backend/src/mbi/navi_signal/server.py:605`: `'message': summary_res.data` → `'message': summary_res.data['summary']`.
+- [x] 4.3 `aimis2-core-fa/src/adhoc/adhoc_opextb_summaries.py:32`: `summary = res.data` → `summary = res.data['summary']`.
+- [x] 4.4 `aimis2-core-fa/src/adhoc/adhoc_rozn_summaries.py:32`: `summary = res.data` → `summary = res.data['summary']`.
+- [x] 4.5 `aimis2-core-fa/src/adhoc/adhoc_test_fa_client.py:46`: `print(summ)` → `print(summ.data['summary'])`.
+- [x] 4.6 `aimis2-core-fa/src/adhoc/run_export_all_mds.py:26`: `content.data` → `content.data['summary']`.
+- [x] 4.7 `aimis2-core-fa/src/adhoc/run_template_lite_transforms.py:506`: `return res.data` → `return res.data['summary']`.

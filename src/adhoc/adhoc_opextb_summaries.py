@@ -29,7 +29,7 @@ async def get_and_save_rozn_summaries():
         if not res.ok:
             print(f'Error!!!====={res.err}====')
             continue
-        summary = res.data
+        summary = res.data['summary']
         print(summary)
         path = FileTools.path_concat(
             FileTools.home_path(),

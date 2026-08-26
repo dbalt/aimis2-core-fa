@@ -43,7 +43,7 @@ async def test_fa_client():
     await fac.delete_results(code, dt)
 
     summ = await fac.get_summary(code, dt)
-    print(summ)
+    print(summ.data['summary'])
 
 
 
