@@ -107,46 +107,17 @@ def _has_any_negative(obj: Dict) -> bool:
     return _negative_contrib(obj) > NEG_EPS
 
 
-def _amounts_equal(a: Dict, b: Dict) -> bool:
-    """Проверяем, что два узла имеют одинаковые финансовые суммы."""
-    for key in ("plan", "fact", "deviation", "impact_to_top_lvl"):
-        if abs(float(a.get(key, 0) or 0) - float(b.get(key, 0) or 0)) > 1e-6:
-            return False
-    return True
-
-
 def _prune_wrapper_trees(data: Dict) -> Dict:
-    """Убирает sibling-duplicate: два элемента data[] с одинаковыми суммами,
-    где один без top_factors (пустая обёртка), а другой — с детализацией.
-
-    Пример:
-      [0] "Операционная прибыль ТБ" (plan=798B, fact=821B, children=0)  ← без details
-      [1] "Чистая прибыль"           (plan=798B, fact=821B, children=2)  ← есть details
-
-    Решение: оставляем только тот элемент, у которого есть top_factors.
+    """Убирает корневые элементы data[], у которых нет top_factors.
+    Такие узлы — пустые обёртки без детализации, их нечего саммаризировать.
     """
-    cleaned_data = json.loads(json.dumps(data))  # глубокая копия
+    cleaned_data = json.loads(json.dumps(data))
 
-    cleaned_trees: List[Dict] = []
-    for tree in cleaned_data.get("data", []):
-        tree_amounts = tree.get("amounts") or {}
-        tree_has_factors = bool((tree.get("details") or {}).get("top_factors"))
+    cleaned_data["data"] = [
+        tree for tree in cleaned_data.get("data", [])
+        if bool((tree.get("details") or {}).get("top_factors"))
+    ]
 
-        is_dup = False
-        for i, existing in enumerate(cleaned_trees):
-            existing_amounts = existing.get("amounts") or {}
-            if _amounts_equal(tree_amounts, existing_amounts):
-                # Дубликат! Оставляем тот, у которого есть top_factors
-                existing_has_factors = bool((existing.get("details") or {}).get("top_factors"))
-                if tree_has_factors and not existing_has_factors:
-                    cleaned_trees[i] = tree
-                is_dup = True
-                break
-
-        if not is_dup:
-            cleaned_trees.append(tree)
-
-    cleaned_data["data"] = cleaned_trees
     return cleaned_data
 
 
