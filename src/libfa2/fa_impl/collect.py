@@ -63,6 +63,10 @@ def collect_for_summary(
         if dc.hier_ref.flg_rate_type is not None:
             d['flg_rate_type'] = dc.hier_ref.flg_rate_type
 
+        # Добавляем тип метрики (sum/multi/ratio/None)
+        if dc.hier_ref.type is not None:
+            d['metric_type'] = dc.hier_ref.type.value
+
         if dc.analyt_struct:
             analyt_slice = {map.get(k, k):v for (k,v) in dc.analyt_struct.items()}
             d['analytic_slice'] = analyt_slice

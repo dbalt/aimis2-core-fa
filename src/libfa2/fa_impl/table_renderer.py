@@ -75,13 +75,30 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
 
     if abs_v >= 1_000_000:
         decimals = 1
-        suffix = ""
+        suffix = "млн"  # Рекомендую добавить "млн" для ясности, вместо пустой строки ""
         scale_factor = 1_000_000
-    else:
-        # Все числа < 1 млн — форматируем в тысячах, округление до 1 знака
+
+    elif abs_v >= 1_000:
+        # Числа от 1 000 до 999 999 — форматируем в тысячах, округление до 1 знака
         suffix = "тыс."
         scale_factor = 1_000
         decimals = 1
+
+    else:
+        # Все числа < 1 000 — форматируем как есть (в рублях)
+        suffix = "руб."
+        scale_factor = 1
+        decimals = 1  # Можно поставить 0, если копейки для целых рублей не нужны
+
+    # if abs_v >= 1_000_000:
+    #     decimals = 1
+    #     suffix = ""
+    #     scale_factor = 1_000_000
+    # else:
+    #     # Все числа < 1 млн — форматируем в тысячах, округление до 1 знака
+    #     suffix = "тыс."
+    #     scale_factor = 1_000
+    #     decimals = 1
 
     scaled = v / scale_factor
 
@@ -119,7 +136,6 @@ def _t_impact(v: float, scale: float) -> str:
     if not v:
         return "0,0"
     return _format_number(v, scale, None, as_percentage=False)
-
 
 def _impact_cell(v: float, bold: bool, scale: float, flg_rate_type: Optional[bool] = None) -> str:
     txt = _t_impact(v, scale)
