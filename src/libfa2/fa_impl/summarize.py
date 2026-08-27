@@ -107,6 +107,20 @@ def _has_any_negative(obj: Dict) -> bool:
     return _negative_contrib(obj) > NEG_EPS
 
 
+def _prune_wrapper_trees(data: Dict) -> Dict:
+    """Убирает корневые элементы data[], у которых нет top_factors.
+    Такие узлы — пустые обёртки без детализации, их нечего саммаризировать.
+    """
+    cleaned_data = json.loads(json.dumps(data))
+
+    cleaned_data["data"] = [
+        tree for tree in cleaned_data.get("data", [])
+        if bool((tree.get("details") or {}).get("top_factors"))
+    ]
+
+    return cleaned_data
+
+
 def classify(obj: Dict) -> int:
     """Возвращает номер ветки (1, 2 или 3).
 
@@ -144,7 +158,12 @@ async def build_branch_report(
     fact_alias = data.get("fact_alias") or root.get("fact_alias") or "Факт"
     scale_info["plan_alias"] = plan_alias.lower()
     scale_info["fact_alias"] = fact_alias.lower()
-    data_with_scale = {**data, "scale_info": scale_info}
+
+    # Убираем sibling-duplicate: два элемента data[] с одинаковыми суммами,
+    # где один без top_factors (пустая обёртка), а другой — с детализацией
+    cleaned_data = _prune_wrapper_trees(data)
+
+    data_with_scale = {**cleaned_data, "scale_info": scale_info}
 
     # Подставляем алиасы вместо {{plan_alias}}/{{fact_alias}} в промпты
     summary_prompt = summary_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
@@ -165,7 +184,7 @@ async def build_branch_report(
             )
         ))
         tsks.append(tg.create_task(
-            render_factor_table_wrapper(data)
+            render_factor_table_wrapper(cleaned_data)
         ))
         # LLM-запрос для мотивационной корректировки
         motiv = data.get("motiv_correction")
