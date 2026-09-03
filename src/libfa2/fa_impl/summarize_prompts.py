@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 from typing import Dict, Tuple
@@ -249,6 +250,20 @@ Output: ONLY the section `## Краткое саммари`
 - **CRITICAL: ALWAYS add markers — 🔴 BEFORE negative impacts, 🟢 BEFORE positive impacts. NEVER omit markers in summary.**
 - Use markdown: ## headers, **bold** for measure names, 🔴/🟢 markers
 - DO NOT output "## Ключевые факторы" or any bullet lists
+
+## EDGE CASE: ROOT WITH DEVIATION BUT NO DETAILS (КРИТИЧНО)
+
+If `data[]` has tree(s) with `amounts` (plan/fact/deviation) but `details/top_factors`
+is MISSING or empty — this means the indicator has a meaningful deviation
+but no granular breakdown (all children are positive, or data is at root level only).
+
+- You MUST still output `## Краткое саммари` with root-level numbers.
+- DO NOT write "В данных отсутствуют отклонения" or similar — data IS present.
+- Append to the last sentence:
+  - For root > 0 (branch 2): "**Красных зон в детализации не обнаружено.**"
+  - For root > 0 with potential negative (branch 1): "**Значимых негативных зон в детализации не обнаружено.**"
+  - For root < 0 (branch 3): this should not happen (branch 3 requires details), but if it does, output summary with root numbers only.
+- Each tree in `data[]` should get its own summary sentence.
 """
 
 # ===========================================================================
