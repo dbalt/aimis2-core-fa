@@ -1,9 +1,9 @@
 # ===========================================================================
-#     Д Е Т Е Р М И Н И Р О В А Н Н Ы Й   Р Е Н Д Е Р   Т А Б Л И Ц Ы  (без LLM)
+#     Д Е Т Е Р М И Н И Р О В А Н Н Ы Й   Р Е Н Д Е Р   Т АБЛИЦЫ  (без LLM)
 # ===========================================================================
 # Воспроизводит формат, который раньше формировал TABLE_PROMPT: один заголовок
 # `###`, одна сплошная таблица из 5 колонок, обход в глубину, строки-разделители
-# `*↳ по …*`, отступы &emsp;, подавление дубля имени показателя, жирный новый
+# `*↳ по …*`, обдеты &emsp;, подавление дубля имени показателя, жирный новый
 # разрез, маркеры 🔴/🟢 в колонке «Влияние», динамические числа.
 import re
 from typing import Optional, Dict, List, Tuple
@@ -41,7 +41,13 @@ def _infer_scale(values: List[float]) -> Tuple[float, str, str]:
     return 1_000_000, "млн", "млн руб."
 
 
-def _format_number(v: float, scale: float, component_type: Optional[str] = None, as_percentage: bool = False) -> str:
+def _format_number(
+    v: float,
+    scale: float,
+    component_type: Optional[str] = None,
+    as_percentage: bool = False,
+    node_type: Optional[str] = None,
+) -> str:
     """
     Форматирует число с динамическим suffix.
 
@@ -50,6 +56,7 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
       - |v| < 1 млн → "тыс." с достаточной точностью (никогда не обнуляем)
 
     Для rate/ratio — всегда проценты.
+    Для ratio-узлов проценты форматируются как п.п. (процентные пункты).
     Никогда не округляет ненулевое число до нуля.
     """
     if v is None:
@@ -57,14 +64,16 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
 
     # --- Проценты (rate, ratio) ---
     if as_percentage:
+        pct_suffix = "п.п." if node_type == "ratio" else "%"
         s = f"{abs(v) * 100:.3f}".replace(".", ",")
         sign = "-" if v < 0 else ""
-        return sign + s.rstrip('0').rstrip(',') + "%"
+        return sign + s.rstrip('0').rstrip(',') + " " + pct_suffix
 
     if 0 < abs(v) < 1 and not as_percentage:
+        pct_suffix = "п.п." if node_type == "ratio" else "%"
         s = f"{abs(v) * 100:.3f}".replace(".", ",")
         sign = "-" if v < 0 else ""
-        return sign + s.rstrip('0').rstrip(',') + "%"
+        return sign + s.rstrip('0').rstrip(',') + " " + pct_suffix
 
     # --- Ноль ---
     if abs(v) < 1e-10:
@@ -124,21 +133,50 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
     return sign + result
 
 
-def _t_amount(v: float, scale: float, flg_rate_type: Optional[bool] = None) -> str:
+def _t_amount(
+    v: float,
+    scale: float,
+    flg_rate_type: Optional[bool] = None,
+    node_type: Optional[str] = None,
+) -> str:
     """План/Факт с динамическим масштабированием. Для rate/ratio показываем как проценты."""
-    # Для rate/ratio показываем как проценты, иначе используем автоматическое определение
     as_percentage = flg_rate_type is True
-    return _format_number(v, scale, None, as_percentage=as_percentage)
+    return _format_number(v, scale, None, as_percentage=as_percentage, node_type=node_type)
 
 
-def _t_impact(v: float, scale: float) -> str:
+def _t_impact(
+    v: float,
+    scale: float,
+    flg_rate_type: Optional[bool] = None,
+    node_type: Optional[str] = None,
+) -> str:
     """Влияние с динамическим масштабом и знаком: + / − / 0,0."""
     if not v:
         return "0,0"
-    return _format_number(v, scale, None, as_percentage=False)
+    as_percentage = flg_rate_type is True
+    return _format_number(v, scale, None, as_percentage=as_percentage, node_type=node_type)
 
-def _impact_cell(v: float, bold: bool, scale: float, flg_rate_type: Optional[bool] = None) -> str:
-    txt = _t_impact(v, scale)
+def _impact_cell(
+    v: float,
+    bold: bool,
+    scale: float,
+    flg_rate_type: Optional[bool] = None,
+    node_type: Optional[str] = None,
+) -> str:
+    txt = _t_impact(v, scale, flg_rate_type, node_type=node_type)
+    if bold:
+        txt = f"**{txt}**"
+    marker = "🔴 " if v < 0 else ("🟢 " if v > 0 else "")
+    return marker + txt
+
+
+def _format_pp(v: float, bold: bool) -> str:
+    """Форматирует уже вычисленное влияние в п.п. (deviation/parent_deviation * parent_impact_pp)."""
+    if abs(v) < 1e-10:
+        txt = "0,0"
+    else:
+        sign = "-" if v < 0 else "+"
+        txt = sign + f"{abs(v):.3f}".replace(".", ",") + " п.п."
     if bold:
         txt = f"**{txt}**"
     marker = "🔴 " if v < 0 else ("🟢 " if v > 0 else "")
@@ -187,14 +225,24 @@ async def render_factor_table(data: Dict) -> str:
     if not trees:
         return ""
 
-    # Базовый масштаб — всегда миллион (используется в _format_number как аргумент scale,
-    # но _format_number сам определяет реальный масштаб по abs(v))
+    # Базовый масштаб — всегда миллион
     scale_factor = 1_000_000
+
+    # Определяем тип метрики корня (для всех деревьев одинаковый)
+    root_metric_type = trees[0].get("metric_type")
 
     counter = [0]
     rows: List[str] = []
 
-    def walk(node: Dict, depth: int, parent: Optional[Dict], is_single: bool) -> None:
+    def walk(
+        node: Dict,
+        depth: int,
+        parent: Optional[Dict],
+        is_single: bool,
+        _inherit_type: Optional[str] = None,
+        _parent_impact_pp: Optional[float] = None,
+        _parent_deviation: Optional[float] = None,
+    ) -> None:
         children = (node.get("details") or {}).get("top_factors") or []
         has_children = len(children) > 0
         am = node.get("amounts") or {}
@@ -207,32 +255,53 @@ async def render_factor_table(data: Dict) -> str:
         num = " " if depth == 0 else str(counter.__setitem__(0, counter[0] + 1) or counter[0])
         bold_infl = has_children or is_single or depth == 0
 
-        # flg_rate_type берётся с текущего узла
         flg_rate_type = node.get("flg_rate_type")
+        # Если узел не определяет свой metric_type — наследуем от родителя/корня
+        metric_type = node.get("metric_type") or _inherit_type
+
+        # Для ratio-метрик глубины >= 2: weight = deviation / parent_deviation
+        # impact_pp = weight * parent_impact_pp
+        node_impact = _impact(node)
+        formatted_impact_txt: str
+
+        if metric_type == "ratio" and depth >= 2 and _parent_impact_pp is not None and _parent_deviation is not None and _parent_deviation != 0:
+            deviation = float(am.get("deviation") or 0)
+            weight = deviation / _parent_deviation
+            impact_pp = weight * _parent_impact_pp
+            formatted_impact_txt = _format_pp(impact_pp, bold_infl)
+        else:
+            formatted_impact_txt = _impact_cell(node_impact, bold_infl, scale_factor, flg_rate_type, metric_type)
 
         rows.append(
             f"| {num} | {_path_cell(node, depth, parent)} "
-            f"| {_t_amount(base_val, scale_factor, flg_rate_type)} | {_t_amount(am.get('fact'), scale_factor, flg_rate_type)} "
-            f"| {_impact_cell(_impact(node), bold_infl, scale_factor)} |"
+            f"| {_t_amount(base_val, scale_factor, flg_rate_type)} | "
+            f"{_t_amount(am.get('fact'), scale_factor, flg_rate_type)} "
+            f"| {formatted_impact_txt} |"
         )
         if has_children:
             dtype = (node.get("details") or {}).get("type") or ""
             rows.append(f"|   | {'.&emsp;' * depth}{_sep_label(dtype)} | | | |")
+            # Передаём parent_deviation и parent_impact_pp потомкам
+            parent_deviation = float(am.get("deviation") or 0)
             for c in children:
-                walk(c, depth + 1, node, len(children) == 1)
+                walk(c, depth + 1, node, len(children) == 1,
+                     _inherit_type=metric_type,
+                     _parent_impact_pp=node_impact * 100 if metric_type == "ratio" else None,
+                     _parent_deviation=parent_deviation)
 
     for ti, tree in enumerate(trees):
         if ti > 0:
             rows.append("|   | | | | |")          # разделитель между деревьями
-        walk(tree, 0, None, False)
+        walk(tree, 0, None, False, _inherit_type=root_metric_type)
 
     plan_label = data.get("plan_alias") or trees[0].get("plan_alias") or "План"
     fact_label = data.get("fact_alias") or trees[0].get("fact_alias") or "Факт"
 
-    # Фиксированный заголовок — всегда "млн руб."
+    # Суффикс единиц — только для ratio его нет (там проценты/п.п.)
+    unit = ", млн руб." if root_metric_type != "ratio" else ""
     head = (f"### Детализация факторного анализа отклонений: "
             f"{_clean_name(trees[0].get('hieararchy_node', ''))}\n\n"
-            f"| # | Структура факторов | {plan_label}, млн руб. | {fact_label}, млн руб. | Влияние, млн руб. |\n"
+            f"| # | Структура факторов | {plan_label}{unit} | {fact_label}{unit} | Влияние{unit} |\n"
             f"|---|----------------|----------:|----------:|----------------:|\n")
     return head + "\n".join(rows)
 
