@@ -132,28 +132,9 @@ def _prune_wrapper_trees(data: Dict) -> Dict:
         or bool((tree.get("amounts") or {}).get("deviation", 0) != 0)
     ]
 
-    # Дедупликация: если два дерева с одинаковым именем + deviation,
-    # оставляет то, у которого есть details.top_factors.
-    # Только для деревьев с meaningful amounts.
-    seen: Dict[str, Dict] = {}
-    for tree in cleaned_data["data"]:
-        amounts = tree.get("amounts") or {}
-        name = tree.get("hieararchy_node", "")
-        deviation = amounts.get("deviation", 0)
-        has_details = _tree_has_details_top_factors(tree)
-        has_amounts = bool(amounts)
-
-        if has_amounts and deviation != 0:
-            key = f"{name}|{deviation}"
-            if key in seen:
-                existing = seen[key]
-                existing_has_details = _tree_has_details_top_factors(existing)
-                if has_details and not existing_has_details:
-                    seen[key] = tree
-            else:
-                seen[key] = tree
-
-    cleaned_data["data"] = list(seen.values()) if seen else cleaned_data["data"]
+    # Дедупlication УДАЛЁН — он ломает аналитические разрезы (одинаковое
+    # имя + deviation, но разные analytic_slice / details).
+    # Фильтр выше уже отсеивает пустые обёртки.
     return cleaned_data
 
 
