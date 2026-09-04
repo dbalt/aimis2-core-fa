@@ -107,17 +107,34 @@ def _has_any_negative(obj: Dict) -> bool:
     return _negative_contrib(obj) > NEG_EPS
 
 
+def _tree_has_details_top_factors(tree: Dict) -> bool:
+    """Проверяет, есть ли у дерева details.top_factors."""
+    return bool((tree.get("details") or {}).get("top_factors"))
+
+
 def _prune_wrapper_trees(data: Dict) -> Dict:
-    """Убирает корневые элементы data[], у которых нет top_factors.
-    Такие узлы — пустые обёртки без детализации, их нечего саммаризировать.
+    """Убирает из data[] только пустые обёртки — узлы без top_factors
+    и без meaningful amounts.deviation.
+
+    Узлы с meaningful amounts.deviation != 0 оставляются даже если
+    details/top_factors отсутствует — это корневые показатели без
+    детализации (например, когда все дети положительные).
+
+    Если есть дубликаты (два дерева с одинаковым именем и deviation),
+    оставляет то, у которого есть details.top_factors.
     """
     cleaned_data = json.loads(json.dumps(data))
+    trees = cleaned_data.get("data", [])
 
     cleaned_data["data"] = [
-        tree for tree in cleaned_data.get("data", [])
-        if bool((tree.get("details") or {}).get("top_factors"))
+        tree for tree in trees
+        if _tree_has_details_top_factors(tree)
+        or bool((tree.get("amounts") or {}).get("deviation", 0) != 0)
     ]
 
+    # Дедупlication УДАЛЁН — он ломает аналитические разрезы (одинаковое
+    # имя + deviation, но разные analytic_slice / details).
+    # Фильтр выше уже отсеивает пустые обёртки.
     return cleaned_data
 
 
