@@ -162,15 +162,18 @@ def _impact_cell(
     scale: float,
     flg_rate_type: Optional[bool] = None,
     node_type: Optional[str] = None,
+    sign_negative_impact: int = -1,
 ) -> str:
     txt = _t_impact(v, scale, flg_rate_type, node_type=node_type)
     if bold:
         txt = f"**{txt}**"
-    marker = "🔴 " if v < 0 else ("🟢 " if v > 0 else "")
+    # Определяем негативность с учётом sign_negative_impact
+    is_neg = (v > 0) if sign_negative_impact == -1 else (v < 0)
+    marker = "🔴 " if is_neg else ("🟢 " if v != 0 else "")
     return marker + txt
 
 
-def _format_pp(v: float, bold: bool) -> str:
+def _format_pp(v: float, bold: bool, sign_negative_impact: int = -1) -> str:
     """Форматирует уже вычисленное влияние в п.п. (deviation/parent_deviation * parent_impact_pp)."""
     if abs(v) < 1e-10:
         txt = "0,0"
@@ -179,7 +182,8 @@ def _format_pp(v: float, bold: bool) -> str:
         txt = sign + f"{abs(v):.3f}".replace(".", ",") + " п.п."
     if bold:
         txt = f"**{txt}**"
-    marker = "🔴 " if v < 0 else ("🟢 " if v > 0 else "")
+    is_neg = (v > 0) if sign_negative_impact == -1 else (v < 0)
+    marker = "🔴 " if is_neg else ("🟢 " if v != 0 else "")
     return marker + txt
 
 
@@ -228,6 +232,9 @@ async def render_factor_table(data: Dict) -> str:
     # Базовый масштаб — всегда миллион
     scale_factor = 1_000_000
 
+    # Получаем sign_negative_impact (по умолчанию -1)
+    sign_negative_impact = data.get("sign_negative_impact", -1)
+
     # Определяем тип метрики корня (для всех деревьев одинаковый)
     root_metric_type = trees[0].get("metric_type")
 
@@ -268,9 +275,9 @@ async def render_factor_table(data: Dict) -> str:
             deviation = float(am.get("deviation") or 0)
             weight = deviation / _parent_deviation
             impact_pp = weight * _parent_impact_pp
-            formatted_impact_txt = _format_pp(impact_pp, bold_infl)
+            formatted_impact_txt = _format_pp(impact_pp, bold_infl, sign_negative_impact)
         else:
-            formatted_impact_txt = _impact_cell(node_impact, bold_infl, scale_factor, flg_rate_type, metric_type)
+            formatted_impact_txt = _impact_cell(node_impact, bold_infl, scale_factor, flg_rate_type, metric_type, sign_negative_impact)
 
         rows.append(
             f"| {num} | {_path_cell(node, depth, parent)} "

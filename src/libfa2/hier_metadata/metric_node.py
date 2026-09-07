@@ -98,6 +98,9 @@ class MetricNode:
     #: UUID узла из API Среды
     api_uuid: Optional[str] = None
 
+    #: Инвертировать знак impact для ratio-показателя
+    invert_deviation: Optional[bool] = None
+
     def is_root(self) -> bool:
         """
         Проверить, является ли узел корневым.
@@ -174,6 +177,8 @@ class MetricNode:
             result["analyt_steps"] = [step.to_dict() for step in self.analyt_steps]
         if self.api_uuid is not None:
             result["api_uuid"] = self.api_uuid
+        if self.invert_deviation is not None:
+            result["invert_deviation"] = self.invert_deviation
 
         return result
 
@@ -230,6 +235,8 @@ class MetricNode:
             result["analyt_steps"] = [step.to_dict() for step in self.analyt_steps]
         if self.api_uuid is not None:
             result["api_uuid"] = self.api_uuid
+        if self.invert_deviation is not None:
+            result["invert_deviation"] = self.invert_deviation
 
         return result
 
@@ -343,6 +350,9 @@ class MetricNode:
         # Обработка api_uuid
         api_uuid = data.get("api_uuid")
 
+        # Обработка invert_deviation
+        invert_deviation = data.get("invert_deviation")
+
         return cls(
             id=node_id,
             code=code,
@@ -358,6 +368,7 @@ class MetricNode:
             force_drill=force_drill,
             analyt_steps=analyt_steps,
             api_uuid=api_uuid,
+            invert_deviation=invert_deviation,
         )
 
     @classmethod
@@ -459,6 +470,8 @@ class MetricNode:
             parts.append(f"parent={self.parent}")
         if self.flg_rate_type is not None:
             parts.append(f"flg_rate_type={self.flg_rate_type}")
+        if self.invert_deviation is not None:
+            parts.append(f"invert_deviation={self.invert_deviation}")
         return f"MetricNode({', '.join(parts)})"
 
     def __eq__(self, other: object) -> bool:
@@ -476,7 +489,8 @@ class MetricNode:
             self.componentRatioPartType == other.componentRatioPartType and
             self.analyt_metadata == other.analyt_metadata and
             self.flg_rate_type == other.flg_rate_type and
-            self.mp_decomp_tp == other.mp_decomp_tp
+            self.mp_decomp_tp == other.mp_decomp_tp and
+            self.invert_deviation == other.invert_deviation
         )
 
     def __hash__(self) -> int:
@@ -492,5 +506,6 @@ class MetricNode:
             self.componentRatioPartType,
             hash(str(self.analyt_metadata)) if self.analyt_metadata else None,
             self.flg_rate_type,
-            self.mp_decomp_tp
+            self.mp_decomp_tp,
+            self.invert_deviation,
         ))
