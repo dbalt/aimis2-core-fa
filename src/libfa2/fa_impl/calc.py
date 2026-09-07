@@ -421,6 +421,15 @@ async def make_hier_drill(current_drill_component:DrillComponent, deviation_calc
         lgr.debug(f'RATIO value calculated: plan={current_drill_component.amts.plan:.6f}, '
                   f'fact={current_drill_component.amts.fact:.6f}, impact={current_drill_component.amts.impact:.6f}')
 
+        # Если на узле указан invert_deviation — меняем знак план/факт ДО расчёта impact
+        if current_node.invert_deviation:
+            lgr.info(f'invert_deviation=True for RATIO node id={current_node.id}, inverting values')
+            current_drill_component.amts.plan = -current_drill_component.amts.plan
+            current_drill_component.amts.fact = -current_drill_component.amts.fact
+            # Пересчитываем deviation и impact корня
+            current_drill_component.amts.deviation = current_drill_component.amts.fact - current_drill_component.amts.plan
+            current_drill_component.amts.impact = current_drill_component.amts.deviation
+
         # Метод цепных подстановок для ratio:
         #   numerator_impact   = |num_fact/den_plan| - |num_plan/den_plan|
         #   denominator_impact = |num_plan/den_fact| - |num_plan/den_plan|

@@ -19,6 +19,8 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import logging
+
 from typing import Dict, List, Optional, Tuple, Callable
 
 from sdk.giga.client import GigaChatClientPartV2, DEFAULT_GIGA_MODEL
@@ -26,6 +28,7 @@ from sdk.giga.iface import MsgBase, AssistantMsg
 from sdk.core.monadic import Res
 from .summarize_prompts import SummarizerPrompt
 from .table_renderer import render_factor_table_wrapper, _get_scale_info
+logger = logging.getLogger(__name__)
 
 
 # ===========================================================================
@@ -40,6 +43,10 @@ async def _base_llm_processing_function(
 
     usr_msg = f"data:{json.dumps(data, ensure_ascii=False)}"
     usr_msg = MsgBase.user_msg(usr_msg)
+
+    # -- логирование JSON, к которому применяется промпт --
+    logger.info("LLM DATA: %s", json.dumps(data, ensure_ascii=False, indent=2))
+
 
     resp: Res[MsgBase] = await llm_client.ask_giga(
         msgs=[system_prompt, usr_msg],
@@ -106,6 +113,12 @@ def _has_any_negative(obj: Dict) -> bool:
     NEG_EPS отсекает только float-шум суб-рублёвого масштаба."""
     return _negative_contrib(obj) > NEG_EPS
 
+def _root_is_ratio(obj: Dict) -> bool:
+    """Проверяет, является ли корневой узел типа RATIO."""
+    root = _root_node(obj)
+    return root.get("metric_type") == "ratio"
+
+
 
 def _tree_has_details_top_factors(tree: Dict) -> bool:
     """Проверяет, есть ли у дерева details.top_factors."""
@@ -145,9 +158,12 @@ def classify(obj: Dict) -> int:
       • ветка 3 — совокупный вклад корня < 0 (показатель отклоняется);
       • ветка 1 — корень выполняет план, но внутри есть ХОТЬ КАКОЙ-ЛИБО негатив;
       • ветка 2 — корень выполняет план и негатива внутри нет.
+      • ветка 4 - отдельно для случая ratio
     """
     root_imp = _root_impact_total(obj)
 
+    if _root_is_ratio(obj):
+        return 4
     if root_imp < 0:
         return 3
     if _has_any_negative(obj):
@@ -267,6 +283,7 @@ async def summarize(
     """
     Главная функция саммаризации.
     """
+    print(f"DEBUG summarize: branch={classify(data)}, metric_type={data.get('metric_type')}")  # добавь эту строку
     branch = classify(data)
     return await build_branch_report(
         data, branch, llm_client_gen_fn,

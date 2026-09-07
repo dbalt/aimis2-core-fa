@@ -91,6 +91,9 @@ async def calculate_and_summarize_deviation(
     if aliases.get("fact_alias"):
         data["fact_alias"] = aliases["fact_alias"]
 
+    # Добавил sign_negative_impact для корректного определения зеленого/красного значка в таблице
+    data["sign_negative_impact"] = deviation_calc_metadata.search_dev_params.sign_negative_impact
+
     summary_res = await summarize(data, fn_get_llm_client, model_summary, model_details)
     if not summary_res.ok:
         lgr.warning(f'Summarization failed: code={code}, dt={dt}: {summary_res.err}')
