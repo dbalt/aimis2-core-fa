@@ -79,25 +79,24 @@ def _format_number(
     if abs(v) < 1e-10:
         return "0,0"
 
-    # --- Определяем suffix и точность по абсолютному значению ---
-    abs_v = abs(v)
-
-    if abs_v >= 1_000_000:
-        decimals = 1
-        suffix = "млн"  # Рекомендую добавить "млн" для ясности, вместо пустой строки ""
-        scale_factor = 1_000_000
-
-    elif abs_v >= 1_000:
-        # Числа от 1 000 до 999 999 — форматируем в тысячах, округление до 1 знака
-        suffix = "тыс."
-        scale_factor = 1_000
-        decimals = 1
+    # --- rate/base: показываем как тыс. ТОЛЬКО если < 100к ---
+    if component_type in ("rate", "base"):
+        if abs(v) < 100_000:
+            # Меньше 100к — показываем в тысячах
+            suffix = "тыс."
+            scale_factor = 1_000
+            decimals = 1
+        else:
+            # 100к и больше — как обычно в млн
+            suffix = ""
+            scale_factor = 1_000_000
+            decimals = 1
 
     else:
-        # Все числа < 1 000 — форматируем как есть (в рублях)
-        suffix = "руб."
-        scale_factor = 1
-        decimals = 1  # Можно поставить 0, если копейки для целых рублей не нужны
+        # Остальные — всегда млн, без суффикса
+        suffix = ""
+        scale_factor = 1_000_000
+        decimals = 1
 
     # if abs_v >= 1_000_000:
     #     decimals = 1
@@ -137,11 +136,12 @@ def _t_amount(
     v: float,
     scale: float,
     flg_rate_type: Optional[bool] = None,
+    component_type: Optional[str] = None,
     node_type: Optional[str] = None,
 ) -> str:
     """План/Факт с динамическим масштабированием. Для rate/ratio показываем как проценты."""
     as_percentage = flg_rate_type is True
-    return _format_number(v, scale, None, as_percentage=as_percentage, node_type=node_type)
+    return _format_number(v, scale, component_type, as_percentage=as_percentage, node_type=node_type)
 
 
 def _t_impact(
@@ -150,11 +150,11 @@ def _t_impact(
     flg_rate_type: Optional[bool] = None,
     node_type: Optional[str] = None,
 ) -> str:
-    """Влияние с динамическим масштабом и знаком: + / − / 0,0."""
+    """Влияние с динамическим масштабом и знаком: + / − / 0,0. Impact — всегда абсолютное значение, НЕ проценты."""
     if not v:
         return "0,0"
-    as_percentage = flg_rate_type is True
-    return _format_number(v, scale, None, as_percentage=as_percentage, node_type=node_type)
+    # Impact — всегда абсолютное значение в рублях, не переводим в проценты
+    return _format_number(v, scale, None, as_percentage=False, node_type=node_type)
 
 def _impact_cell(
     v: float,
@@ -168,7 +168,9 @@ def _impact_cell(
     if bold:
         txt = f"**{txt}**"
     # Определяем негативность с учётом sign_negative_impact
-    is_neg = (v > 0) if sign_negative_impact == -1 else (v < 0)
+    # sign_negative_impact = -1: негативный = отрицательное значение (standard)
+    # sign_negative_impact != -1: негативный = положительное значение
+    is_neg = (v < 0) if sign_negative_impact == -1 else (v > 0)
     marker = "🔴 " if is_neg else ("🟢 " if v != 0 else "")
     return marker + txt
 
@@ -247,6 +249,7 @@ async def render_factor_table(data: Dict) -> str:
         parent: Optional[Dict],
         is_single: bool,
         _inherit_type: Optional[str] = None,
+        _inherit_component: Optional[str] = None,
         _parent_impact_pp: Optional[float] = None,
         _parent_deviation: Optional[float] = None,
     ) -> None:
@@ -262,9 +265,28 @@ async def render_factor_table(data: Dict) -> str:
         num = " " if depth == 0 else str(counter.__setitem__(0, counter[0] + 1) or counter[0])
         bold_infl = has_children or is_single or depth == 0
 
+        # Скрыть сегменты аналитического разреза без детей и < 100к
+        # НЕ скрывать, если родитель — MULTI с details.type="Детализация по компонентам"
+        if not has_children and node.get("analytic_slice"):
+            parent_details_type = ((parent or {}).get("details") or {}).get("type") or ""
+            plan_val = am.get("plan") or 0
+            fact_val = am.get("fact") or 0
+            if abs(plan_val) < 100_000 and abs(fact_val) < 100_000:
+                if "компонентам" not in parent_details_type:
+                    return
+
         flg_rate_type = node.get("flg_rate_type")
+        # Наследуем component_type от родителя (rate/base для MULTI узлов)
+        component_type = node.get("componentMultiPartType") or _inherit_component
         # Если узел не определяет свой metric_type — наследуем от родителя/корня
         metric_type = node.get("metric_type") or _inherit_type
+
+        # Определяем component_type для потомков: если родитель — MULTI узел,
+        # чьи дети — rate/base компоненты (details.type содержит "компонентам")
+        component_type_for_children = component_type
+        parent_details_type = (node.get("details") or {}).get("type") or ""
+        if metric_type == "multi" and "компонентам" in parent_details_type:
+            component_type_for_children = "rate"
 
         # Для ratio-метрик глубины >= 2: weight = deviation / parent_deviation
         # impact_pp = weight * parent_impact_pp
@@ -281,8 +303,8 @@ async def render_factor_table(data: Dict) -> str:
 
         rows.append(
             f"| {num} | {_path_cell(node, depth, parent)} "
-            f"| {_t_amount(base_val, scale_factor, flg_rate_type)} | "
-            f"{_t_amount(am.get('fact'), scale_factor, flg_rate_type)} "
+            f"| {_t_amount(base_val, scale_factor, flg_rate_type, component_type)} | "
+            f"{_t_amount(am.get('fact'), scale_factor, flg_rate_type, component_type)} "
             f"| {formatted_impact_txt} |"
         )
         if has_children:
@@ -293,6 +315,7 @@ async def render_factor_table(data: Dict) -> str:
             for c in children:
                 walk(c, depth + 1, node, len(children) == 1,
                      _inherit_type=metric_type,
+                     _inherit_component=component_type_for_children,
                      _parent_impact_pp=node_impact * 100 if metric_type == "ratio" else None,
                      _parent_deviation=parent_deviation)
 
