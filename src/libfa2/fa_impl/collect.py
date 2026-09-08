@@ -2,7 +2,7 @@ from .units import DrillComponent, EnumDrillType, _rnd
 from ..data_access.aggr import DataRow
 from typing import List, Dict, Optional
 from sdk.core.tools import search_first_in_lst_or
-
+from ..hier_metadata.enums import MetricType
 
 def _has_negative_in_tree(dc: DrillComponent) -> bool:
     """
@@ -63,9 +63,9 @@ def collect_for_summary(
         if dc.hier_ref.flg_rate_type is not None:
             d['flg_rate_type'] = dc.hier_ref.flg_rate_type
 
-        # Добавляем componentMultiPartType (rate=ставка/тариф, base=объём/базовый компонент)
-        if dc.hier_ref.componentMultiPartType is not None:
-            d['componentMultiPartType'] = dc.hier_ref.componentMultiPartType.value
+        # Добавляем тип метрики (sum/multi/ratio/None)
+        if dc.hier_ref.type is not None:
+            d['metric_type'] = dc.hier_ref.type.value
 
         if dc.analyt_struct:
             analyt_slice = {map.get(k, k):v for (k,v) in dc.analyt_struct.items()}
@@ -78,8 +78,10 @@ def collect_for_summary(
 
             # Проверяем: есть ли негатив в детализации (в поддереве)
             has_negative = _has_negative_in_tree(dc)
+            is_ratio = dc.hier_ref.type == MetricType.RATIO
 
-            if has_negative:
+            # if has_negative:
+            if has_negative or is_ratio:
                 # Ветка содержит негатив — включаем полную детализацию
                 det = {}
                 d['details'] = det
@@ -100,9 +102,11 @@ def collect_for_summary(
                 # (фильтруем ветки без негатива).
                 # В остальных случаях (микс или негативные) — старая логика:
                 # включаем все компоненты без фильтрации.
+                # Для RATIO — всегда показываем всех потомков (числитель+знаменатель).
                 all_pos = all(x.amts.impact > 0 for x in drill.components)
 
-                if all_pos:
+                # if all_pos:
+                if all_pos and not is_ratio:
                     # Поиск скрытого негатива — пропускаем ветки без негатива
                     for x in drill.components:
                         if not _has_negative_in_tree(x):
@@ -111,7 +115,7 @@ def collect_for_summary(
                         tf.append(xd)
                         _process_drill_component(x, xd)
                 else:
-                    # Микс/негатив — старая логика, без фильтрации
+                    # Микс/негатив — старая логика, без фильтрации или RATIO
                     for x in drill.components:
                         xd = {}
                         tf.append(xd)
