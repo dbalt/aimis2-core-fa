@@ -70,23 +70,36 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
     if abs(v) < 1e-10:
         return "0,0"
 
-    # --- Определяем suffix и точность по абсолютному значению ---
-    abs_v = abs(v)
-
-    if abs_v >= 1_000_000:
-        decimals = 1
-        suffix = ""
-        scale_factor = 1_000_000
-    else:
-        # Все числа < 1 млн — форматируем в тысячах, округление до 1 знака
+    # --- rate/base: всегда показываем как тыс. ---
+    if component_type in ("rate", "base"):
+        if abs(v) < 1:
+            return "0,0"
         suffix = "тыс."
         scale_factor = 1_000
         decimals = 1
+        scaled = v / scale_factor
+        raw = f"{abs(scaled):.{decimals}f}"
+        if '.' in raw:
+            int_part, dec_part = raw.split('.')
+            dec_part = dec_part.rstrip('0')
+            if dec_part:
+                formatted = _group_thousands(int_part) + ',' + dec_part
+            else:
+                formatted = _group_thousands(int_part)
+        else:
+            formatted = _group_thousands(raw)
+        sign = "-" if v < 0 else ""
+        return f"{sign}{formatted} {suffix}"
 
-    scaled = v / scale_factor
+    # --- Без component_type: малые числа не выводим ---
+    if abs(v) < 100_000 and component_type not in ("slice",):
+        return ""
 
-    # --- Форматируем число ---
-    raw = f"{abs(scaled):.{decimals}f}"
+    # --- Остальные: млн руб. ---
+    scaled = v / 1_000_000
+    if abs(scaled) < 0.005:
+        return "0,0"
+    raw = f"{abs(scaled):.1f}"
     if '.' in raw:
         int_part, dec_part = raw.split('.')
         dec_part = dec_part.rstrip('0')
@@ -97,28 +110,34 @@ def _format_number(v: float, scale: float, component_type: Optional[str] = None,
     else:
         formatted = _group_thousands(raw)
 
-    # --- Собираем ---
-    if suffix:
-        result = f"{formatted} {suffix}"
-    else:
-        result = formatted
-
     sign = "-" if v < 0 else ""
-    return sign + result
+    return sign + formatted
 
 
-def _t_amount(v: float, scale: float, flg_rate_type: Optional[bool] = None) -> str:
+def _t_amount(v: float, scale: float, flg_rate_type: Optional[bool] = None, component_type: Optional[str] = None) -> str:
     """План/Факт с динамическим масштабированием. Для rate/ratio показываем как проценты."""
-    # Для rate/ratio показываем как проценты, иначе используем автоматическое определение
     as_percentage = flg_rate_type is True
-    return _format_number(v, scale, None, as_percentage=as_percentage)
+    return _format_number(v, scale, component_type, as_percentage=as_percentage)
 
 
 def _t_impact(v: float, scale: float) -> str:
     """Влияние с динамическим масштабом и знаком: + / − / 0,0."""
     if not v:
         return "0,0"
-    return _format_number(v, scale, None, as_percentage=False)
+    # Impact всегда показываем в млн (не скрываем малые значения)
+    scaled = v / 1_000_000
+    raw = f"{abs(scaled):.1f}"
+    if '.' in raw:
+        int_part, dec_part = raw.split('.')
+        dec_part = dec_part.rstrip('0')
+        if dec_part:
+            formatted = _group_thousands(int_part) + ',' + dec_part
+        else:
+            formatted = _group_thousands(int_part)
+    else:
+        formatted = _group_thousands(raw)
+    sign = "-" if v < 0 else ""
+    return sign + formatted
 
 
 def _impact_cell(v: float, bold: bool, scale: float, flg_rate_type: Optional[bool] = None) -> str:
@@ -191,12 +210,22 @@ async def render_factor_table(data: Dict) -> str:
         num = " " if depth == 0 else str(counter.__setitem__(0, counter[0] + 1) or counter[0])
         bold_infl = has_children or is_single or depth == 0
 
-        # flg_rate_type берётся с текущего узла
+        # Аналитический разрез без детей и < 100к — пропустить
+        # Но не скрывать участников MULTI-узла (rate/base)
+        if node.get("analytic_slice") and not has_children:
+            if not node.get("componentMultiPartType"):
+                fact_val = am.get("fact") or 0
+                plan_val = am.get("plan") or 0
+                if abs(plan_val) < 100_000 and abs(fact_val) < 100_000:
+                    return
+
+        # flg_rate_type и component_type берутся с текущего узла
         flg_rate_type = node.get("flg_rate_type")
+        component_type = node.get("componentMultiPartType")
 
         rows.append(
             f"| {num} | {_path_cell(node, depth, parent)} "
-            f"| {_t_amount(base_val, scale_factor, flg_rate_type)} | {_t_amount(am.get('fact'), scale_factor, flg_rate_type)} "
+            f"| {_t_amount(base_val, scale_factor, flg_rate_type, component_type)} | {_t_amount(am.get('fact'), scale_factor, flg_rate_type, component_type)} "
             f"| {_impact_cell(_impact(node), bold_infl, scale_factor)} |"
         )
         if has_children:

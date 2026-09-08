@@ -63,6 +63,10 @@ def collect_for_summary(
         if dc.hier_ref.flg_rate_type is not None:
             d['flg_rate_type'] = dc.hier_ref.flg_rate_type
 
+        # Добавляем componentMultiPartType (rate=ставка/тариф, base=объём/базовый компонент)
+        if dc.hier_ref.componentMultiPartType is not None:
+            d['componentMultiPartType'] = dc.hier_ref.componentMultiPartType.value
+
         if dc.analyt_struct:
             analyt_slice = {map.get(k, k):v for (k,v) in dc.analyt_struct.items()}
             d['analytic_slice'] = analyt_slice
