@@ -23,7 +23,7 @@ from missa_aimis.t_aimis__fa__results t
         out_name = FileTools.path_concat(path, f'{code}__{dt}.md')
         content = await fac.get_summary(code, date.fromisoformat(dt))
         print(f'writing file {out_name} ...')
-        FileTools.write_to_file(out_name, content.data['summary'])
+        FileTools.write_to_file(out_name, content.data)
 
 
 

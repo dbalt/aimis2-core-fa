@@ -9,38 +9,52 @@
 ## Goals / Non-Goals
 
 **Goals:**
-- FaServer возвращает `data` вместе с `summary`.
-- FaClient.get_summary() возвращает `Res[dict]` с доступом по ключам.
+- FaServer возвращает `data` вместе с `summary` — additive к существующему ответу.
+- Новый метод `FaClient.get_summary_with_data()` отдаёт `Res[dict]` с доступом по ключам.
+- `FaClient.get_summary()` остаётся `Res[str]` — ни один существующий потребитель не требует правок.
 
 **Non-Goals:**
 - Не меняем логику расчёта ФА.
 - Не меняем кэширование в БД.
+- Не унифицируем `get_summary()` под новый формат ценой breaking change.
 
 ## Decisions
 
-### Decision 1: FaServer отдаёт data без трансформации
+### Decision 1: FaServer отдаёт data без трансформации (additive)
 
 `_handle_get_deviation_summary()` уже имеет `data` (dict из `calculate_and_summarize_deviation()`). Изменение: добавить `'data': data` в возвращаемый dict. `data` уже JSON-сериализуем (сохраняется в БД через `json.dumps()`).
 
-### Decision 2: FaClient отдаёт Res.result(data_res.data) без трансформации
+Существующий ключ `summary` не трогается, поэтому ответ остаётся совместимым: потребитель, читающий только `summary`, продолжает работать без изменений.
 
-Вместо `Res.mk_result(data_res.data['summary'])` — `Res.mk_result(data_res.data)`. Формат ответа FA-сервиса (`{'summary': ..., 'data': ...}`) и формат `Res.data` совпадают. Потребители берут значения по ключам: `result.data['summary'], result.data['data']`.
+### Decision 2: `get_summary()` не меняется, `data` отдаётся новым методом
 
-**Альтернатива:** Ввести отдельный DTO-класс. Отклонено — лишняя сущность, dict с ключами достаточен и обеспечивает совместимость.
+Вместо смены возвращаемого типа `get_summary()` с `Res[str]` на `Res[dict]` (это ломало бы всех потребителей) вводится отдельный метод:
+
+- `get_summary(code, dt) -> Res[str]` — как раньше: `Res.mk_result(data_res.data['summary'])`.
+- `get_summary_with_data(code, dt) -> Res[dict]` — `Res.mk_result(data_res.data)`, т.е. весь ответ FA-сервиса без трансформации.
+
+Оба метода отправляют одно и то же действие `GET_DEVIATION_SUMMARY` и различаются только извлечением значения из ответа.
+
+**Альтернатива A (отклонена): менять `get_summary()` на `Res[dict]`.** Требует синхронной правки всех потребителей в трёх репозиториях и согласованного релиза `aimis-sdk` / `aimis-backend` / `aimis2-core-fa`; рассинхрон версий ломает прод. Отклонено.
+
+**Альтернатива B (отклонена): DTO-класс.** Лишняя сущность, dict с ключами достаточен и совместим с форматом ответа.
+
+**Альтернатива C (отклонена): флаг `with_data: bool = False` у `get_summary()`.** Тип возврата становится `Res[Union[str, dict]]`, что непредсказуемо для вызывающего кода и всё равно требует правок типов.
 
 ### Decision 3: Изменение вносится в aimis-sdk и aimis-backend параллельно
 
-`aimis-sdk` не имеет openspec. Изменение в `sdk/fa2026/client.py` вносится вручную. `aimis-backend` имеет openspec — отдельный change `add-fadlg-routing-and-dialog-client`.
+`aimis-sdk` не имеет openspec. Изменение в `sdk/fa2026/client.py` вносится вручную: `get_summary()` с контрактом `Res[str]` и новый `get_summary_with_data()`. `aimis-backend` имеет openspec — отдельный change `add-fadlg-routing-and-dialog-client`, где копия клиента правится идентично.
+
+### Decision 4: Из потребителей переходит только Navi Signal
+
+Единственному потребителю, которому нужен `data`, — `aimis-backend/src/mbi/navi_signal/server.py` (передача в `fa_init` диалогового сервиса) — достаточно вызвать `get_summary_with_data()` и взять `res.data['data']`.
+
+`aimis2-core-fa/src/aivisor/server.py` и adhoc-скрипты остаются на `get_summary()`, где `res.data` — строка; обращения по ключу `res.data['summary']` из них убираются (первоначальный вид — `git show af7324e^:<файл>`).
 
 ## Risks / Trade-offs
 
-- **[BREAKING] FaClient.get_summary() меняет возвращаемый тип** → потребители, использующие `result.data` как строку, сломаются. Смягчение: все потребители обновлены одновременно — переход на доступ по ключам `result.data['summary']`.
-- **Production-потребители (исправлены):**
-  - `aimis2-core-fa/src/aivisor/server.py` — `return summary_res.data['summary']`
-  - `aimis-backend/src/mbi/navi_signal/server.py` — `'message': summary_res.data['summary']`
-- **Adhoc-скрипты (исправлены):**
-  - `aimis2-core-fa/src/adhoc/adhoc_opextb_summaries.py`
-  - `aimis2-core-fa/src/adhoc/adhoc_rozn_summaries.py`
-  - `aimis2-core-fa/src/adhoc/adhoc_test_fa_client.py`
-  - `aimis2-core-fa/src/adhoc/run_export_all_mds.py`
-  - `aimis2-core-fa/src/adhoc/run_template_lite_transforms.py`
+- **Дублирование запроса в двух методах клиента** → вынести общую отправку в приватный хелпер, возвращающий сырой `Res[dict]`; публичные методы лишь извлекают нужное. Публичный контракт важнее DRY.
+- **Разъезд двух копий клиента** (`aimis-sdk` и `aimis-backend`) → держим сигнатуры идентичными, покрываем тестами контракта в каждом репозитории.
+- **Лишний метод в API** (`get_summary` + `get_summary_with_data`) → принято осознанно: обратная совместимость дешевле одного метода.
+- **Additive-ключ `data` в ответе FA-сервиса** → безопасен: потребителей со строгой валидацией схемы ответа нет, а `get_summary()` лишние ключи игнорирует.
+- **Размер ответа** → `data` (дерево drill) заметно больше `summary`; payload передаётся через KeyDB. Рост трафика принимается, при необходимости — отдельная оптимизация (вне рамок изменения).

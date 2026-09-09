@@ -118,4 +118,4 @@ class AIVisorApiAppServerPart(BaseApiAppServerPart):
             raise Exception(summary_res.err)
 
         lgr.debug("Summary fetched successfully")
-        return summary_res.data['summary']
+        return summary_res.data
