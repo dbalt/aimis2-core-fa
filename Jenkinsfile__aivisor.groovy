@@ -78,12 +78,12 @@ pipeline {
         }
 
         stage('Add SDK') {
-            when {
-                anyOf {
-                    branch master_branch
-                    branch develop_branch
-                }
-            }
+            // when {
+            //     anyOf {
+            //         branch master_branch
+            //         branch develop_branch
+            //     }
+            // }
             steps {
                 script {
                     echo "###### Install AIMIS SDK ######"
@@ -155,12 +155,12 @@ pipeline {
         }
 
         stage('Docker Build') {
-            when {
-                anyOf {
-                    branch master_branch
-                    branch develop_branch
-                }
-            }
+            // when {
+            //     anyOf {
+            //         branch master_branch
+            //         branch develop_branch
+            //     }
+            // }
             steps {
                 script {
                     echo "###### Docker build for ${appComponent} ######"
@@ -180,12 +180,12 @@ pipeline {
         }
 
         stage('Docker Push') {
-            when {
-                anyOf {
-                    branch master_branch
-                    branch develop_branch
-                }
-            }
+            // when {
+            //     anyOf {
+            //         branch master_branch
+            //         branch develop_branch
+            //     }
+            // }
             steps {
                 script {
                     echo "###### Push ${appComponent} docker image to registry SNAPSHOT ######"
@@ -203,12 +203,12 @@ pipeline {
         }
 
         stage('Distributive name (SHA256)') {
-            when {
-                anyOf {
-                    branch master_branch
-                    branch develop_branch
-                }
-            }
+            // when {
+            //     anyOf {
+            //         branch master_branch
+            //         branch develop_branch
+            //     }
+            // }
             steps {
                 script {
                     echo "###### Get distributive name (sha256) for ${appComponent} image ######"
