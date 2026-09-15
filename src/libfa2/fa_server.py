@@ -189,6 +189,7 @@ class FaServerImpl(BaseAppServerPart):
 
         res = await self._data_mgmt.delete_results_for_dt(dt)
         if not res.ok:
+            # Если ошибка, логируем и выдаём исключение
             lgr.exception(f'delete_results_for_dt failed: dt={dt}: {res.err}')
             raise Exception(f'delete_results_for_dt failed: {res.err}')
 
