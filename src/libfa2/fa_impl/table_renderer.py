@@ -4,7 +4,7 @@
 # Воспроизводит формат, который раньше формировал TABLE_PROMPT: один заголовок
 # `###`, одна сплошная таблица из 5 колонок, обход в глубину, строки-разделители
 # `*↳ по …*`, обдеты &emsp;, подавление дубля имени показателя, жирный новый
-# разрез, маркеры 🔴/🟢 в колонке «Влияние», динамические числа.
+# разрез, маркеры 🔴/❇️ в колонке «Влияние», динамические числа.
 import re
 from typing import Optional, Dict, List, Tuple
 
@@ -171,7 +171,7 @@ def _impact_cell(
     # sign_negative_impact = -1: негативный = отрицательное значение (standard)
     # sign_negative_impact != -1: негативный = положительное значение
     is_neg = (v < 0) if sign_negative_impact == -1 else (v > 0)
-    marker = "🔴 " if is_neg else ("🟢 " if v != 0 else "")
+    marker = "🔴 " if is_neg else ("❇️ " if v != 0 else "")
     return marker + txt
 
 
@@ -185,7 +185,7 @@ def _format_pp(v: float, bold: bool, sign_negative_impact: int = -1) -> str:
     if bold:
         txt = f"**{txt}**"
     is_neg = (v > 0) if sign_negative_impact == -1 else (v < 0)
-    marker = "🔴 " if is_neg else ("🟢 " if v != 0 else "")
+    marker = "🔴 " if is_neg else ("❇️ " if v != 0 else "")
     return marker + txt
 
 

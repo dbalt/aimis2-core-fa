@@ -1,22 +1,16 @@
 """
 Analytical structure metadata module for factor analysis.
 
-This module contains classes for managing metadata about analytical
-dimension drill-down fa_impl used in factor analysis.
-
-Modules:
-    enums: Enum classes for string constants
-    dimension: Dimension class for analytical dimensions
-    algorithm: Algorithm class for drill-down fa_impl
-    metadata: AnalyticalStructureMetadata container class
+Ре-экспорт из sdk.fa2026.metadata.analyt_struct_metadata —
+единый источник истины (модели использует экшен sync_sreda_metadata в SDK).
 """
 
-from libfa2.analyt_struct_metadata.algorithm import Algorithm
-from libfa2.analyt_struct_metadata.dimension import Dimension
-from libfa2.analyt_struct_metadata.enums import ValidationErrorType
-from libfa2.analyt_struct_metadata.metadata import (
+from sdk.fa2026.metadata.analyt_struct_metadata import (
+    Algorithm,
     AnalyticalStructureMetadata,
+    Dimension,
     ValidationError,
+    ValidationErrorType,
     ValidationReport,
 )
 

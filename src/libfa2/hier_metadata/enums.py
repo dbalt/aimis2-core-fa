@@ -1,80 +1,20 @@
 """
 Enum классы для строковых констант модуля hier_metadata.
 
-Этот модуль содержит перечисления, используемые для типизации
-полей метаданных иерархии показателей факторного анализа.
+Ре-экспорт из sdk.fa2026.metadata.hier_metadata.enums —
+единый источник истины (модели использует экшен sync_sreda_metadata в SDK).
 """
 
-from enum import Enum
+from sdk.fa2026.metadata.hier_metadata.enums import (
+    ComponentMultiPartType,
+    ComponentRatioPartType,
+    MetricType,
+    MultipartDecompositionType,
+)
 
-
-class MetricType(str, Enum):
-    """
-    Тип показателя в иерархии.
-
-    Определяет способ вычисления значения показателя:
-    - SUM: показатель вычисляется как сумма значений потомков
-    - MULTI: показатель вычисляется как произведение rate × base
-    - RATIO: показатель вычисляется как отношение numerator / denominator
-    """
-
-    #: Суммируемые компоненты
-    SUM = "sum"
-
-    #: Компоненты-множители (произведение rate × base)
-    MULTI = "multi"
-
-    #: Показатели типа отношение (отношение numerator / denominator)
-    RATIO = "ratio"
-
-
-class ComponentMultiPartType(str, Enum):
-    """
-    Тип компонента-множителя в показателе типа MULTI.
-
-    Используется для дочерних элементов показателя с type=MULTI.
-    """
-
-    #: Множитель (ставка, процент и т.п.)
-    RATE = "rate"
-
-    #: База (объемный показатель)
-    BASE = "base"
-
-
-class MultipartDecompositionType(str, Enum):
-    """
-    Тип разложения для показателя типа MULTI.
-
-    Определяет алгоритм декомпозиции мультипликативного показателя:
-    - DirectBase: прямое разложение по базе
-    - DirectRate: прямое разложение по ставке
-    - Integral: интегральный метод разложения
-    - AverageWeighted: метод средневзвешенного разложения
-    """
-
-    #: Прямое разложение по базе
-    DIRECT_BASE = "DirectBase"
-
-    #: Прямое разложение по ставке
-    DIRECT_RATE = "DirectRate"
-
-    #: Интегральный метод разложения
-    INTEGRAL = "Integral"
-
-    #: Метод средневзвешенного разложения
-    AVERAGE_WEIGHTED = "AverageWeighted"
-
-
-class ComponentRatioPartType(str, Enum):
-    """
-    Тип компонента-отношения в показателе типа RATIO.
-
-    Используется для дочерних элементов показателя с type=RATIO.
-    """
-
-    #: Числитель отношения
-    NUMERATOR = "numerator"
-
-    #: Знаменатель отношения
-    DENOMINATOR = "denominator"
+__all__ = [
+    "MetricType",
+    "ComponentMultiPartType",
+    "ComponentRatioPartType",
+    "MultipartDecompositionType",
+]
