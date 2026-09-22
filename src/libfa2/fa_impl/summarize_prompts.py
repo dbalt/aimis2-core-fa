@@ -30,7 +30,7 @@ Each tree has:
 
 ### 1. MARKERS (обязательно)
 🔴 = отрицательный вклад (факт хуже плана)
-🟢 = положительный вклад (факт лучше плана)
+❇️ = положительный вклад (факт лучше плана)
 Знак числа + или − должен совпадать с маркером.
 Нет других эмодзи.
 
@@ -46,7 +46,7 @@ Each tree has:
 
 ### 3. NO TIME DYNAMICS (запрещено)
 НИКОГДА не пиши: "снижение", "снизился", "падение", "упал", "рост", "вырос", "увеличение", "прирост".
-Используй маркеры: 🔴 "прочие доходы (−0,84 млрд)" или 🟢 "процентный доход (+200 млн)".
+Используй маркеры: 🔴 "прочие доходы (−0,84 млрд)" или ❇️ "процентный доход (+200 млн)".
 
 ### 4. ONLY DIRECT CHILDREN (обязательно)
 В "Ключевых факторах" — ТОЛЬКО прямые потомки корня (первый уровень top_factors).
@@ -83,23 +83,23 @@ Each tree has:
 ### Markdown
 - Заголовки: ##
 - Жирный: **текст** (только названия показателей)
-- Маркеры: 🔴 🟢
+- Маркеры: 🔴 ❇️
 
 ## OUTPUT STRUCTURE
 
 Ветка 1 (корень +, есть 🔴):
 ## Краткое саммари
-2-4 предложения: корень + факту, 🔴-факторы, 🟢-компенсация.
+2-4 предложения: корень + факту, 🔴-факторы, ❇️-компенсация.
 
 ## Ключевые факторы
-Сначала все 🔴 (по убыванию), потом 1-2 🟢.
+Сначала все 🔴 (по убыванию), потом 1-2 ❇️.
 
 Ветка 2 (корень +, нет 🔴):
 ## Краткое саммари
-2-4 предложения про 🟢 перевыполнение.
+2-4 предложения про ❇️ перевыполнение.
 
 ## Ключевые факторы
-🟢-факторы (до 6).
+❇️-факторы (до 6).
 
 Ветка 3 (корень −):
 ## Краткое саммари
@@ -116,7 +116,7 @@ Each tree has:
 2. ✅ В "Ключевых факторах" только прямые потомки корня
 3. ✅ Нет слов динамики ("снижение", "падение", "рост" и т.д.)
 4. ✅ Все числа отформатированы по правилу SCALING (млн/тыс.)
-5. ✅ В ветке 3 нет 🟢-факторов, в ветке 2 нет 🔴-факторов
+5. ✅ В ветке 3 нет ❇️-факторов, в ветке 2 нет 🔴-факторов
 6. ✅ Нет дублирующихся узлов (родитель + доминирующий потомок)
 7. ✅ Транзитные цепочки сжаты (алгоритм 7.2)
 """
@@ -142,11 +142,11 @@ Each tree has:
 
 ## CORE RULES
 
-- ALL 🔴/🟢 FACTORS ARE TAKEN ONLY FROM impact_to_top_lvl
+- ALL 🔴/❇️ FACTORS ARE TAKEN ONLY FROM impact_to_top_lvl
 
 ### 1. MARKERS (обязательно)
 🔴 = отрицательный вклад (факт хуже плана)
-🟢 = положительный вклад (факт лучше плана)
+❇️ = положительный вклад (факт лучше плана)
 Знак числа + или − должен совпадать с маркером.
 Нет других эмодзи.
 
@@ -162,7 +162,7 @@ Each tree has:
 
 ### 3. NO TIME DYNAMICS (запрещено)
 НИКОГДА не пиши: "снижение", "снизился", "падение", "упал", "рост", "вырос", "увеличение", "прирост".
-Используй маркеры: 🔴 "прочие доходы (−0,84 млн)" или 🟢 "процентный доход (+200 млн)".
+Используй маркеры: 🔴 "прочие доходы (−0,84 млн)" или ❇️ "процентный доход (+200 млн)".
 
 ### 4. ONLY DIRECT CHILDREN (обязательно)
 В "Ключевых факторах" — ТОЛЬКО прямые потомки корня (первый уровень top_factors).
@@ -198,23 +198,23 @@ Each tree has:
 ### Markdown
 - Заголовки: ##
 - Жирный: **текст** (только названия показателей)
-- Маркеры: 🔴 🟢
+- Маркеры: 🔴 ❇️
 
 ## OUTPUT STRUCTURE
 
 Ветка 1 (корень +, есть 🔴):
 ## Краткое саммари
-2-4 предложения: корень + факту, 🔴-факторы, 🟢-компенсация.
+2-4 предложения: корень + факту, 🔴-факторы, ❇️-компенсация.
 
 ## Ключевые факторы
-Сначала все 🔴 (по убыванию), потом 1-2 🟢.
+Сначала все 🔴 (по убыванию), потом 1-2 ❇️.
 
 Ветка 2 (корень +, нет 🔴):
 ## Краткое саммари
-2-4 предложения про 🟢 перевыполнение.
+2-4 предложения про ❇️ перевыполнение.
 
 ## Ключевые факторы
-🟢-факторы (до 6).
+❇️-факторы (до 6).
 
 Ветка 3 (корень −):
 ## Краткое саммари
@@ -231,7 +231,7 @@ Each tree has:
 2. ✅ В "Ключевых факторах" только прямые потомки корня
 3. ✅ Нет слов динамики ("снижение", "падение", "рост" и т.д.)
 4. ✅ Все числа отформатированы по правилу SCALING (млн/тыс.)
-5. ✅ В ветке 3 нет 🟢-факторов, в ветке 2 нет 🔴-факторов
+5. ✅ В ветке 3 нет ❇️-факторов, в ветке 2 нет 🔴-факторов
 6. ✅ Нет дублирующихся узлов (родитель + доминирующий потомок)
 7. ✅ Транзитные цепочки сжаты (алгоритм 7.2)
 """
@@ -247,8 +247,8 @@ Output: ONLY the section `## Краткое саммари`
 - 2-4 sentences, no bullets, no nesting
 - Single mention of root impact with scale
 - For rate factors: present baseline + actual values in % in same sentence
-- **CRITICAL: ALWAYS add markers — 🔴 BEFORE negative impacts, 🟢 BEFORE positive impacts. NEVER omit markers in summary.**
-- Use markdown: ## headers, **bold** for measure names, 🔴/🟢 markers
+- **CRITICAL: ALWAYS add markers — 🔴 BEFORE negative impacts, ❇️ BEFORE positive impacts. NEVER omit markers in summary.**
+- Use markdown: ## headers, **bold** for measure names, 🔴/❇️ markers
 - DO NOT output "## Ключевые факторы" or any bullet lists
 
 ## EDGE CASE: ROOT WITH DEVIATION BUT NO DETAILS (КРИТИЧНО)
@@ -277,9 +277,9 @@ Output: one section `## Ключевые факторы`
 
 ### CRITICAL: ALWAYS ADD MARKERS
 - 🔴 BEFORE every negative impact (🔴 factor, red emoji required)
-- 🟢 BEFORE every positive impact (🟢 factor, green emoji required)
+- ❇️ BEFORE every positive impact (❇️ factor, green emoji required)
 - Each bullet MUST start with the correct marker. NEVER omit markers.
-- If only 🔴-factors allowed (branch 3) → use only 🔴. If only 🟢 allowed (branch 2) → use only 🟢.
+- If only 🔴-factors allowed (branch 3) → use only 🔴. If only ❇️ allowed (branch 2) → use only ❇️.
 
 ### Selection rules
 - **SOURCE OF TRUTH for all impact values: impact_to_top_lvl.**
@@ -290,7 +290,7 @@ Output: one section `## Ключевые факторы`
 - If only 1 significant child → output 1 bullet (not a problem)
 - Always try to get to the root of negative impacts.
 - IF TREE HAS NO CHILDREN - DONT MENTION IT (Tree != Root)
-- ALL 🔴/🟢 FACTORS ARE TAKEN ONLY FROM impact_to_top_lvl
+- ALL 🔴/❇️ FACTORS ARE TAKEN ONLY FROM impact_to_top_lvl
 
 ### CRITICAL RULE: PRESERVE ALL ANALYTICAL DIMENSIONS
 - **NEVER skip any analytical slice** even if its impact is small relative to Pareto threshold
@@ -306,7 +306,7 @@ Output: one section `## Ключевые факторы`
   - **Priority order**: Major business axes > Core components > Product/feature breakdowns
 
 ### Structure
-- Top level: 🔴/🟢 **Measure name** — impact (по правилу SCALING)
+- Top level: 🔴/❇️ **Measure name** — impact (по правилу SCALING)
 - Nested 2nd level: driver (components or algorithm 7.2)
 - Nested 3rd level: slice breakdown (if present)
 
@@ -319,14 +319,14 @@ Output: one section `## Ключевые факторы`
 
 ### For branch 3 (only 🔴):
 - All nested levels show only 🔴 components
-- No 🟢 components in nesting
+- No ❇️ components in nesting
 
 ---
 
 ## FINAL CHECKLIST
 
 1. ✅ Only direct children in main list (no grandchildren)
-2. ✅ Each factor has matching 🔴/🟢 marker and sign
+2. ✅ Each factor has matching 🔴/❇️ marker and sign
 3. ✅ No duplicates (parent + dominant child)
 4. ✅ Transit chains compressed (algorithm 7.2)
 5. ✅ Top 6 limit respected (but not a quota)
@@ -344,15 +344,15 @@ Root превышает/перевыполняет план (positive impact), �
 Focus на 🔴-факторах и их компенсации.
 
 Output: 2-4 sentences
-1. Root measure + actual value + **{{plan_alias}}** + total 🟢 deviation
+1. Root measure + actual value + **{{plan_alias}}** + total ❇️ deviation
 2. List all significant 🔴-factors (direct children, by |impact| desc)
-3. Show 🟢-factors that compensate the 🔴-factors:
-   - Include up to 2 largest 🟢-factors that EACH compensate >= 15% of root deviation
-   - If no single 🟢-factor compensates >= 15% but combined they compensate root deviation:
-     - Include up to 4 🟢-factors (all positive contributors that help offset 🔴)
+3. Show ❇️-factors that compensate the 🔴-factors:
+   - Include up to 2 largest ❇️-factors that EACH compensate >= 15% of root deviation
+   - If no single ❇️-factor compensates >= 15% but combined they compensate root deviation:
+     - Include up to 4 ❇️-factors (all positive contributors that help offset 🔴)
 4. Use "перекрыты/частично компенсированы" for compensation
-   - Explicitly state which 🟢-factors compensate which 🔴-factors
-   - If combined compensation: "🟢-факторы частично компенсированы: A (+X), B (+Y), C (+Z)"
+   - Explicitly state which ❇️-factors compensate which 🔴-factors
+   - If combined compensation: "❇️-факторы частично компенсированы: A (+X), B (+Y), C (+Z)"
 
 5. IF TREE HAS NO CHILDREN - DONT MENTION IT (Tree != Root)
 """
@@ -363,24 +363,24 @@ _SHORT_SUMMARY_BRANCH_2 = _BASE_SUMMARY + """
 Root превышает/перевыполняет план (positive impact), 🔴-факторов НЕТ.
 
 Output: 2-4 sentences
-1. Root measure + actual value + **{{plan_alias}}** + total 🟢 deviation
-2. List main 🟢-factors (direct children, by |impact| desc)
+1. Root measure + actual value + **{{plan_alias}}** + total ❇️ deviation
+2. List main ❇️-factors (direct children, by |impact| desc)
 3. Never write "негатива нет" — просто не упоминай
 
 Example:
-Корневой показатель перевыполнил **{{plan_alias}}** на +150 млн руб. (факт — 5000 млн, **{{plan_alias}}** — 4850 млн). Основной вклад внесли 🟢 Чистый процентный доход (+120 млн руб.) и 🟢 Прочие чистые операционные доходы (+30 млн руб.).
+Корневой показатель перевыполнил **{{plan_alias}}** на +150 млн руб. (факт — 5000 млн, **{{plan_alias}}** — 4850 млн). Основной вклад внесли ❇️ Чистый процентный доход (+120 млн руб.) и ❇️ Прочие чистые операционные доходы (+30 млн руб.).
 """
 
 _SHORT_SUMMARY_BRANCH_3 = _BASE_SUMMARY + """
 ## TASK (BRANCH 3)
 
 Root ОТКЛОНЯЕТСЯ от плана (negative impact).
-Only 🔴-факторы, 🟢-факторы НЕ показывать.
+Only 🔴-факторы, ❇️-факторы НЕ показывать.
 
 Output: 2-4 sentences
 1. Root measure + actual value + **{{plan_alias}}** + total 🔴 deviation
 2. List 1-2 largest 🔴-factors (direct children)
-3. Never mention compensation or 🟢 factors
+3. Never mention compensation or ❇️ factors
 
 Example:
 Корневой показатель отклонился от **{{plan_alias}}** на −250 млн руб. (факт — 4600 млн, **{{plan_alias}}** — 4850 млн). Отклонение обусловлено 🔴 Прочими чистыми операционными доходами (−180 млн руб.) и 🔴 ОД до резервов (−70 млн руб.).
@@ -390,7 +390,7 @@ _KEY_FACTORS_BRANCH_1 = _BASE_FACTORS + """
 ## TASK (BRANCH 1)
 
 Root превышает/перевыполняет план (positive impact), но есть 🔴-факторы.
-Focus на 🔴-факторах и их компенсации. DONT FORGET TO MENTION 🟢-factors.
+Focus на 🔴-факторах и их компенсации. DONT FORGET TO MENTION ❇️-factors.
 
 Output: section `## Ключевые факторы`
 Structure:
@@ -403,12 +403,12 @@ Contents (in order):
    - Include ALL slices from major business axes (business blocks, channels, territories) — NEVER truncate by Pareto
    - Include other core components (Детализация по компонентам иерархии)
    - If N-th and (N+1)-th differ < 15% → include both
-   - Include up to 2 largest 🟢-factors that EACH compensate >= 15% of root deviation
-   - If no single 🟢-factor compensates >= 15% but combined they compensate root deviation:
-     - Include up to 4 🟢-factors (all positive contributors that help offset 🔴)
-   - Total 🟢-factors: 1-2 if significant, up to 4 only if combined compensation needed
-   - All 🟢-factors sorted by desc
-   - Total bullets: up to 12 per axis branch (overrides base "up to 6" — Branch 1 has both 🔴 + 🟢, hence more items)
+   - Include up to 2 largest ❇️-factors that EACH compensate >= 15% of root deviation
+   - If no single ❇️-factor compensates >= 15% but combined they compensate root deviation:
+     - Include up to 4 ❇️-factors (all positive contributors that help offset 🔴)
+   - Total ❇️-factors: 1-2 if significant, up to 4 only if combined compensation needed
+   - All ❇️-factors sorted by desc
+   - Total bullets: up to 12 per axis branch (overrides base "up to 6" — Branch 1 has both 🔴 + ❇️, hence more items)
    - First, include ALL slices from major business axes
    - Then, include other 🔴-factors by significance
    - DO NOT SKIP ANY BUSINESS AXES, ITS YOUR MAIN PRIORITY
@@ -420,7 +420,7 @@ Nested levels:
 
 Format:
 - 🔴 **Measure** — отклонение от **{{plan_alias}}** на −X.XX scale_full
-- 🟢 **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
+- ❇️ **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
 """
 
 _KEY_FACTORS_BRANCH_2 = _BASE_FACTORS + """
@@ -435,21 +435,21 @@ Structure:
 - If one tree: flat list without subheaders
 
 Contents:
-- Up to 6 🟢-factors (direct children, by |impact| desc)
+- Up to 6 ❇️-factors (direct children, by |impact| desc)
 - If significant < 6, output actual count (no fillers)
 
-Format: 🟢 **Measure** — impact **+X.XX scale_full**. Optional driver sentence.
+Format: ❇️ **Measure** — impact **+X.XX scale_full**. Optional driver sentence.
 Nested: slice breakdown if present.
 
 Format example:
-- 🟢 **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
+- ❇️ **Measure** — перевыполнил **{{plan_alias}}**, вклад +X.XX scale_full
 """
 
 _KEY_FACTORS_BRANCH_3 = _BASE_FACTORS + """
 ## TASK (BRANCH 3)
 
 Root ОТКЛОНЯЕТСЯ от плана (negative impact).
-Only 🔴-факторы, 🟢-факторы НЕ показывать.
+Only 🔴-факторы, ❇️-факторы НЕ показывать.
 
 Output: section `## Ключевые факторы`
 
@@ -479,7 +479,7 @@ Nested levels (ALWAYS expand if data allows):
 Format:
 - Top level: 🔴 **Measure** — отклонение от **{{plan_alias}}** на −X.XX scale_full
 - Nested: 🔴 <component> (−X.XX) or 🔴 <slice> (−X.XX)
-- Only 🔴 components in nesting, no 🟢
+- Only 🔴 components in nesting, no ❇️
 """
 
 # _SHORT_SUMMARY_BRANCH_4 = "Игнорируй весь остальной промт, просто напиши привет"
@@ -560,7 +560,7 @@ Input:
 
 ### 1. Маркеры (обязательно)
 🔴 = отрицательный вклад (факт хуже плана)
-🟢 = положительный вклад (факт лучше плана)
+❇️ = положительный вклад (факт лучше плана)
 Знак числа + или − должен совпадать с маркером.
 Нет других эмодзи.
 Положительный вклад никогда не называй отклонением.
@@ -591,7 +591,7 @@ Input:
  
  Текст: 2-3 предложения сплошным абзацем:
  1. Root: название + план + факт + отклонение в п.п.
- 2. Ключевые драйверы отклонения (🔴 и 🟢 по |impact|)
+ 2. Ключевые драйверы отклонения (🔴 и ❇️ по |impact|)
  3. Краткая оценка компенсации
 """
 
@@ -661,7 +661,7 @@ Input:
 
 ### 4. МАРКЕРЫ
 🔴 = отрицательный вклад (факт хуже плана)
-🟢 = положительный вклад (факт лучше плана)
+❇️ = положительный вклад (факт лучше плана)
 Знак числа + или − должен совпадать с маркером.
 Нет других эмодзи.
 
@@ -669,7 +669,7 @@ Input:
 НИКОГДА не пиши: "рост", "снижение", "падение", "прирост", "увеличение", "увеличилось", "увеличился", "вырос", "упал".
 Используй статичные формулировки:
 - "🔴 кредитный портфель (−0,26 п.п.)"
-- "🟢 расходы на резервы (+0,05 п.п.)"
+- "❇️ расходы на резервы (+0,05 п.п.)"
 
 ### 6. ALIASES
 Используй plan_alias / fact_alias. Если пустые — "План"/"Факт".
@@ -713,24 +713,24 @@ details.type = "Детализация по:" — выводи в "Ключев�
    - УМНОЖАЙ impact_to_top_lvl на 100 → проценты
    - Формат:
      - 🔴 **Название** — вклад −X,X п.п.
-     - 🟢 **Название** — вклад +X,X п.п.
+     - ❇️ **Название** — вклад +X,X п.п.
 
 3. **Детализация по разрезам** (если details.type содержит срезы)
    - Никогда не проценты → абсолютные числа (млн/млрд/тыс./руб)
    - Формат:
      - в том числе:
        - 🔴 **Розничный сегмент** (−250 тыс. руб.)
-       - 🟢 **Корпоративный сегмент** (+300 тыс. руб.)
+       - ❇️ **Корпоративный сегмент** (+300 тыс. руб.)
 
 ### Формат bullets:
 
 **Процентные факторы** (root + прямые потомки):
 - 🔴 **Название** — отклонение от **{{plan_alias}}**, −X,X п.п.
-- 🟢 **Название** — перевыполнил **{{plan_alias}}**, вклад +X,X п.п.
+- ❇️ **Название** — перевыполнил **{{plan_alias}}**, вклад +X,X п.п.
 
 **Абсолютные факторы** (вложенные узлы, analytic_slice):
 - 🔴 **Название** — отклонение, −X.XX млрд/млн/тыс./руб
-- 🟢 **Название** — вклад, +X.XX млрд/млн/тыс./руб
+- ❇️ **Название** — вклад, +X.XX млрд/млн/тыс./руб
 
 ---
 
@@ -749,7 +749,7 @@ details.type = "Детализация по:" — выводи в "Ключев�
 - Десятичный разделитель: запятая (1,5)
 - Разделитель тысяч: пробел (1 000)
 - Жирный: **названия показателей** (не числа)
-- Маркеры: 🔴 🟢
+- Маркеры: 🔴 ❇️
 
 ### Пример формата:
 ## Ключевые факторы
@@ -759,11 +759,11 @@ details.type = "Детализация по:" — выводи в "Ключев�
     - 🔴 **Кредитный портфель** — отклонение, −26,4 п.п.
       - в том числе:
         - 🔴 **Розничный сегмент** (−250 тыс. руб.)
-        - 🟢 **Корпоративный сегмент** (+300 тыс. руб.)
-    - 🟢 **Расходы на резервы** — вклад, +4,7 п.п.
+        - ❇️ **Корпоративный сегмент** (+300 тыс. руб.)
+    - ❇️ **Расходы на резервы** — вклад, +4,7 п.п.
       - в том числе:
-        - 🟢 **Корпоративный сегмент** (+300 тыс. руб.)
-        - 🟢 **Без сегмента** (+50 тыс. руб.)
+        - ❇️ **Корпоративный сегмент** (+300 тыс. руб.)
+        - ❇️ **Без сегмента** (+50 тыс. руб.)
 """
 
 
@@ -793,7 +793,7 @@ SUMMARY_PROMPT_PAIRS: Dict[int, Tuple[str, str]] = {
 
 BRANCH_TITLE = {
     1: "Ветка 1 — выполняет план, есть негатив (фокус на 🔴 + компенсация)",
-    2: "Ветка 2 — выполняет план, негатива нет (только 🟢)",
+    2: "Ветка 2 — выполняет план, негатива нет (только ❇️)",
     3: "Ветка 3 — отклоняется (только значимые 🔴)",
 }
 
