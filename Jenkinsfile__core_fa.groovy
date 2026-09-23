@@ -13,7 +13,7 @@ pipeline {
     	appComponent = 'aimis2_core_fa'
         appImg = 'aimisCoreFaImg'
 		repo = 'aimis2-core-fa'
-		vers = '01.000.10'
+		vers = '01.000.11'
         SONAR_PROJECT_KEY = 'aimis2-core-fa'
 
         // const
