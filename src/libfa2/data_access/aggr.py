@@ -59,7 +59,8 @@ class DataAccess(ABC):
     async def _get_data(
         self,
         sql: str,
-        params: Dict[str, Any]
+        params: Dict[str, Any],
+        client_session_id: str = '-1',
     ) -> Res[List[Dict[str, Any]]]:
         """
         Execute a SQL query and return the result.
@@ -67,6 +68,7 @@ class DataAccess(ABC):
         Args:
             sql: SQL query string
             params: Query parameters dictionary
+            client_session_id: ID сессии клиента (передаётся во все исходящие вызовы SDK)
 
         Returns:
             Res[List[Dict[str, Any]]]: Result containing list of row dicts, or an error.
@@ -78,7 +80,8 @@ class DataAccess(ABC):
         source: str,
         grp_by_columns: Optional[List[str]],
         aggr_columns: List[str],
-        conditions: ConditionBase
+        conditions: ConditionBase,
+        client_session_id: str = '-1',
     ) -> Res[List[Dict[str, Any]]]:
         """
         Execute an aggregated SQL query with optional grouping and summation.
@@ -225,10 +228,11 @@ class DataAccessDataGate(DataAccess):
     async def _get_data(
         self,
         sql: str,
-        params: Dict[str, Any]
+        params: Dict[str, Any],
+        client_session_id: str = '-1',
     ) -> Res[List[Dict[str, Any]]]:
         dgc = GeneralSQLDataGateClientPart(self._keydb_client)
-        return await dgc.get_data(sql=sql, params=params)
+        return await dgc.get_data(sql=sql, params=params, client_session_id=client_session_id)
 
 
 class DataAccessDbWrapper(DataAccess):

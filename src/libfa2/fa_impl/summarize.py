@@ -38,6 +38,7 @@ async def _base_llm_processing_function(
         system_prompt: str, data: Dict,
         llm_client: GigaChatClientPartV2,
         llm_model: str = "GigaChat-3-Ultra",
+        client_session_id: str = '-1',
 ) -> Res[str]:
     system_prompt = MsgBase.system_prompt(system_prompt)
 
@@ -51,6 +52,7 @@ async def _base_llm_processing_function(
     resp: Res[MsgBase] = await llm_client.ask_giga(
         msgs=[system_prompt, usr_msg],
         model=llm_model,
+        client_session_id=client_session_id,
     )
 
     if not resp.ok:
@@ -180,6 +182,7 @@ async def build_branch_report(
         llm_client_gen_fn: Callable,
         model_summary: str = "GigaChat-3-Ultra",
         model_table: str = "GigaChat-2-Max",
+        client_session_id: str = '-1',
 ) -> Res[str]:
     """Собрать отчёт по выбранной ветке: параллельно short_summary, key_factors, таблица."""
     summary_prompt = SummarizerPrompt.SHORT_SUMMARY_PROMPTS[branch]
@@ -208,12 +211,12 @@ async def build_branch_report(
     async with asyncio.TaskGroup() as tg:
         tsks.append(tg.create_task(
             _base_llm_processing_function(
-                summary_prompt, data_with_scale, await llm_client_gen_fn(), model_summary
+                summary_prompt, data_with_scale, await llm_client_gen_fn(), model_summary, client_session_id
             )
         ))
         tsks.append(tg.create_task(
             _base_llm_processing_function(
-                factors_prompt, data_with_scale, await llm_client_gen_fn(), model_summary
+                factors_prompt, data_with_scale, await llm_client_gen_fn(), model_summary, client_session_id
             )
         ))
         tsks.append(tg.create_task(
@@ -242,7 +245,7 @@ async def build_branch_report(
             }
             tsks.append(tg.create_task(
                 _base_llm_processing_function(
-                    motiv_prompt, motiv_data, await llm_client_gen_fn(), model_summary
+                    motiv_prompt, motiv_data, await llm_client_gen_fn(), model_summary, client_session_id
                 )
             ))
         else:
@@ -279,6 +282,7 @@ async def summarize(
         llm_client_gen_fn: Callable,
         model_summary: str = "GigaChat-3-Ultra",
         model_details: str = "GigaChat-2-Max",
+        client_session_id: str = '-1',
 ) -> Res[str]:
     """
     Главная функция саммаризации.
@@ -289,4 +293,5 @@ async def summarize(
         data, branch, llm_client_gen_fn,
         model_summary=model_summary,
         model_table=model_details,
+        client_session_id=client_session_id,
     )

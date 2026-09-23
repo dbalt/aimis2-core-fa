@@ -4,7 +4,6 @@ from coredis import Redis as KeyDbClient
 
 from sdk.core.base_api_server_app import BaseApiAppServerPart
 from sdk.core.logging import get_logger
-from sdk.datagate.dg_client import GeneralSQLDataGateClientPart
 
 from datetime import date
 from sdk.fa2026.client import FaClient
@@ -42,23 +41,25 @@ class AIVisorApiAppServerPart(BaseApiAppServerPart):
         # опрашиваемый базовым классом на каждый запрос.
         return True
 
-    async def m__process_request(self, request_payload: Dict) -> AsyncIterable[Dict]:
+    async def m__process_request(
+        self, request_payload: Dict, client_session_id: str = 'system'
+    ) -> AsyncIterable[Dict]:
         # Точка входа обработки запроса и одновременно граница перехвата ошибок:
         # любую неудачу фиксируем с трейсбэком и пробрасываем исключение дальше.
         lgr = get_logger()
         lgr.info(
-            "AIVisor request received: code=%s, dt=%s",
-            request_payload.get('code'), request_payload.get('dt'),
+            "AIVisor request received: code=%s, dt=%s, csid=%s",
+            request_payload.get('code'), request_payload.get('dt'), client_session_id,
         )
         try:
-            res = await self._do_work(payload=request_payload)
+            res = await self._do_work(payload=request_payload, client_session_id=client_session_id)
         except Exception:
             lgr.exception("AIVisor request failed")
             raise
         lgr.info("AIVisor request completed successfully")
         yield res
 
-    async def _do_work(self, payload: Dict) -> str:
+    async def _do_work(self, payload: Dict, client_session_id: str = 'system') -> str:
         # Основная логика: по коду и дате получить метаданные отклонения,
         # проверить права доступа к источнику данных и вернуть готовое саммари.
         lgr = get_logger()
@@ -81,7 +82,7 @@ class AIVisorApiAppServerPart(BaseApiAppServerPart):
         # --- Получение метаданных отклонения по коду ---
         lgr.info("Fetching deviation metadata for code=%s", code)
         fac = FaClient(self._keydb_client)
-        metadata_res = await fac.get_metadata(code)
+        metadata_res = await fac.get_metadata(code, client_session_id=client_session_id)
         lgr.debug("get_metadata ok=%s", metadata_res.ok)
         if not metadata_res.ok:
             # Восходящий сервис вернул ошибку: восстановления не делаем,
@@ -108,7 +109,7 @@ class AIVisorApiAppServerPart(BaseApiAppServerPart):
 
         # --- Получение готового саммари по плану/факту ---
         lgr.info("Fetching summary for code=%s, dt=%s", code, dt.isoformat())
-        summary_res = await fac.get_summary(code, dt)
+        summary_res = await fac.get_summary(code, dt, client_session_id=client_session_id)
         lgr.debug("get_summary ok=%s", summary_res.ok)
         if not summary_res.ok:
             lgr.warning(
