@@ -32,16 +32,16 @@ class DataMgmt(ABC):
         self._results_table = results_table
 
     @abstractmethod
-    async def _exec(self, sql: str, params: Dict[str, Any] | None = None) -> Res[None]:
+    async def _exec(self, sql: str, params: Dict[str, Any] | None = None, client_session_id: str = '-1') -> Res[None]:
         """Execute a non-SELECT SQL statement (INSERT/DELETE)."""
         ...
 
     @abstractmethod
-    async def _query(self, sql: str, params: Dict[str, Any] | None = None) -> Res[List[Dict[str, Any]]]:
+    async def _query(self, sql: str, params: Dict[str, Any] | None = None, client_session_id: str = '-1') -> Res[List[Dict[str, Any]]]:
         """Execute a SELECT SQL query and return rows."""
         ...
 
-    async def delete_metadata(self, code: str) -> Res[None]:
+    async def delete_metadata(self, code: str, client_session_id: str = '-1') -> Res[None]:
         """Delete metadata row by code."""
         lgr = get_logger()
         lgr.info(f'delete_metadata: code={code}')
@@ -49,14 +49,14 @@ class DataMgmt(ABC):
         sql = f"delete from {self._metadata_table} where code = %(code)s"
         lgr.debug(f'SQL: {sql}, params: code={code}')
 
-        res = await self._exec(sql, {'code': code})
+        res = await self._exec(sql, {'code': code}, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'delete_metadata failed: {res.err}')
         else:
             lgr.info(f'delete_metadata completed: code={code}')
         return res
 
-    async def save_metadata(self, code: str, data: Dict[str, Any]) -> Res[None]:
+    async def save_metadata(self, code: str, data: Dict[str, Any], client_session_id: str = '-1') -> Res[None]:
         """Upsert metadata: delete existing row then insert new one."""
         lgr = get_logger()
         lgr.info(f'save_metadata: code={code}')
@@ -64,21 +64,21 @@ class DataMgmt(ABC):
         data_str = json.dumps(data, ensure_ascii=False)
         lgr.debug(f'save_metadata data length={len(data_str)}')
 
-        del_res = await self.delete_metadata(code)
+        del_res = await self.delete_metadata(code, client_session_id=client_session_id)
         if not del_res.ok:
             lgr.warning(f'save_metadata: delete failed but continuing: {del_res.err}')
 
         sql = f"insert into {self._metadata_table} (code, metadata) values (%(code)s, %(metadata)s)"
         lgr.debug(f'SQL: {sql}')
 
-        res = await self._exec(sql, {'code': code, 'metadata': data_str})
+        res = await self._exec(sql, {'code': code, 'metadata': data_str}, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'save_metadata failed: {res.err}')
         else:
             lgr.info(f'save_metadata completed: code={code}')
         return res
 
-    async def get_metadata(self, code: str) -> Res[Dict[str, Any]]:
+    async def get_metadata(self, code: str, client_session_id: str = '-1') -> Res[Dict[str, Any]]:
         """Retrieve metadata dict by code."""
         lgr = get_logger()
         lgr.info(f'get_metadata: code={code}')
@@ -86,7 +86,7 @@ class DataMgmt(ABC):
         sql = f"select metadata from {self._metadata_table} where code = %(code)s"
         lgr.debug(f'SQL: {sql}')
 
-        res = await self._query(sql, {'code': code})
+        res = await self._query(sql, {'code': code}, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'get_metadata query failed: {res.err}')
             return Res.error(res.err)
@@ -101,7 +101,7 @@ class DataMgmt(ABC):
         lgr.debug(f'get_metadata result: {data_str}')
         return Res.result(json.loads(data_str))
 
-    async def delete_results(self, code: str, dt: date) -> Res[None]:
+    async def delete_results(self, code: str, dt: date, client_session_id: str = '-1') -> Res[None]:
         """Delete results row by code and date."""
         lgr = get_logger()
         lgr.info(f'delete_results: code={code}, dt={dt}')
@@ -109,14 +109,14 @@ class DataMgmt(ABC):
         sql = f"delete from {self._results_table} where code = %(code)s and dt = %(dt)s"
         lgr.debug(f'SQL: {sql}, params: code={code}, dt={dt}')
 
-        res = await self._exec(sql, {'code': code, 'dt': dt})
+        res = await self._exec(sql, {'code': code, 'dt': dt}, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'delete_results failed: {res.err}')
         else:
             lgr.info(f'delete_results completed: code={code}, dt={dt}')
         return res
 
-    async def delete_results_for_dt(self, dt: date) -> Res[None]:
+    async def delete_results_for_dt(self, dt: date, client_session_id: str = '-1') -> Res[None]:
         """Delete all results for a given date."""
         lgr = get_logger()
         lgr.info(f'delete_results_for_dt: dt={dt}')
@@ -124,14 +124,14 @@ class DataMgmt(ABC):
         sql = f"delete from {self._results_table} where dt = %(dt)s"
         lgr.debug(f'SQL: {sql}, params: dt={dt}')
 
-        res = await self._exec(sql, {'dt': dt})
+        res = await self._exec(sql, {'dt': dt}, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'delete_results_for_dt failed: {res.err}')
         else:
             lgr.info(f'delete_results_for_dt completed: dt={dt}')
         return res
 
-    async def save_results(self, code: str, dt: date, data: Dict[str, Any], summary: str) -> Res[None]:
+    async def save_results(self, code: str, dt: date, data: Dict[str, Any], summary: str, client_session_id: str = '-1') -> Res[None]:
         """Insert results row."""
         lgr = get_logger()
         lgr.info(f'save_results: code={code}, dt={dt}')
@@ -139,7 +139,7 @@ class DataMgmt(ABC):
         data_str = json.dumps(data, ensure_ascii=False)
         lgr.debug(f'save_results data_len={len(data_str)}, summary_len={len(summary)}')
 
-        del_res = await self.delete_results(code, dt)
+        del_res = await self.delete_results(code, dt, client_session_id=client_session_id)
         if not del_res.ok:
             lgr.warning(f'save_results: delete failed but continuing: {del_res.err}')
 
@@ -149,14 +149,14 @@ class DataMgmt(ABC):
         )
         lgr.debug(f'SQL: {sql}')
 
-        res = await self._exec(sql, {'code': code, 'dt': dt, 'data': data_str, 'summary': summary})
+        res = await self._exec(sql, {'code': code, 'dt': dt, 'data': data_str, 'summary': summary}, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'save_results failed: {res.err}')
         else:
             lgr.info(f'save_results completed: code={code}, dt={dt}')
         return res
 
-    async def get_results(self, code: str, dt: date) -> Res[Tuple[Dict[str, Any], str]]:
+    async def get_results(self, code: str, dt: date, client_session_id: str = '-1') -> Res[Tuple[Dict[str, Any], str]]:
         """Retrieve results (data dict, summary) by code and date."""
         lgr = get_logger()
         lgr.info(f'get_results: code={code}, dt={dt}')
@@ -164,7 +164,7 @@ class DataMgmt(ABC):
         sql = f"select data, summary from {self._results_table} where code = %(code)s and dt = %(dt)s"
         lgr.debug(f'SQL: {sql}')
 
-        res = await self._query(sql, {'code': code, 'dt': dt})
+        res = await self._query(sql, {'code': code, 'dt': dt}, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'get_results query failed: {res.err}')
             return Res.error(res.err)
@@ -195,17 +195,17 @@ class DataMgmtDataGate(DataMgmt):
         self._keydb_client = keydb_client
         lgr.info('DataMgmtDataGate initialized')
 
-    async def _exec(self, sql: str, params: Dict[str, Any] | None = None) -> Res[None]:
+    async def _exec(self, sql: str, params: Dict[str, Any] | None = None, client_session_id: str = '-1') -> Res[None]:
         lgr = get_logger()
         dgc = GeneralSQLDataGateClientPart(self._keydb_client)
-        res = await dgc.get_data(sql=sql, params=params)
+        res = await dgc.get_data(sql=sql, params=params, client_session_id=client_session_id)
         if not res.ok:
             return Res.error(res.err)
         return Res.result(None)
 
-    async def _query(self, sql: str, params: Dict[str, Any] | None = None) -> Res[List[Dict[str, Any]]]:
+    async def _query(self, sql: str, params: Dict[str, Any] | None = None, client_session_id: str = '-1') -> Res[List[Dict[str, Any]]]:
         dgc = GeneralSQLDataGateClientPart(self._keydb_client)
-        return await dgc.get_data(sql=sql, params=params)
+        return await dgc.get_data(sql=sql, params=params, client_session_id=client_session_id)
 
 
 class DataMgmtDbWrapper(DataMgmt):
@@ -223,7 +223,7 @@ class DataMgmtDbWrapper(DataMgmt):
         self._db_gen = db_wrapper_gen
         lgr.info('DataMgmtDbWrapper initialized')
 
-    async def _exec(self, sql: str, params: Dict[str, Any] | None = None) -> Res[None]:
+    async def _exec(self, sql: str, params: Dict[str, Any] | None = None, client_session_id: str = '-1') -> Res[None]:
         try:
             dbw = await self._db_gen()
             await dbw.exec(sql, params)
@@ -234,7 +234,7 @@ class DataMgmtDbWrapper(DataMgmt):
 
 
 
-    async def _query(self, sql: str, params: Dict[str, Any] | None = None) -> Res[List[Dict[str, Any]]]:
+    async def _query(self, sql: str, params: Dict[str, Any] | None = None, client_session_id: str = '-1') -> Res[List[Dict[str, Any]]]:
         try:
             rows = []
             dbw = await self._db_gen()

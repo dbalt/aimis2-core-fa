@@ -34,53 +34,53 @@ class FaServerImpl(BaseAppServerPart):
         self._model_summary = model_summary
         self._model_details = model_details
 
-    async def m__process_request(self, request_payload: Dict) -> AsyncIterable[Dict]:
+    async def m__process_request(self, request_payload: Dict, client_session_id: str = '-1') -> AsyncIterable[Dict]:
         lgr = get_logger()
         action = request_payload.get('action')
         payload = request_payload.get('payload', {})
-        lgr.debug(f'request_payload: {request_payload}')
+        lgr.debug(f'request_payload: {request_payload}, client_session_id: {client_session_id}')
 
         if action == FaServerAction.GET_DEVIATION_SUMMARY:
-            result = await self._handle_get_deviation_summary(payload)
+            result = await self._handle_get_deviation_summary(payload, client_session_id=client_session_id)
             yield result
             return
 
         if action == FaServerAction.DELETE_METADATA:
-            async for resp in self._handle_delete_metadata(payload):
+            async for resp in self._handle_delete_metadata(payload, client_session_id=client_session_id):
                 yield resp
             return
 
         if action == FaServerAction.SAVE_METADATA:
-            async for resp in self._handle_save_metadata(payload):
+            async for resp in self._handle_save_metadata(payload, client_session_id=client_session_id):
                 yield resp
             return
 
         if action == FaServerAction.GET_METADATA:
-            async for resp in self._handle_get_metadata(payload):
+            async for resp in self._handle_get_metadata(payload, client_session_id=client_session_id):
                 yield resp
             return
 
         if action == FaServerAction.DELETE_RESULTS:
-            async for resp in self._handle_delete_results(payload):
+            async for resp in self._handle_delete_results(payload, client_session_id=client_session_id):
                 yield resp
             return
 
         if action == FaServerAction.DELETE_RESULTS_FOR_DT:
-            async for resp in self._handle_delete_results_for_dt(payload):
+            async for resp in self._handle_delete_results_for_dt(payload, client_session_id=client_session_id):
                 yield resp
             return
 
         lgr.warning(f'Unsupported action received: {action}')
         raise Exception(f'Unsupported action: {action}')
 
-    async def _handle_get_deviation_summary(self, payload: Dict) -> Dict:
+    async def _handle_get_deviation_summary(self, payload: Dict, client_session_id: str = '-1') -> Dict:
         lgr = get_logger()
         code = payload['code']
         dt = date.fromisoformat(payload['dt'])
-        lgr.info(f'Processing get_deviation_summary: code={code}, dt={dt}')
+        lgr.info(f'Processing get_deviation_summary: code={code}, dt={dt}, csid={client_session_id[:8]}')
 
         # Step 1: check cached results
-        results_res = await self._data_mgmt.get_results(code, dt)
+        results_res = await self._data_mgmt.get_results(code, dt, client_session_id=client_session_id)
         if results_res.ok:
             lgr.info(f'Cached results found for code={code}, dt={dt}')
             data, summary = results_res.data
@@ -90,7 +90,7 @@ class FaServerImpl(BaseAppServerPart):
         lgr.info(f'No cached results, proceeding to calculate: code={code}, dt={dt}')
 
         # Step 2: fetch metadata
-        metadata_res = await self._data_mgmt.get_metadata(code)
+        metadata_res = await self._data_mgmt.get_metadata(code, client_session_id=client_session_id)
         if not metadata_res.ok:
             lgr.exception(f'Metadata not found for code="{code}": {metadata_res.err}')
             raise Exception(f'Metadata not found for code "{code}": {metadata_res.err}')
@@ -108,7 +108,8 @@ class FaServerImpl(BaseAppServerPart):
             self._data_access,
             self._llm_client_gen_fn,
             self._model_summary,
-            self._model_details
+            self._model_details,
+            client_session_id=client_session_id
         )
 
         if not tpl_res.ok:
@@ -120,7 +121,7 @@ class FaServerImpl(BaseAppServerPart):
         lgr.info(f'Summarization completed: code={code}, dt={dt}, summary length={len(summary)}')
 
         # Step 7: persist results (best-effort)
-        save_res = await self._data_mgmt.save_results(code, dt, data, summary)
+        save_res = await self._data_mgmt.save_results(code, dt, data, summary, client_session_id=client_session_id)
         if not save_res.ok:
             lgr.warning(f'Failed to save results for code={code}, dt={dt}: {save_res.err}')
 
@@ -128,12 +129,12 @@ class FaServerImpl(BaseAppServerPart):
         lgr.info(f'Returning summary and data: code={code}, dt={dt}')
         return {'summary': summary, 'data': data}
 
-    async def _handle_delete_metadata(self, payload: Dict) -> AsyncIterable[Dict]:
+    async def _handle_delete_metadata(self, payload: Dict, client_session_id: str = '-1') -> AsyncIterable[Dict]:
         lgr = get_logger()
         code = payload['code']
         lgr.info(f'Processing delete_metadata: code={code}')
 
-        res = await self._data_mgmt.delete_metadata(code)
+        res = await self._data_mgmt.delete_metadata(code, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'delete_metadata failed: code={code}: {res.err}')
             raise Exception(f'delete_metadata failed: {res.err}')
@@ -141,13 +142,13 @@ class FaServerImpl(BaseAppServerPart):
         lgr.info(f'delete_metadata completed: code={code}')
         yield {}
 
-    async def _handle_save_metadata(self, payload: Dict) -> AsyncIterable[Dict]:
+    async def _handle_save_metadata(self, payload: Dict, client_session_id: str = '-1') -> AsyncIterable[Dict]:
         lgr = get_logger()
         code = payload['code']
         data = payload['data']
         lgr.info(f'Processing save_metadata: code={code}')
 
-        res = await self._data_mgmt.save_metadata(code, data)
+        res = await self._data_mgmt.save_metadata(code, data, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'save_metadata failed: code={code}: {res.err}')
             raise Exception(f'save_metadata failed: {res.err}')
@@ -155,12 +156,12 @@ class FaServerImpl(BaseAppServerPart):
         lgr.info(f'save_metadata completed: code={code}')
         yield {}
 
-    async def _handle_get_metadata(self, payload: Dict) -> AsyncIterable[Dict]:
+    async def _handle_get_metadata(self, payload: Dict, client_session_id: str = '-1') -> AsyncIterable[Dict]:
         lgr = get_logger()
         code = payload['code']
         lgr.info(f'Processing get_metadata: code={code}')
 
-        res = await self._data_mgmt.get_metadata(code)
+        res = await self._data_mgmt.get_metadata(code, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'get_metadata failed: code={code}: {res.err}')
             raise Exception(f'get_metadata failed: {res.err}')
@@ -168,13 +169,13 @@ class FaServerImpl(BaseAppServerPart):
         lgr.info(f'get_metadata completed: code={code}')
         yield {'metadata': res.data}
 
-    async def _handle_delete_results(self, payload: Dict) -> AsyncIterable[Dict]:
+    async def _handle_delete_results(self, payload: Dict, client_session_id: str = '-1') -> AsyncIterable[Dict]:
         lgr = get_logger()
         code = payload['code']
         dt = date.fromisoformat(payload['dt'])
         lgr.info(f'Processing delete_results: code={code}, dt={dt}')
 
-        res = await self._data_mgmt.delete_results(code, dt)
+        res = await self._data_mgmt.delete_results(code, dt, client_session_id=client_session_id)
         if not res.ok:
             lgr.exception(f'delete_results failed: code={code}, dt={dt}: {res.err}')
             raise Exception(f'delete_results failed: {res.err}')
@@ -182,12 +183,12 @@ class FaServerImpl(BaseAppServerPart):
         lgr.info(f'delete_results completed: code={code}, dt={dt}')
         yield {}
 
-    async def _handle_delete_results_for_dt(self, payload: Dict) -> AsyncIterable[Dict]:
+    async def _handle_delete_results_for_dt(self, payload: Dict, client_session_id: str = '-1') -> AsyncIterable[Dict]:
         lgr = get_logger()
         dt = date.fromisoformat(payload['dt'])
         lgr.info(f'Processing delete_results_for_dt: dt={dt}')
 
-        res = await self._data_mgmt.delete_results_for_dt(dt)
+        res = await self._data_mgmt.delete_results_for_dt(dt, client_session_id=client_session_id)
         if not res.ok:
             # Если ошибка, логируем и выдаём исключение
             lgr.exception(f'delete_results_for_dt failed: dt={dt}: {res.err}')

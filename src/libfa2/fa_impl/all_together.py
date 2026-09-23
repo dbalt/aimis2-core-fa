@@ -22,7 +22,8 @@ async def calculate_and_summarize_deviation(
         data_access:DataAccess,
         fn_get_llm_client:Callable,
         model_summary:str = 'GigaChat-3-Ultra',
-        model_details:str = 'GigaChat-2-Max'
+        model_details:str = 'GigaChat-2-Max',
+        client_session_id: str = '-1',
     )->Res[Tuple[Dict, str]]:
 
     lgr = get_logger()
@@ -33,7 +34,7 @@ async def calculate_and_summarize_deviation(
 
     async with asyncio.TaskGroup() as tg:
         tsk_lst = [tg.create_task(calculate_deviations(x, data_access)) for x in calc_params_lst]
-        
+
         if deviation_calc_metadata.motiv_correction is not None:
             tsk_lst.append(tg.create_task(
                 get_motiv_correction_data(
@@ -47,7 +48,7 @@ async def calculate_and_summarize_deviation(
 
     # Распаковываем результаты: первые N — drills, последний (если есть) — мотив. кор
     drills = [t.result() for t in tsk_lst[:-1]] if len(tsk_lst) > len(calc_params_lst) else [t.result() for t in tsk_lst]
-    
+
     # Получаем мотив. корректировку (если была добавлена задача)
     motiv_res = None
     if len(tsk_lst) > len(calc_params_lst):
@@ -94,7 +95,7 @@ async def calculate_and_summarize_deviation(
     # Добавил sign_negative_impact для корректного определения зеленого/красного значка в таблице
     data["sign_negative_impact"] = deviation_calc_metadata.search_dev_params.sign_negative_impact
 
-    summary_res = await summarize(data, fn_get_llm_client, model_summary, model_details)
+    summary_res = await summarize(data, fn_get_llm_client, model_summary, model_details, client_session_id=client_session_id)
     if not summary_res.ok:
         lgr.warning(f'Summarization failed: code={code}, dt={dt}: {summary_res.err}')
         return Res.mk_error(summary_res.err)
