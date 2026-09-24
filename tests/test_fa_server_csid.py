@@ -42,14 +42,18 @@ class MockDataMgmt(DataMgmt):
 
     async def get_metadata(self, code: str, client_session_id: str = '-1'):
         self._calls.append({'type': 'get_metadata', 'code': code, 'client_session_id': client_session_id})
-        from src.libfa2.fa_impl.deviation_calc_metadata import DeviationCalcMetadata
-        return Res.result(DeviationCalcMetadata(
-            code=code,
-            indicator_code=code,
-            dt=date.today(),
-            calc_params_lst=[],
-            aliases={}
-        ).__dict__)
+        # имитируем реальный DataMgmt: чтение идёт через _query (csid должен дойти до него)
+        await self._query(
+            'select metadata from metadata where code = %(code)s',
+            {'code': code},
+            client_session_id=client_session_id,
+        )
+        return Res.result({
+            'code': code,
+            'source_params': {'source_name': '', 'rep_dt_column': 'rep_dt'},
+            'search_dev_params': {'plan_column': 'plan', 'fact_column': 'fact'},
+            'hier_lst': [],
+        })
 
     async def save_results(self, code: str, dt: date, data: dict, summary: str, client_session_id: str = '-1'):
         self._calls.append({'type': 'save_results', 'code': code, 'client_session_id': client_session_id})

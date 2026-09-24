@@ -14,9 +14,21 @@ from sdk.core.monadic import Res
 
 from src.libfa2.fa_impl.all_together import calculate_and_summarize_deviation
 from src.libfa2.fa_impl.deviation_calc_metadata import DeviationCalcMetadata
+from src.libfa2.fa_impl.units import SourceParameters, SearchDevParameters
 
 
 pytestmark = pytest.mark.asyncio
+
+
+def _make_metadata() -> DeviationCalcMetadata:
+    """Минимальные валидные метаданные: пустой список иерархий, без мотив. коррекции."""
+    return DeviationCalcMetadata(
+        code='test_code',
+        source_params=SourceParameters(),
+        search_dev_params=SearchDevParameters(plan_column='plan', fact_column='fact'),
+        hier_lst=[],
+        aliases={},
+    )
 
 
 class TestCalculateAndSummarizeDeviationCsId:
@@ -32,13 +44,7 @@ class TestCalculateAndSummarizeDeviationCsId:
             })()
         ))
 
-        metadata = DeviationCalcMetadata(
-            code='test_code',
-            indicator_code='test_code',
-            dt=date(2026, 1, 1),
-            calc_params_lst=[],
-            aliases={}
-        )
+        metadata = _make_metadata()
 
         with patch('src.libfa2.fa_impl.all_together.summarize', new_callable=AsyncMock, return_value=Res.mk_result('test summary')) as mock_summarize:
             result = await calculate_and_summarize_deviation(
@@ -68,13 +74,7 @@ class TestCalculateAndSummarizeDeviationCsId:
             })()
         ))
 
-        metadata = DeviationCalcMetadata(
-            code='test_code',
-            indicator_code='test_code',
-            dt=date(2026, 1, 1),
-            calc_params_lst=[],
-            aliases={}
-        )
+        metadata = _make_metadata()
 
         with patch('src.libfa2.fa_impl.all_together.summarize', new_callable=AsyncMock, return_value=Res.mk_result('test summary')) as mock_summarize:
             result = await calculate_and_summarize_deviation(
