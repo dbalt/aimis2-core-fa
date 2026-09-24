@@ -27,7 +27,7 @@ class TestBaseLlmProcessingFunctionCsId:
         mock_llm_client = MagicMock()
         mock_response = AsyncMock()
         mock_response.ok = True
-        mock_response.data = AssistantMsg(message='test response', role='assistant')
+        mock_response.data = AssistantMsg('test response')
         mock_llm_client.ask_giga = AsyncMock(return_value=mock_response)
 
         system_prompt = 'System prompt'
@@ -47,7 +47,7 @@ class TestBaseLlmProcessingFunctionCsId:
         mock_llm_client = MagicMock()
         mock_response = AsyncMock()
         mock_response.ok = True
-        mock_response.data = AssistantMsg(message='test response', role='assistant')
+        mock_response.data = AssistantMsg('test response')
         mock_llm_client.ask_giga = AsyncMock(return_value=mock_response)
 
         system_prompt = 'System prompt'
@@ -66,14 +66,14 @@ class TestBuildBranchReportCsId:
         mock_llm_client = MagicMock()
         mock_response = AsyncMock()
         mock_response.ok = True
-        mock_response.data = AssistantMsg(message='test response', role='assistant')
+        mock_response.data = AssistantMsg('test response')
         mock_llm_client.ask_giga = AsyncMock(return_value=mock_response)
 
         data = {'data': [{'hieararchy_node': 'test', 'amounts': {'plan': 100, 'fact': 80, 'deviation': -20, 'impact_to_top_lvl': -20}, 'details': [], 'top_factors': []}]}
         branch = 1
 
         result = await build_branch_report(
-            data, branch, lambda: mock_llm_client, 'GigaChat-3-Ultra', 'GigaChat-2-Max', client_session_id='csid-branch-456'
+            data, branch, AsyncMock(return_value=mock_llm_client), 'GigaChat-3-Ultra', 'GigaChat-2-Max', client_session_id='csid-branch-456'
         )
 
         assert result.ok
@@ -90,7 +90,7 @@ class TestSummarizeCsId:
         mock_llm_client = MagicMock()
         mock_response = AsyncMock()
         mock_response.ok = True
-        mock_response.data = AssistantMsg(message='test response', role='assistant')
+        mock_response.data = AssistantMsg('test response')
         mock_llm_client.ask_giga = AsyncMock(return_value=mock_response)
 
         data = {
@@ -99,7 +99,7 @@ class TestSummarizeCsId:
         }
 
         result = await summarize(
-            data, lambda: mock_llm_client, 'GigaChat-3-Ultra', 'GigaChat-2-Max', client_session_id='csid-sum-789'
+            data, AsyncMock(return_value=mock_llm_client), 'GigaChat-3-Ultra', 'GigaChat-2-Max', client_session_id='csid-sum-789'
         )
 
         assert result.ok
@@ -113,7 +113,7 @@ class TestSummarizeCsId:
         mock_llm_client = MagicMock()
         mock_response = AsyncMock()
         mock_response.ok = True
-        mock_response.data = AssistantMsg(message='test response', role='assistant')
+        mock_response.data = AssistantMsg('test response')
         mock_llm_client.ask_giga = AsyncMock(return_value=mock_response)
 
         data = {
@@ -121,7 +121,7 @@ class TestSummarizeCsId:
             'metric_type': 'absolute'
         }
 
-        result = await summarize(data, lambda: mock_llm_client)
+        result = await summarize(data, AsyncMock(return_value=mock_llm_client))
 
         assert result.ok
         assert mock_llm_client.ask_giga.call_count >= 2
