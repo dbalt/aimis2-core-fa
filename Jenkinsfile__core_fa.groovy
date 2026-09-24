@@ -120,7 +120,7 @@ pipeline {
                             ${py312}/virtualenv -p python3 venv
                             source venv/bin/activate
                             python3 -m pip install coverage==7.10.6 pytest pytest-cov pytest-asyncio fastapi uvicorn httpx==0.27.2 -r pip_req.core_fa --index-url=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple --trusted-host=sberosc.sigma.sbrf.ru
-                            PYTHONPATH=src python3 -m pytest -o junit_family=xunit1 --cov-report xml:coverage.xml --cov=. --junitxml=result.xml tests/
+                            PYTHONPATH=src AIMIS_LOGS_DIR=./ci_logs python3 -m pytest -o junit_family=xunit1 --cov-report xml:coverage.xml --cov=. --junitxml=result.xml tests/
                             deactivate
                         """
                     }
