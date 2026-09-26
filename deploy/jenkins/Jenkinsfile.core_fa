@@ -1,0 +1,291 @@
+@Library('DPMPipelineUtils@1.5')
+@Library('ru.sbrf.devsecops@master') _
+
+pipeline {
+    agent { node { label 'rhel8&&clearAgent' } }
+
+    environment {
+        // app info
+        appComponent = 'aimis2_core_fa'
+        appImg = 'aimisCoreFaImg'
+        fallbackVers = '01.000.12'
+        SONAR_PROJECT_KEY = 'aimis2-core-fa'
+
+        repo = 'aimis2-core-fa'
+        PROJECT = 'AIMIS'
+
+        tuz_ci = 'cab-sa-dvo09234_AD'
+        sberosc_ci = 'sberosc_ci'
+
+        as_code = '02877809'
+        fp_code = '08409038'
+
+        docker_url = 'docker-dev.registry-ci.delta.sbrf.ru'
+        bitbucket_url = 'https://stash.delta.sbrf.ru'
+
+        SONAR_LOGIN = 'cefda292-7575-47d2-bc9a-1022d242f8d0'
+
+        py312 = tool name: 'python3.12', type: 'com.cloudbees.jenkins.plugins.customtools.CustomTool'
+        scannerHome = tool 'SonarQube Scanner 3.0.3.778'
+
+        master_branch = 'master'
+        PYTHONDONTWRITEBYTECODE = '1'
+        PYTHONPATH = 'src'
+        DOCKER_BUILDKIT = '1'
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 4, unit: 'HOURS')
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '7', artifactNumToKeepStr: '10', daysToKeepStr: '7', numToKeepStr: '50'))
+    }
+
+    parameters {
+        choice(name: 'VERSION_BUMP', choices: ['patch', 'minor', 'major', 'none'], description: 'Master release increment')
+    }
+
+    stages {
+        stage('Resolve Version') {
+            steps {
+                script {
+                    def versioning = load 'deploy/jenkins/lib/versioning.groovy'
+                    env.vers = versioning.resolveVersion(appComponent, env.fallbackVers,
+                        params.VERSION_BUMP, env.BRANCH_NAME == 'master',
+                        "${bitbucket_url}/scm/aimis/${repo}.git", tuz_ci)
+                    // Единый PyInstaller-образ: master собирает версионный релиз,
+                    // ветки — с суффиксом -PYINSTALLER-SNAPSHOT.
+                    def tagSuffix = env.BRANCH_NAME == 'master' ? '' : '-PYINSTALLER-SNAPSHOT'
+                    env.IMAGE_REF = "${docker_url}/ci${as_code}/ci${fp_code}/${appComponent}:D-${env.vers}_${appComponent}${env.BUILD_ID}${tagSuffix}"
+                }
+            }
+        }
+
+        stage('Application Security') {
+            when {
+                anyOf {
+                    branch master_branch
+                }
+            }
+            steps {
+                script {
+                    echo "###### Run application security ######"
+
+                    def config = readYaml(file: './devsecops-config.yml')
+                    def res = runAppSec(config, "${bitbucket_url}/scm/${PROJECT.toLowerCase()}/${repo}.git", env.GIT_BRANCH, env.GIT_COMMIT)
+                    sh "echo ${res}"
+
+                    echo "###### Stage Application Security SUCCESS ######"
+                }
+            }
+        }
+
+        stage('Add SDK') {
+            steps {
+                script {
+                    echo "###### Install AIMIS SDK ######"
+
+                    withCredentials([usernamePassword(
+                        credentialsId: tuz_ci,
+                        usernameVariable: 'USERNAME',
+                        passwordVariable: 'PASSWORD'
+                    )]) {
+                        sh """
+                            git clone https://\${USERNAME}:\${PASSWORD}@stash.delta.sbrf.ru/scm/aimis/aimis-sdk.git
+                            mv aimis-sdk/sdk src/
+                            rm -rf aimis-sdk
+                        """
+                    }
+
+                    echo "###### AIMIS SDK successfully installed ######"
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            when {
+                anyOf {
+                    branch master_branch
+                }
+            }
+            steps {
+                script {
+                    echo "###### Run Unit Tests ######"
+
+                    if (fileExists('tests')) {
+                        withCredentials([string(credentialsId: "${sberosc_ci}", variable: 'TOKEN')]) {
+                            sh """
+                                ${py312}/virtualenv -p python3 venv
+                                source venv/bin/activate
+                                python3 -m pip install coverage==7.10.6 pytest pytest-cov fastapi uvicorn httpx==0.27.2 --index-url=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple --trusted-host=sberosc.sigma.sbrf.ru
+                                python3 -m pytest -o junit_family=xunit1 --cov-report xml:coverage.xml --cov=. --junitxml=result.xml tests/
+                                deactivate
+                            """
+                        }
+                    } else {
+                        echo "No tests directory for ${appComponent}, skipping"
+                    }
+
+                    echo "###### Stage Unit Tests SUCCESS ######"
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            when {
+                anyOf {
+                    branch master_branch
+                }
+            }
+            steps {
+                echo "###### Start SonarQube analysis ######"
+
+                withSonarQubeEnv(credentialsId: "${SONAR_LOGIN}", installationName: 'SonarQubeDelta') {
+                    sh """
+                        ${scannerHome}/bin/sonar-scanner \\
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.branch.name=${env.BRANCH_NAME} \
+                            -Dsonar.working.directory=/tmp/target/sonar \
+                            -Dsonar.sources=src \\
+                            -Dsonar.python.coverage.reportPaths=coverage.xml
+                    """
+                }
+
+                echo "###### Stage SonarQube Analysis SUCCESS ######"
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                script {
+                    echo "###### Docker build for ${appComponent} ######"
+
+                    withCredentials([string(credentialsId: "${sberosc_ci}", variable: 'TOKEN')]) {
+                        withDockerRegistry([credentialsId: "${tuz_ci}", url: "https://${docker_url}/ci${as_code}/ci${fp_code}/"]) {
+                            sh """
+                                docker build \
+                                    --build-arg "TOKEN=${TOKEN}" \
+                                    --label "GIT_COMMIT=${env.GIT_COMMIT}" \
+                                    --label "PACKAGER=pyinstaller" \
+                                    -f deploy/dockers/Dockerfile.core_fa \
+                                    -t "${env.IMAGE_REF}" .
+                            """
+                        }
+                    }
+
+                    echo "###### Stage Docker Build SUCCESS ######"
+                }
+            }
+        }
+
+        stage('Docker Push and Digest') {
+            steps {
+                script {
+                    echo "###### Push ${appComponent} docker image to registry ######"
+
+                    withDockerRegistry([credentialsId: "${tuz_ci}", url: "https://${docker_url}/ci${as_code}/ci${fp_code}/"]) {
+                        sh """
+                            docker push "${env.IMAGE_REF}"
+                            docker image inspect --format '{{index .RepoDigests 0}}' "${env.IMAGE_REF}" > image-digest.txt
+                        """
+                    }
+
+                    archiveArtifacts artifacts: 'image-digest.txt', fingerprint: true
+
+                    echo "###### Stage Docker Push and Digest SUCCESS ######"
+                }
+            }
+        }
+
+        stage('Distributive name (SHA256)') {
+            steps {
+                script {
+                    echo "###### Get distributive name (sha256) for ${appComponent} image ######"
+
+                    def tagSuffix = env.BRANCH_NAME == 'master' ? '' : '-PYINSTALLER-SNAPSHOT'
+                    sh 'touch reg.txt'
+                    sh 'touch argo.txt'
+                    def sha = sh(script: "docker images --digests | grep '${docker_url}/ci${as_code}/ci${fp_code}/.*${env.vers}_${appComponent}${env.BUILD_ID}${tagSuffix}.*'", returnStdout: true)
+                    def img = 'sha256:' + sha.toString().replaceAll(/.*sha256:/, "").replaceAll(/\s.*/, "")
+                    if (env.BRANCH_NAME == master_branch) {
+                        sh "echo 'registry.sigma.sbrf.ru/ci${as_code}/ci${fp_code}/${appComponent}:D-${env.vers}_${appComponent}${env.BUILD_ID}${tagSuffix}@${img}' >> reg.txt"
+                    } else {
+                        sh "echo 'docker-dev.registry-ci.delta.sbrf.ru/ci${as_code}/ci${fp_code}/${appComponent}:D-${env.vers}_${appComponent}${env.BUILD_ID}${tagSuffix}@${img}' >> reg.txt"
+                    }
+                    sh "echo '${appImg}: ${appComponent}@${img}' >> argo.txt"
+                    sh 'cat reg.txt'
+                    sh 'cat argo.txt'
+
+                    archiveArtifacts artifacts: 'reg.txt', fingerprint: true
+
+                    echo "###### Stage Distributive name (SHA256) SUCCESS ######"
+                }
+            }
+        }
+
+        stage('Release Notes') {
+            when {
+                anyOf {
+                    branch master_branch
+                }
+            }
+            steps {
+                script {
+                    echo "###### Push release notes for ${appComponent} image ######"
+
+                    prev_release = sh (
+                            script: 'git branch --list *origin/release/* -a | grep ${BRANCH_NAME} -B 1 | head -n 1',
+                            returnStdout: true
+                    ).trim()
+                    rn = releaseNotes()
+                            .setArtifactRepository("registry")
+                            .setGroup("CI${as_code}")
+                            .setArtifact("CI${fp_code}/${appComponent}")
+                            .setVersion("D-${env.vers}_${appComponent}${env.BUILD_ID}")
+                            .setQgmCredsId("${tuz_ci}")
+                            .addRepoViaBitbucketAPI(
+                                    "${PROJECT}",
+                                    "${repo}",
+                                    "${bitbucket_url}",
+                                    "${tuz_ci}",
+                                    true,
+                                    prev_release,
+                                    env.GIT_COMMIT
+                            )
+                            .createAndUploadReleaseNotes()
+
+                    echo "###### Stage Release Notes SUCCESS ######"
+                }
+            }
+        }
+
+        stage('Quality Gate CI OK Flag') {
+            when {
+                anyOf {
+                    branch master_branch
+                }
+            }
+            steps {
+                script {
+                    echo "####### Push CI_OK flag to QG for ${appComponent} #######"
+
+                    qg = qualityGates()
+                            .setArtifactRepository("registry")
+                            .setGroup("CI${as_code}")
+                            .setArtifact("CI${fp_code}/${appComponent}")
+                            .setVersion("D-${env.vers}_${appComponent}${env.BUILD_ID}")
+                            .setQgmCredsId("${tuz_ci}")
+                            .uploadFlag("ci", "ok")
+
+                    echo "####### Stage Quality Gate CI OK Flag SUCCESS #######"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs disableDeferredWipeout: true, deleteDirs: true
+        }
+    }
+}
