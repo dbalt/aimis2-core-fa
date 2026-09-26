@@ -193,3 +193,7 @@ secman
 
 
 logs/
+
+# Deploy build assets (PyInstaller-спеки и версия-либа обязательны в репозитории)
+!deploy/dockers/pyinstaller/specs/*.spec
+!deploy/jenkins/lib/

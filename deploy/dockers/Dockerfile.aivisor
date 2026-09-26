@@ -1,0 +1,48 @@
+ARG BUILD_BASE=docker-dev.registry-ci.delta.sbrf.ru/ci04675739/ci04675739/minimal:9.6.2-se
+ARG RUNTIME_BASE=docker-dev.registry-ci.delta.sbrf.ru/ci04675739/ci04675739/minimal:9.6.2-se
+FROM ${BUILD_BASE} AS builder
+
+USER root
+ARG TOKEN
+ARG PACKAGE_INDEX_URL=https://token:${TOKEN}@sberosc.sigma.sbrf.ru/repo/pypi/simple
+ARG PYINSTALLER_VERSION=6.16.0
+
+RUN if command -v microdnf >/dev/null; then \
+        microdnf upgrade -y && microdnf install -y --nodocs python3.12 python3.12-pip binutils && microdnf clean all; \
+    else apt-get update && apt-get install -y --no-install-recommends binutils && rm -rf /var/lib/apt/lists/*; fi
+
+RUN python3.12 -m pip install uv --index-url="${PACKAGE_INDEX_URL}" --trusted-host=sberosc.sigma.sbrf.ru
+ENV UV_SYSTEM_CERTS=true
+ENV UV_PYTHON=python3.12
+ENV PYTHONPATH=/tmp_bld/src
+
+WORKDIR /app
+COPY pip_req.aivisor /tmp/requirements.txt
+RUN uv pip install --system --no-cache-dir -r /tmp/requirements.txt "pyinstaller==${PYINSTALLER_VERSION}" \
+        --index-url="${PACKAGE_INDEX_URL}" \
+        --trusted-host=sberosc.sigma.sbrf.ru
+
+COPY src/ /tmp_bld/src/
+COPY deploy/dockers/pyinstaller/ /tmp_bld/deploy/dockers/pyinstaller/
+
+RUN python3.12 -m PyInstaller \
+        --noconfirm \
+        --clean \
+        --distpath /app/dist \
+        --workpath /app/build \
+        /tmp_bld/deploy/dockers/pyinstaller/specs/aivisor.spec \
+ && mv /app/dist/run__aivisor_fa_server.bin /app/cake \
+ && test -x /app/cake/run__aivisor_fa_server.bin
+
+FROM ${RUNTIME_BASE}
+
+USER root
+WORKDIR /app/cake
+COPY --from=builder /app/cake /app/cake
+RUN rm -rf /usr/bin/python3.6 /usr/bin/python3.12 \
+ && rm -rf /usr/lib/python3.6/site-packages /usr/lib/python3.12/site-packages \
+ && rm -rf /usr/local/lib/python3.12/site-packages \
+ && mkdir -p /app/logs && chown -R 10001:10001 /app
+ENV AIMIS_LOGS_DIR=/app/logs
+USER 10001:10001
+ENTRYPOINT ["/app/cake/run__aivisor_fa_server.bin"]
