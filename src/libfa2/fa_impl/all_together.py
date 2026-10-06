@@ -22,7 +22,7 @@ async def calculate_and_summarize_deviation(
         data_access:DataAccess,
         fn_get_llm_client:Callable,
         model_summary:str = 'GigaChat-3-Ultra',
-        model_details:str = 'GigaChat-2-Max',
+        model_details:str = 'GigaChat-3-Ultra',
         client_session_id: str = '-1',
     )->Res[Tuple[Dict, str]]:
 

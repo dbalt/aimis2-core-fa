@@ -24,7 +24,7 @@ class FaServerImpl(BaseAppServerPart):
         data_access: DataAccess,
         llm_client_gen_fn:Callable,
         model_summary:str = 'GigaChat-3-Ultra',
-        model_details:str = 'GigaChat-2-Max'
+        model_details:str = 'GigaChat-3-Ultra'
     ):
         super().__init__(keydb_client, FA_PROTOCOL)
         self._data_mgmt = data_mgmt

@@ -47,7 +47,7 @@ async def run():
     tbl_results = get_conf('configs.fa2026.tables.results')
     gigachat_cert_source = get_conf('configs.fa2026.gigachat_cert_source', 'navi_signal')
     model_summary = get_conf('configs.fa2026.models.summary', 'GigaChat-3-Ultra')
-    model_details = get_conf('configs.fa2026.models.details', 'GigaChat-2-Max')
+    model_details = get_conf('configs.fa2026.models.details', 'GigaChat-3-Ultra')
 
     # dm = DataMgmtDataGate(kc, tbl_metadata, tbl_results)
     dm = DataMgmtDbWrapper(dbw_gen_func, tbl_metadata, tbl_results)
