@@ -28,6 +28,7 @@ from sdk.giga.iface import MsgBase, AssistantMsg
 from sdk.core.monadic import Res
 from .summarize_prompts import SummarizerPrompt
 from .table_renderer import render_factor_table_wrapper, _get_scale_info
+from .value_formatter import enrich_display, format_abs, collect_allowed_names
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +40,7 @@ async def _base_llm_processing_function(
         llm_client: GigaChatClientPartV2,
         llm_model: str = "GigaChat-3-Ultra",
         client_session_id: str = '-1',
+        temperature: float | None = None,
 ) -> Res[str]:
     system_prompt = MsgBase.system_prompt(system_prompt)
 
@@ -53,6 +55,7 @@ async def _base_llm_processing_function(
         msgs=[system_prompt, usr_msg],
         model=llm_model,
         client_session_id=client_session_id,
+        temperature=temperature,
     )
 
     if not resp.ok:
@@ -181,12 +184,18 @@ async def build_branch_report(
         branch: int,
         llm_client_gen_fn: Callable,
         model_summary: str = "GigaChat-3-Ultra",
-        model_table: str = "GigaChat-2-Max",
+        model_table: str = "GigaChat-3-Ultra",
         client_session_id: str = '-1',
+        prompt_provider=SummarizerPrompt,
+        temperature: float | None = None,
 ) -> Res[str]:
-    """Собрать отчёт по выбранной ветке: параллельно short_summary, key_factors, таблица."""
-    summary_prompt = SummarizerPrompt.SHORT_SUMMARY_PROMPTS[branch]
-    factors_prompt = SummarizerPrompt.KEY_FACTORS_PROMPTS[branch]
+    """Собрать отчёт по выбранной ветке: параллельно short_summary, key_factors, таблица.
+
+    prompt_provider — набор промптов (SummarizerPrompt или legacy-набор
+    из summarize_prompts_legacy для A/B-харнесса). По умолчанию — актуальный.
+    """
+    summary_prompt = prompt_provider.SHORT_SUMMARY_PROMPTS[branch]
+    factors_prompt = prompt_provider.KEY_FACTORS_PROMPTS[branch]
 
     scale_info = _get_scale_info(data)
     root = _root_node(data)
@@ -199,74 +208,91 @@ async def build_branch_report(
     # где один без top_factors (пустая обёртка), а другой — с детализацией
     cleaned_data = _prune_wrapper_trees(data)
 
-    data_with_scale = {**cleaned_data, "scale_info": scale_info}
+    # Уровень A (AIMIS-2173): числа для текста готовит форматтер — LLM цитирует
+    # display-строки; сырые amounts остаются в данных для контекста.
+    display_data = enrich_display(cleaned_data)
+    data_with_display = {**display_data, "scale_info": scale_info}
+    # Белый список имён: LLM может упоминать только существующие узлы/срезы
+    data_with_display["allowed_names"] = collect_allowed_names(cleaned_data)
 
     # Подставляем алиасы вместо {{plan_alias}}/{{fact_alias}} в промпты
     summary_prompt = summary_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
     factors_prompt = factors_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
-    motiv_prompt = SummarizerPrompt.MOTIV_PROMPT.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
+    motiv_prompt = prompt_provider.MOTIV_PROMPT.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
+
+    # Белый список имён инлайн в промпт — надёжнее ссылки на массив в JSON
+    allowed_names_str = ", ".join(data_with_display["allowed_names"])
+    summary_prompt = summary_prompt.replace("{{allowed_names}}", allowed_names_str)
+    factors_prompt = factors_prompt.replace("{{allowed_names}}", allowed_names_str)
 
     tsks = []
     has_motiv = False
-    async with asyncio.TaskGroup() as tg:
-        tsks.append(tg.create_task(
-            _base_llm_processing_function(
-                summary_prompt, data_with_scale, await llm_client_gen_fn(), model_summary, client_session_id
-            )
-        ))
-        tsks.append(tg.create_task(
-            _base_llm_processing_function(
-                factors_prompt, data_with_scale, await llm_client_gen_fn(), model_summary, client_session_id
-            )
-        ))
-        tsks.append(tg.create_task(
-            render_factor_table_wrapper(cleaned_data)
-        ))
-        # LLM-запрос для мотивационной корректировки
-        motiv = data.get("motiv_correction")
-        if motiv is not None and (motiv.get("plan", 0) != 0 or motiv.get("fact", 0) != 0):
-            has_motiv = True
-            root_node_data = _root_node(data)
-            amounts = root_node_data.get("amounts", {})
-            plan_before = amounts.get("plan", 0) - motiv.get("plan", 0)
-            fact_before = amounts.get("fact", 0) - motiv.get("fact", 0)
 
-            motiv_data = {
-                "motiv_correction": {
-                    "plan": motiv.get("plan", 0),
-                    "fact": motiv.get("fact", 0),
-                    "label": motiv.get("label", ""),
-                    "has_plan": motiv.get("has_plan", motiv.get("plan", 0) != 0),
-                    "has_fact": motiv.get("has_fact", motiv.get("fact", 0) != 0),
-                },
-                "plan_before": plan_before,
-                "fact_before": fact_before,
-                "scale_info": scale_info,
-            }
-            tsks.append(tg.create_task(
-                _base_llm_processing_function(
-                    motiv_prompt, motiv_data, await llm_client_gen_fn(), model_summary, client_session_id
-                )
-            ))
-        else:
-            # Заглушка: возвращает Res.mk_result("") — пустой motiv_block
-            tsks.append(tg.create_task(asyncio.sleep(0, Res.mk_result(""))))
+    # Прямые последовательные вызовы LLM (без asyncio.create_task — односоединённый прокси)
+    client1 = await llm_client_gen_fn()
+    short_summary_res = await _base_llm_processing_function(
+        summary_prompt, data_with_display, client1, model_summary, client_session_id,
+        temperature=temperature
+    )
+    
+    await asyncio.sleep(2)  # пауза между запросами к прокси
+    
+    client2 = await llm_client_gen_fn()
+    key_factors_res = await _base_llm_processing_function(
+        factors_prompt, data_with_display, client2, model_summary, client_session_id,
+        temperature=temperature
+    )
+    
+    table_res = await render_factor_table_wrapper(cleaned_data)
 
-    short_summary_res, key_factors_res, table_res, motiv_res = (t.result() for t in tsks)
+    # Mотивационная корректировка — последовательно после факторов
+    motiv_res_data = ""
+    motiv = data.get("motiv_correction")
+    if motiv is not None and (motiv.get("plan", 0) != 0 or motiv.get("fact", 0) != 0):
+        root_node_data = _root_node(data)
+        amounts = root_node_data.get("amounts", {})
+        plan_before = amounts.get("plan", 0) - motiv.get("plan", 0)
+        fact_before = amounts.get("fact", 0) - motiv.get("fact", 0)
+
+        motiv_data = {
+            "motiv_correction": {
+                "plan": motiv.get("plan", 0),
+                "fact": motiv.get("fact", 0),
+                "label": motiv.get("label", ""),
+                "has_plan": motiv.get("has_plan", motiv.get("plan", 0) != 0),
+                "has_fact": motiv.get("has_fact", motiv.get("fact", 0) != 0),
+            },
+            "plan_before": plan_before,
+            "fact_before": fact_before,
+            "display": {
+                "plan": format_abs(motiv.get("plan", 0)),
+                "fact": format_abs(motiv.get("fact", 0)),
+                "plan_before": format_abs(plan_before),
+                "fact_before": format_abs(fact_before),
+            },
+            "scale_info": scale_info,
+        }
+        
+        await asyncio.sleep(2)  # пауза после факторов
+        motiv_res = await _base_llm_processing_function(
+            motiv_prompt, motiv_data, await llm_client_gen_fn(), model_summary, client_session_id,
+            temperature=temperature
+        )
+        motiv_res_data = motiv_res.data if motiv_res.ok else ""
 
     if not short_summary_res.ok:
         return Res.mk_error(f"Failed build short_summary. err: {short_summary_res.err}")
     if not key_factors_res.ok:
         return Res.mk_error(f"Failed build key_factors. err: {key_factors_res.err}")
     if table_res['ex']:
-        return Res.mk_error(f"Failed build deviations detailed table. error: {table_res['ex']}")
+        return table_res['ex']
 
-    # Сборка финального отчёта: short_summary + key_factors + [motiv_block] + table
-    final_report = f"{short_summary_res.data}\n\n\n{key_factors_res.data}"
+    # Сборка финального отчёта
+    final_report = short_summary_res.data + "\n\n" + key_factors_res.data
 
     # Мотивационная корректировка — результат LLM (с явным заголовком-разделителем)
-    if motiv_res.ok and motiv_res.data:
-        final_report += f"\n\n\n## Влияние мотивационной корректировки\n\n\n{motiv_res.data}"
+    if motiv_res_data:
+        final_report += f"\n\n\n## Влияние мотивационной корректировки\n\n\n{motiv_res_data}"
 
     # Таблица — в самом конце
     final_report += f"\n\n\n{table_res['table']}"
@@ -281,17 +307,20 @@ async def summarize(
         data: Dict,
         llm_client_gen_fn: Callable,
         model_summary: str = "GigaChat-3-Ultra",
-        model_details: str = "GigaChat-2-Max",
+        model_details: str = "GigaChat-3-Ultra",
         client_session_id: str = '-1',
+        prompt_provider=SummarizerPrompt,
+        temperature: float | None = None,
 ) -> Res[str]:
     """
     Главная функция саммаризации.
     """
-    print(f"DEBUG summarize: branch={classify(data)}, metric_type={data.get('metric_type')}")  # добавь эту строку
     branch = classify(data)
     return await build_branch_report(
         data, branch, llm_client_gen_fn,
         model_summary=model_summary,
         model_table=model_details,
         client_session_id=client_session_id,
+        prompt_provider=prompt_provider,
+        temperature=temperature,
     )
