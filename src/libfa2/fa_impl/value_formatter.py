@@ -13,6 +13,11 @@ value_formatter.py — детерминированное форматирова
         "margin_impact": ..., "margin_rub": ...,   # только ratio, depth <= 1
     }
 
+Конфиг предвычислений (precompute_cfg, см. precompute_config.py) выбирает
+для каждого поля режим code|llm: llm-ручка своё поле не генерирует
+(numbers=llm — display не строится вовсе), threshold задаёт порог значимости.
+По умолчанию всё считается кодом (текущее поведение).
+
 Правила (единая семантика с table_renderer.py):
   - абсолютные величины: млрд (|v| >= 1 млрд) / млн / тыс. / руб. по |v|,
     группировка тысяч пробелом, десятичная запятая, суффикс всегда;
@@ -23,24 +28,32 @@ value_formatter.py — детерминированное форматирова
   - ненулевое значение НИКОГДА не округляется до нуля;
   - знак: обычный дефис "-", явный "+" у deviation/impact;
   - маркер по знаку impact с учётом sign_negative_impact;
-  - значимость: |impact| >= 30% максимума среди соседних узлов.
+  - значимость: |impact| >= threshold × максимума среди соседних узлов
+    (threshold по умолчанию 0.30).
 """
 
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
+from .precompute_config import MODE_CODE, validate_precompute_cfg
 from .table_renderer import _group_thousands
 
 
 _MARKER_POS = "❇️"
 _MARKER_NEG = "🔴"
 
-# Порог значимости из промптов: |impact| >= 30% максимума среди соседей
-SIGNIFICANCE_RATIO = 0.30
-
 _EPS = 1e-10
+
+
+class _DisplayFlags(NamedTuple):
+    """Какие поля display кладёт код (llm-ручки поля не генерируют)."""
+
+    numbers: bool
+    markers: bool
+    selection: bool
+    children: bool
 
 
 def _fmt_decimal(av: float, decimals: int) -> str:
@@ -110,12 +123,12 @@ def _marker(impact: float, sign_negative_impact: int) -> str:
     return _MARKER_NEG if is_neg else _MARKER_POS
 
 
-def _is_significant(impact_abs: float, sibling_impacts: List[float]) -> bool:
-    """|impact| >= 30% максимума среди соседних узлов (одного родителя)."""
+def _is_significant(impact_abs: float, sibling_impacts: List[float], threshold: float) -> bool:
+    """|impact| >= threshold × максимум среди соседних узлов (одного родителя)."""
     m = max((abs(x) for x in sibling_impacts), default=0.0)
     if m < _EPS:
         return False
-    return impact_abs >= SIGNIFICANCE_RATIO * m
+    return impact_abs >= threshold * m
 
 
 def _impact_display(
@@ -157,6 +170,8 @@ def _display_for_node(
         sign_negative_impact: int,
         sibling_impacts: List[float],
         parent_ctx: Optional[Dict[str, float]],
+        flags: _DisplayFlags,
+        threshold: float,
 ) -> Tuple[Dict[str, Any], float]:
     """Собирает display-объект узла; возвращает его и magnitude вклада."""
     am = node.get("amounts") or {}
@@ -184,9 +199,14 @@ def _display_for_node(
         "fact": fact_s,
         "deviation": dev_s,
         "impact": impact_s,
-        "marker": _marker(impact_val, sign_negative_impact),
-        "significant": True if depth == 0 else _is_significant(abs(impact_magnitude), sibling_impacts),
     }
+    if flags.markers:
+        display["marker"] = _marker(impact_val, sign_negative_impact)
+    if flags.selection:
+        display["significant"] = (
+            True if depth == 0
+            else _is_significant(abs(impact_magnitude), sibling_impacts, threshold)
+        )
     if ratio and depth <= 1:
         display["margin_impact"] = impact_s
         display["margin_rub"] = dev_s
@@ -200,30 +220,39 @@ def _walk(
         sign_negative_impact: int,
         parent_ctx: Optional[Dict[str, float]],
         sibling_impacts: List[float],
+        flags: _DisplayFlags,
+        threshold: float,
 ) -> None:
     """Обход в глубину: display для узла и всех потомков (in-place).
 
     sibling_impacts — impacts узлов того же уровня (соседей данного узла).
+    numbers=llm (мастер-режим) — display не строится вовсе.
     """
-    display, impact_magnitude = _display_for_node(
-        node, depth, ratio, sign_negative_impact, sibling_impacts, parent_ctx
-    )
-    node["display"] = display
+    display: Optional[Dict[str, Any]] = None
+    impact_magnitude = 0.0
+    if flags.numbers:
+        display, impact_magnitude = _display_for_node(
+            node, depth, ratio, sign_negative_impact, sibling_impacts,
+            parent_ctx, flags, threshold,
+        )
+        node["display"] = display
 
     children: List[Dict] = (node.get("details") or {}).get("top_factors") or []
-    if children:
+    if display is not None and flags.children:
         # белый список детей узла: «Главный драйвер» — только из этих имён
-        display["children_names"] = [
+        child_names = [
             (c.get("hieararchy_node") or "").strip() for c in children
             if (c.get("hieararchy_node") or "").strip()
         ]
+        if child_names:
+            display["children_names"] = child_names
     child_impacts = [
         float((c.get("amounts") or {}).get("impact_to_top_lvl", 0.0) or 0.0)
         for c in children
     ]
 
     ctx: Optional[Dict[str, float]] = None
-    if ratio and depth >= 1:
+    if flags.numbers and ratio and depth >= 1:
         # для детей глубины >= 2: impact_pp родителя (в п.п.) и его deviation
         deviation = float((node.get("amounts") or {}).get("deviation", 0.0) or 0.0)
         if depth == 1:
@@ -234,15 +263,28 @@ def _walk(
             ctx = {"deviation": deviation, "impact_pp": parent_pp}
 
     for c in children:
-        _walk(c, depth + 1, ratio, sign_negative_impact, ctx, child_impacts)
+        _walk(c, depth + 1, ratio, sign_negative_impact, ctx, child_impacts,
+              flags, threshold)
 
 
-def enrich_display(data: Dict) -> Dict:
+def enrich_display(data: Dict, precompute_cfg: Optional[Dict[str, Any]] = None) -> Dict:
     """Чистая функция: data → data_display (deep copy + display-объекты).
 
     data — словарь вида {"data": [tree, ...], ...} (как в summarize()).
-    Возвращает копию, где каждый узел каждого дерева дополнен `display`.
+    precompute_cfg — конфиг предвычислений (None → дефолт: всё кодом).
+    Возвращает копию, где каждый узел каждого дерева дополнен `display`;
+    llm-ручки конфига исключают свои поля из display (numbers=llm — весь
+    display, markers — marker, selection — significant, names.children —
+    children_names).
     """
+    cfg = validate_precompute_cfg(precompute_cfg)
+    flags = _DisplayFlags(
+        numbers=cfg["numbers"]["mode"] == MODE_CODE,
+        markers=cfg["markers"]["mode"] == MODE_CODE,
+        selection=cfg["selection"]["mode"] == MODE_CODE,
+        children=cfg["names"]["children"] == MODE_CODE,
+    )
+    threshold = float(cfg["selection"]["threshold"])
     out = copy.deepcopy(data)
     trees: List[Dict] = out.get("data") or []
     metric_type = trees[0].get("metric_type") if trees else None
@@ -250,7 +292,8 @@ def enrich_display(data: Dict) -> Dict:
     sign_negative_impact = out.get("sign_negative_impact", -1)
     for tree in trees:
         tree_impact = float((tree.get("amounts") or {}).get("impact_to_top_lvl", 0.0) or 0.0)
-        _walk(tree, 0, ratio, sign_negative_impact, None, [tree_impact])
+        _walk(tree, 0, ratio, sign_negative_impact, None, [tree_impact],
+              flags, threshold)
     return out
 
 

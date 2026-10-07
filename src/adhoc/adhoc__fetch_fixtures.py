@@ -3,9 +3,9 @@ adhoc__fetch_fixtures.py — выгрузка JSON-фикстур для A/B-х�
 ==============================================================================
 
 НЕ прод. Читает data из missa_aimis.t_aimis__fa__results по известным
-кодам прод-инцидентов и складывает в tmp/json/{code}__{dt}.json.
-Прод-саммари (сгенерированы старым промптом — сами инциденты)
-сохраняются рядом в tmp/reports/{code}__{dt}__PROD.md для сверки.
+кодам тестовых инцидентов и складывает в tmp/json/{code}__{dt}.json.
+Референсные саммари (сгенерированы старым промптом — сами инциденты)
+сохраняются рядом в tmp/reports/{code}__{dt}__reference.md для сверки.
 
 Запуск: PYTHONPATH=src python src/adhoc/adhoc__fetch_fixtures.py
 """
@@ -21,7 +21,7 @@ from sdk.tools.settings import FileTools
 
 from libfa2.data_access.data_mgmt import DataMgmtDataGate
 
-# 5 прод-инцидентов (коды дал заказчик, AIMIS-2173)
+# 5 тестовых инцидентов (коды дал заказчик, AIMIS-2173)
 FIXTURES = [
     ("3ba67ea1550a87ab819262e232f9b559", "2026-09-30"),   # Чистая прибыль: выдуманные драйверы, «1 105 млн»
     ("611483b55cee04624baea7b28f27e468", "2026-09-30"),   # Чистая прибыль: выдуманная вложенность налога
@@ -39,9 +39,9 @@ def get_tmp_path() -> str:
 async def main() -> None:
     tmp = get_tmp_path()
     json_dir = FileTools.path_concat(tmp, 'json')
-    prod_dir = FileTools.path_concat(tmp, 'reports')
+    reports_dir = FileTools.path_concat(tmp, 'reports')
     Path(json_dir).mkdir(parents=True, exist_ok=True)
-    Path(prod_dir).mkdir(parents=True, exist_ok=True)
+    Path(reports_dir).mkdir(parents=True, exist_ok=True)
 
     from adhoc.adhoc_test_calc_dev import _instantiate_keydb
     kc = await _instantiate_keydb()
@@ -59,9 +59,9 @@ async def main() -> None:
         name = f'{code}__{dt_str}'
         data_path = FileTools.path_concat(json_dir, f'{name}.json')
         FileTools.write_to_file(data_path, json.dumps(data, ensure_ascii=False, indent=1))
-        prod_path = FileTools.path_concat(prod_dir, f'{name}__PROD.md')
-        FileTools.write_to_file(prod_path, summary)
-        print(f'OK   {name}: data={len(json.dumps(data))} chars, prod_summary={len(summary)} chars')
+        ref_path = FileTools.path_concat(reports_dir, f'{name}__reference.md')
+        FileTools.write_to_file(ref_path, summary)
+        print(f'OK   {name}: data={len(json.dumps(data))} chars, ref_summary={len(summary)} chars')
 
     print('\nФикстуры готовы в tmp/json/ — можно запускать A/B:')
 

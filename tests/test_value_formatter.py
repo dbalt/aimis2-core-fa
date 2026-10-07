@@ -288,3 +288,91 @@ class TestChildrenNames:
         out = enrich_display(data)
         leaf = out["data"][0]["details"]["top_factors"][0]
         assert "children_names" not in leaf["display"]
+
+
+_CFG = dict  # читаемость: конфиг-словари ниже
+
+
+class TestEnrichDisplayPrecomputeCfg:
+    """Ручки code|llm конфига предвычислений (aimis-2173-precompute-config)."""
+
+    def test_default_cfg_equals_no_cfg(self):
+        data = _non_ratio_data()
+        assert enrich_display(data) == enrich_display(data, None)
+
+    def test_markers_llm_drops_marker_only(self):
+        out = enrich_display(_non_ratio_data(), {"markers": {"mode": "llm"}})
+        d = out["data"][0]["display"]
+        assert "marker" not in d
+        assert d["impact"] == "+91,4 млн"          # числа остались
+        assert d["significant"] is True            # значимость осталась
+        child = out["data"][0]["details"]["top_factors"][0]["display"]
+        assert "marker" not in child
+        assert child["significant"] is True
+
+    def test_selection_llm_drops_significant_only(self):
+        out = enrich_display(_non_ratio_data(), {"selection": {"mode": "llm"}})
+        d = out["data"][0]["display"]
+        assert "significant" not in d
+        assert d["marker"] == "❇️"
+        child = out["data"][0]["details"]["top_factors"][0]["display"]
+        assert "significant" not in child
+        assert child["marker"] == "🔴"
+
+    def test_children_llm_drops_children_names(self):
+        out = enrich_display(_non_ratio_data(), {"names": {"children": "llm"}})
+        root = out["data"][0]
+        assert "children_names" not in root["display"]
+        assert root["display"]["significant"] is True
+
+    def test_names_allowed_llm_keeps_children_names(self):
+        """names.allowed управляет белым списком имён, а не display."""
+        out = enrich_display(_non_ratio_data(), {"names": {"allowed": "llm"}})
+        root = out["data"][0]
+        assert "children_names" in root["display"]
+
+    def test_numbers_llm_forced_drops_display_everywhere(self):
+        out = enrich_display(_non_ratio_data(), {"numbers": {"mode": "llm"}})
+        root = out["data"][0]
+        assert "display" not in root
+        child = root["details"]["top_factors"][0]
+        assert "display" not in child
+
+    def test_threshold_05_changes_significance(self):
+        """threshold=0.5: значимы |impact| >= 50% максимума среди соседей."""
+        out = enrich_display(
+            _non_ratio_data(),
+            {"selection": {"mode": "code", "threshold": 0.5}},
+        )
+        sig = [c["display"]["significant"]
+               for c in out["data"][0]["details"]["top_factors"]]
+        # max |impact| = 660.6; 535.5 >= 0.5*660.6 → True; 125.1 → False
+        assert sig == [True, False, True]
+
+    def test_threshold_099_excludes_middle(self):
+        out = enrich_display(
+            _non_ratio_data(),
+            {"selection": {"mode": "code", "threshold": 0.99}},
+        )
+        sig = [c["display"]["significant"]
+               for c in out["data"][0]["details"]["top_factors"]]
+        # только 660.6 >= 0.99 * 660.6
+        assert sig == [False, False, True]
+
+    def test_root_always_significant_regardless_threshold(self):
+        out = enrich_display(
+            _non_ratio_data(),
+            {"selection": {"mode": "code", "threshold": 2.0}},
+        )
+        assert out["data"][0]["display"]["significant"] is True
+
+    def test_ratio_numbers_llm_no_display(self):
+        out = enrich_display(_ratio_data(), {"numbers": {"mode": "llm"}})
+        assert "display" not in out["data"][0]
+
+    def test_ratio_margin_pair_with_default(self):
+        """margin-пара следует за numbers=code (дефолт)."""
+        out = enrich_display(_ratio_data(), {})
+        child = out["data"][0]["details"]["top_factors"][0]["display"]
+        assert child["margin_impact"] == "-26,413 п.п."
+        assert child["margin_rub"] == "+300 тыс."

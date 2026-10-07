@@ -26,9 +26,10 @@ from typing import Dict, List, Optional, Tuple, Callable
 from sdk.giga.client import GigaChatClientPartV2, DEFAULT_GIGA_MODEL
 from sdk.giga.iface import MsgBase, AssistantMsg
 from sdk.core.monadic import Res
-from .summarize_prompts import SummarizerPrompt
+from .summarize_prompts import SummarizerPrompt, make_prompt_provider
 from .table_renderer import render_factor_table_wrapper, _get_scale_info
 from .value_formatter import enrich_display, format_abs, collect_allowed_names
+from .precompute_config import MODE_CODE, validate_precompute_cfg
 logger = logging.getLogger(__name__)
 
 
@@ -187,16 +188,17 @@ async def build_branch_report(
         model_table: str = "GigaChat-3-Ultra",
         client_session_id: str = '-1',
         prompt_provider=SummarizerPrompt,
+        precompute_cfg: Optional[Dict] = None,
         temperature: float | None = None,
 ) -> Res[str]:
     """Собрать отчёт по выбранной ветке: параллельно short_summary, key_factors, таблица.
 
     prompt_provider — набор промптов (SummarizerPrompt или legacy-набор
-    из summarize_prompts_legacy для A/B-харнесса). По умолчанию — актуальный.
+    из summarize_prompts_legacy для A/B-харнесса). precompute_cfg — конфиг
+    предвычислений (None → дефолт: всё code). Если передан cfg и провайдер
+    не переопределён явно — провайдер собирается по конфигу
+    (make_prompt_provider); явный провайдер имеет приоритет (харнесс).
     """
-    summary_prompt = prompt_provider.SHORT_SUMMARY_PROMPTS[branch]
-    factors_prompt = prompt_provider.KEY_FACTORS_PROMPTS[branch]
-
     scale_info = _get_scale_info(data)
     root = _root_node(data)
     plan_alias = data.get("plan_alias") or root.get("plan_alias") or "План"
@@ -204,16 +206,37 @@ async def build_branch_report(
     scale_info["plan_alias"] = plan_alias.lower()
     scale_info["fact_alias"] = fact_alias.lower()
 
+    # Конфиг предвычислений: None → дефолт (всё code, текущее поведение)
+    cfg = validate_precompute_cfg(precompute_cfg)
+    names_code = cfg["names"]["allowed"] == MODE_CODE
+    numbers_code = cfg["numbers"]["mode"] == MODE_CODE
+
     # Убираем sibling-duplicate: два элемента data[] с одинаковыми суммами,
     # где один без top_factors (пустая обёртка), а другой — с детализацией
     cleaned_data = _prune_wrapper_trees(data)
 
+    # Белый список имён — только при names.allowed=code (llm-режим не ограничивает)
+    allowed_names = collect_allowed_names(cleaned_data) if names_code else []
+
+    # Сборка провайдера по конфигу — ДО извлечения промптов; явный
+    # провайдер (A/B-харнесс) имеет приоритет над cfg-сборкой.
+    if precompute_cfg is not None and prompt_provider is SummarizerPrompt:
+        prompt_provider = make_prompt_provider(
+            cfg, plan_alias, fact_alias,
+            allowed_names if names_code else None,
+        )
+
+    summary_prompt = prompt_provider.SHORT_SUMMARY_PROMPTS[branch]
+    factors_prompt = prompt_provider.KEY_FACTORS_PROMPTS[branch]
+
     # Уровень A (AIMIS-2173): числа для текста готовит форматтер — LLM цитирует
     # display-строки; сырые amounts остаются в данных для контекста.
-    display_data = enrich_display(cleaned_data)
+    # numbers=llm (мастер-режим): display не строится — LLM считает сама.
+    display_data = enrich_display(cleaned_data, cfg)
     data_with_display = {**display_data, "scale_info": scale_info}
-    # Белый список имён: LLM может упоминать только существующие узлы/срезы
-    data_with_display["allowed_names"] = collect_allowed_names(cleaned_data)
+    if names_code:
+        # Белый список имён: LLM может упоминать только существующие узлы/срезы
+        data_with_display["allowed_names"] = allowed_names
 
     # Подставляем алиасы вместо {{plan_alias}}/{{fact_alias}} в промпты
     summary_prompt = summary_prompt.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
@@ -221,7 +244,7 @@ async def build_branch_report(
     motiv_prompt = prompt_provider.MOTIV_PROMPT.replace("{{plan_alias}}", plan_alias).replace("{{fact_alias}}", fact_alias)
 
     # Белый список имён инлайн в промпт — надёжнее ссылки на массив в JSON
-    allowed_names_str = ", ".join(data_with_display["allowed_names"])
+    allowed_names_str = ", ".join(allowed_names)
     summary_prompt = summary_prompt.replace("{{allowed_names}}", allowed_names_str)
     factors_prompt = factors_prompt.replace("{{allowed_names}}", allowed_names_str)
 
@@ -264,14 +287,17 @@ async def build_branch_report(
             },
             "plan_before": plan_before,
             "fact_before": fact_before,
-            "display": {
+            "scale_info": scale_info,
+        }
+        if numbers_code:
+            # display-строки мотива готовит код; при numbers=llm их нет —
+            # мотив-промпт сам форматирует числа (ветка «display отсутствует»)
+            motiv_data["display"] = {
                 "plan": format_abs(motiv.get("plan", 0)),
                 "fact": format_abs(motiv.get("fact", 0)),
                 "plan_before": format_abs(plan_before),
                 "fact_before": format_abs(fact_before),
-            },
-            "scale_info": scale_info,
-        }
+            }
         
         await asyncio.sleep(2)  # пауза после факторов
         motiv_res = await _base_llm_processing_function(
@@ -310,6 +336,7 @@ async def summarize(
         model_details: str = "GigaChat-3-Ultra",
         client_session_id: str = '-1',
         prompt_provider=SummarizerPrompt,
+        precompute_cfg: Optional[Dict] = None,
         temperature: float | None = None,
 ) -> Res[str]:
     """
@@ -322,5 +349,6 @@ async def summarize(
         model_table=model_details,
         client_session_id=client_session_id,
         prompt_provider=prompt_provider,
+        precompute_cfg=precompute_cfg,
         temperature=temperature,
     )
