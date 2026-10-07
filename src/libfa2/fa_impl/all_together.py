@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Callable
+from typing import Tuple, Dict, List, Callable, Optional
 from datetime import date
 from .deviation_calc_metadata import DeviationCalcMetadata
 from .motiv_correction import get_motiv_correction_data
@@ -22,8 +22,9 @@ async def calculate_and_summarize_deviation(
         data_access:DataAccess,
         fn_get_llm_client:Callable,
         model_summary:str = 'GigaChat-3-Ultra',
-        model_details:str = 'GigaChat-2-Max',
+        model_details:str = 'GigaChat-3-Ultra',
         client_session_id: str = '-1',
+        precompute_cfg: Optional[Dict] = None,
     )->Res[Tuple[Dict, str]]:
 
     lgr = get_logger()
@@ -95,7 +96,9 @@ async def calculate_and_summarize_deviation(
     # Добавил sign_negative_impact для корректного определения зеленого/красного значка в таблице
     data["sign_negative_impact"] = deviation_calc_metadata.search_dev_params.sign_negative_impact
 
-    summary_res = await summarize(data, fn_get_llm_client, model_summary, model_details, client_session_id=client_session_id)
+    summary_res = await summarize(data, fn_get_llm_client, model_summary, model_details,
+                                  client_session_id=client_session_id,
+                                  precompute_cfg=precompute_cfg)
     if not summary_res.ok:
         lgr.warning(f'Summarization failed: code={code}, dt={dt}: {summary_res.err}')
         return Res.mk_error(summary_res.err)

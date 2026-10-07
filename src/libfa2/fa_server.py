@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 from coredis import Redis as KeyDbClient
 
@@ -11,6 +12,7 @@ from .data_access.data_mgmt import DataMgmt
 from .data_access.aggr import DataAccess
 from .fa_impl.deviation_calc_metadata import DeviationCalcMetadata
 from .fa_impl.all_together import calculate_and_summarize_deviation
+from .fa_impl.precompute_config import validate_precompute_cfg
 
 from sdk.fa2026.enums import FaServerAction, FA_PROTOCOL
 
@@ -24,7 +26,8 @@ class FaServerImpl(BaseAppServerPart):
         data_access: DataAccess,
         llm_client_gen_fn:Callable,
         model_summary:str = 'GigaChat-3-Ultra',
-        model_details:str = 'GigaChat-2-Max'
+        model_details:str = 'GigaChat-3-Ultra',
+        precompute_cfg: Optional[Dict] = None
     ):
         super().__init__(keydb_client, FA_PROTOCOL)
         self._data_mgmt = data_mgmt
@@ -33,6 +36,9 @@ class FaServerImpl(BaseAppServerPart):
 
         self._model_summary = model_summary
         self._model_details = model_details
+
+        # fail-fast: невалидный конфиг предвычислений не даёт серверу стартовать
+        self._precompute_cfg = validate_precompute_cfg(precompute_cfg)
 
     async def m__process_request(self, request_payload: Dict, client_session_id: str = '-1') -> AsyncIterable[Dict]:
         lgr = get_logger()
@@ -109,7 +115,8 @@ class FaServerImpl(BaseAppServerPart):
             self._llm_client_gen_fn,
             self._model_summary,
             self._model_details,
-            client_session_id=client_session_id
+            client_session_id=client_session_id,
+            precompute_cfg=self._precompute_cfg
         )
 
         if not tpl_res.ok:
