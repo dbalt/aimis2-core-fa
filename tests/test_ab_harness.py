@@ -79,7 +79,8 @@ class TestRunVariantE2E:
 
         data = _non_ratio_data()
         logs = await harness.run_variant(
-            "fixture_x", data, "new", harness.VARIANTS["new"], str(tmp_path)
+            "fixture_x", data, "new", harness.VARIANTS["new"],
+            harness.AB_MODEL, str(tmp_path),
         )
 
         assert len(logs) == harness.RUNS_PER_VARIANT == 10
@@ -87,8 +88,8 @@ class TestRunVariantE2E:
         assert all(e["validation"]["ok"] for e in logs)
         # прогоны независимы: каждый дошёл до LLM
         assert fake_client.ask_giga.await_count >= 20  # саммари + факторы на прогон
-        # файлы отчётов записаны
-        files = sorted(tmp_path.glob("fixture_x__new__run*.md"))
+        # файлы отчётов записаны (fixture__variant__model__runN.md)
+        files = sorted(tmp_path.glob(f"fixture_x__new__{harness.AB_MODEL}__run*.md"))
         assert len(files) == 10
 
     async def test_validation_catches_bad_llm(self, tmp_path, monkeypatch):
@@ -110,7 +111,8 @@ class TestRunVariantE2E:
         monkeypatch.setattr(harness, "PAUSE_BETWEEN_RUNS_SEC", 0)
 
         logs = await harness.run_variant(
-            "fixture_y", _non_ratio_data(), "legacy", harness.VARIANTS["legacy"], str(tmp_path)
+            "fixture_y", _non_ratio_data(), "legacy", harness.VARIANTS["legacy"],
+            harness.AB_MODEL, str(tmp_path),
         )
         totals = harness._aggregate(logs)
         assert totals["total_errors"] > 0
