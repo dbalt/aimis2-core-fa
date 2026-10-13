@@ -8,7 +8,7 @@ pipeline {
         // app info
         appComponent = 'aimis2_core_fa'
         appImg = 'aimisCoreFaImg'
-        fallbackVers = '01.000.14'
+        fallbackVers = '01.000.15'
         SONAR_PROJECT_KEY = 'aimis2-core-fa'
 
         repo = 'aimis2-core-fa'
