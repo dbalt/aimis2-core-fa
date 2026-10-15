@@ -49,11 +49,13 @@ async def run():
     gigachat_cert_source = get_conf('configs.fa2026.gigachat_cert_source', 'navi_signal')
     model_summary = get_conf('configs.fa2026.models.summary', 'GigaChat-3-Ultra')
     model_details = get_conf('configs.fa2026.models.details', 'GigaChat-3-Ultra')
-    # предвычисления саммаризации: отсутствие ключа = дефолт (всё code);
+    # предвычисления саммаризации: источник — t_config (ключ core_fa_settings);
+    # отсутствие строки / бита в JSON / недоступность таблицы = дефолт (всё code);
     # невалидный конфиг падает здесь (fail-fast, сервер не стартует)
     precompute_cfg = validate_precompute_cfg(
-        get_conf('configs.fa2026.summarize.precompute', None)
+        get_conf('#sqlconf.core_fa_settings.summarize.precompute', None)
     )
+    lgr.info(f'precompute_cfg: {precompute_cfg}')
 
     # dm = DataMgmtDataGate(kc, tbl_metadata, tbl_results)
     dm = DataMgmtDbWrapper(dbw_gen_func, tbl_metadata, tbl_results)
