@@ -1,0 +1,15 @@
+{
+  "tables": {
+    "metadata": "missa_aimis.t_aimis__fa__metadata",
+    "results": "missa_aimis.t_aimis__fa__results"
+  },
+  "models": {
+    "summary": "GigaChat-3-Ultra",
+    "details": "GigaChat-2-Max"
+  },
+  "gigachat_cert_source": "default",
+  "navi_settings": {
+    "key_lst": ["indicator_code", "data_point"],
+    "map_table_name": "missa_aimis.t_aimis__fa__map_codes"
+  }
+}
