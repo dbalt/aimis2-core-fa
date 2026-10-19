@@ -7,7 +7,7 @@
     "summary": "GigaChat-3-Ultra",
     "details": "GigaChat-2-Max"
   },
-  "gigachat_cert_source": "default",
+  "gigachat_cert_source": "navi_signal",
   "navi_settings": {
     "key_lst": ["indicator_code", "data_point"],
     "map_table_name": "missa_aimis.t_aimis__fa__map_codes"
